@@ -1,0 +1,249 @@
+import MapKit
+import SwiftUI
+
+/// Set, change or clear an entry's place: search, current location, or remove.
+/// A small map shows the entry's place (or where you are, before one is set).
+struct LocationPicker: View {
+    @Bindable var entry: Entry
+    let onChange: () -> Void
+
+    @Environment(\.dismiss) private var dismiss
+    @Environment(\.openURL) private var openURL
+    @State private var search = PlaceSearch()
+    @State private var camera: MapCameraPosition
+    @State private var isLocating = false
+    @State private var resolvingID: String?
+    @State private var errorMessage: String?
+    @State private var locationDenied = false
+    @FocusState private var searchFocused: Bool
+
+    init(entry: Entry, onChange: @escaping () -> Void) {
+        self.entry = entry
+        self.onChange = onChange
+        // Set up front: the Map ignores a camera change made in onAppear.
+        if let coordinate = entry.location?.coordinate {
+            _camera = State(initialValue: .region(
+                MKCoordinateRegion(center: coordinate, latitudinalMeters: 1500, longitudinalMeters: 1500)
+            ))
+        } else {
+            _camera = State(initialValue: .userLocation(fallback: .automatic))
+        }
+    }
+
+    var body: some View {
+        NavigationStack {
+            VStack(spacing: Spacing.m) {
+                searchField
+                map
+                results
+            }
+            .padding(.top, Spacing.m)
+            .background(Theme.background)
+            .navigationTitle("Set Location")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .cancellationAction) {
+                    Button("Cancel") { dismiss() }
+                }
+            }
+        }
+        .tint(Theme.primaryText)
+        .onAppear {
+            if let place = entry.placeName {
+                search.query = place
+            }
+        }
+    }
+
+    // MARK: - Pieces
+
+    private var searchField: some View {
+        HStack(spacing: Spacing.s) {
+            Image(systemName: "magnifyingglass")
+                .foregroundStyle(Theme.secondaryText)
+            TextField("Search places", text: $search.query)
+                .focused($searchFocused)
+                .submitLabel(.search)
+                .autocorrectionDisabled()
+            if !search.query.isEmpty {
+                Button("Clear", systemImage: "xmark.circle.fill") {
+                    search.query = ""
+                    searchFocused = true
+                }
+                .labelStyle(.iconOnly)
+                .foregroundStyle(Theme.secondaryText)
+                .buttonStyle(.plain)
+            }
+        }
+        .padding(.horizontal, 14)
+        .padding(.vertical, 11)
+        .background(Theme.primaryText.opacity(0.07), in: .capsule)
+        .padding(.horizontal, Spacing.m)
+    }
+
+    @ViewBuilder
+    private var map: some View {
+        if entry.location == nil && !LocationService.shared.isAuthorized {
+            // Nothing to show yet: a quiet placeholder rather than a zoomed-out continent.
+            RoundedRectangle(cornerRadius: 16)
+                .fill(Theme.primaryText.opacity(0.05))
+                .overlay {
+                    VStack(spacing: Spacing.s) {
+                        Image(systemName: "map")
+                            .font(.title2.weight(.light))
+                        Text("No location set")
+                            .font(Typography.excerpt)
+                    }
+                    .foregroundStyle(Theme.secondaryText)
+                }
+                .frame(height: 170)
+                .padding(.horizontal, Spacing.m)
+        } else {
+            liveMap
+        }
+    }
+
+    private var liveMap: some View {
+        Map(position: $camera) {
+            if let coordinate = entry.location?.coordinate {
+                Annotation(entry.placeName ?? "", coordinate: coordinate, anchor: .bottom) {
+                    MapPin()
+                }
+                .annotationTitles(.hidden)
+            } else {
+                UserAnnotation()
+            }
+        }
+        .mapStyle(.standard(pointsOfInterest: .excludingAll))
+        .mapControls {}
+        .frame(height: 170)
+        .clipShape(.rect(cornerRadius: 16))
+        .overlay {
+            RoundedRectangle(cornerRadius: 16).strokeBorder(Theme.hairline)
+        }
+        .padding(.horizontal, Spacing.m)
+        .allowsHitTesting(false)
+        .accessibilityLabel(entry.placeName.map { "Map showing \($0)" } ?? "Map")
+    }
+
+    private var results: some View {
+        List {
+            Section {
+                Button(action: useCurrentLocation) {
+                    HStack {
+                        Label("Current Location", systemImage: "location.fill")
+                        Spacer()
+                        if isLocating { ProgressView() }
+                    }
+                }
+                .disabled(isLocating || resolvingID != nil)
+
+                if entry.placeName != nil {
+                    Button("Remove Location", systemImage: "location.slash", role: .destructive) {
+                        entry.clearPlace()
+                        onChange()
+                        dismiss()
+                    }
+                }
+            } footer: {
+                if locationDenied {
+                    Button {
+                        if let url = URL(string: UIApplication.openSettingsURLString) { openURL(url) }
+                    } label: {
+                        Text("Location access is off for Journal. ") + Text("Open Settings").underline()
+                    }
+                    .foregroundStyle(Theme.secondaryText)
+                    .buttonStyle(.plain)
+                } else if let errorMessage {
+                    Text(errorMessage)
+                }
+            }
+
+            // Hide suggestions that just echo the place already set.
+            let suggestions = search.suggestions.filter { !(search.query == entry.placeName && $0.title == entry.placeName) }
+            if !suggestions.isEmpty {
+                Section("Places") {
+                    ForEach(suggestions) { suggestion in
+                        Button {
+                            Task { await select(suggestion) }
+                        } label: {
+                            HStack {
+                            VStack(alignment: .leading, spacing: 2) {
+                                Text(suggestion.title)
+                                    .foregroundStyle(Theme.primaryText)
+                                if !suggestion.subtitle.isEmpty {
+                                    Text(suggestion.subtitle)
+                                        .font(.footnote)
+                                        .foregroundStyle(Theme.secondaryText)
+                                }
+                            }
+                            Spacer(minLength: 0)
+                            if resolvingID == suggestion.id { ProgressView() }
+                            }
+                        }
+                        .disabled(resolvingID != nil)
+                    }
+                }
+            }
+        }
+        .scrollContentBackground(.hidden)
+        .scrollDismissesKeyboard(.immediately)
+        .contentMargins(.top, 0, for: .scrollContent)
+    }
+
+    // MARK: - Actions
+
+
+    private func useCurrentLocation() {
+        isLocating = true
+        errorMessage = nil
+        locationDenied = false
+        Task {
+            defer { isLocating = false }
+            do {
+                let location = try await LocationService.shared.currentLocation()
+                let name = await LocationService.shared.placeName(for: location) ?? "Current Location"
+                entry.setPlace(name: name, coordinate: location.coordinate)
+                onChange()
+                dismiss()
+            } catch LocationService.Failure.denied {
+                locationDenied = true
+            } catch {
+                errorMessage = "Couldn't find your location. Try again, or search for a place."
+            }
+        }
+    }
+
+    private func select(_ suggestion: PlaceSearch.Suggestion) async {
+        guard resolvingID == nil else { return }
+        resolvingID = suggestion.id
+        defer { resolvingID = nil }
+        guard let coordinate = await search.resolve(suggestion) else {
+            errorMessage = "Couldn't find that place."
+            return
+        }
+        entry.setPlace(name: suggestion.title, coordinate: coordinate)
+        onChange()
+        dismiss()
+    }
+}
+
+/// Ink teardrop pin with a sand dot — reads clearly on the light map tiles.
+private struct MapPin: View {
+    var body: some View {
+        VStack(spacing: -4) {
+            Circle()
+                .fill(Color(uiColor: UIColor(hex: Palette.ink)))
+                .frame(width: 30, height: 30)
+                .overlay {
+                    Circle().fill(Theme.accent).frame(width: 10, height: 10)
+                }
+                .overlay { Circle().strokeBorder(.white, lineWidth: 2) }
+            Image(systemName: "triangle.fill")
+                .font(.system(size: 10))
+                .rotationEffect(.degrees(180))
+                .foregroundStyle(Color(uiColor: UIColor(hex: Palette.ink)))
+        }
+        .shadow(color: .black.opacity(0.25), radius: 3, y: 2)
+    }
+}
