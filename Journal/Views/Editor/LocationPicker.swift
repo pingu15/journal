@@ -34,7 +34,6 @@ struct LocationPicker: View {
         NavigationStack {
             VStack(spacing: Spacing.m) {
                 searchField
-                map
                 results
             }
             .padding(.top, Spacing.m)
@@ -97,7 +96,6 @@ struct LocationPicker: View {
                     .foregroundStyle(Theme.secondaryText)
                 }
                 .frame(height: 170)
-                .padding(.horizontal, Spacing.m)
         } else {
             liveMap
         }
@@ -121,13 +119,18 @@ struct LocationPicker: View {
         .overlay {
             RoundedRectangle(cornerRadius: 16).strokeBorder(Theme.hairline)
         }
-        .padding(.horizontal, Spacing.m)
         .allowsHitTesting(false)
         .accessibilityLabel(entry.placeName.map { "Map showing \($0)" } ?? "Map")
     }
 
+    /// The map is the list's first row, so it scrolls away with the places below it.
     private var results: some View {
         List {
+            map
+                .listRowInsets(EdgeInsets(top: 0, leading: Spacing.m, bottom: 0, trailing: Spacing.m))
+                .listRowBackground(Color.clear)
+                .listRowSeparator(.hidden)
+
             Section {
                 Button(action: useCurrentLocation) {
                     HStack {
