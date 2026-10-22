@@ -1,7 +1,7 @@
 import SwiftUI
 import UIKit
 
-/// A Markdown writing surface: literal Markdown, styled live, with photos inline.
+/// The writing surface: formatted text (no visible Markdown syntax), stored as Markdown, with photos inline.
 /// `header` scrolls with the text, so the whole page moves as one.
 struct MarkdownEditor<Header: View>: UIViewRepresentable {
     @Binding var text: String
@@ -74,13 +74,16 @@ struct MarkdownEditor<Header: View>: UIViewRepresentable {
 
     private func load(_ markdown: String, into textView: MarkdownTextView, coordinator: Coordinator) {
         let selection = textView.selectedRange
-        textView.textStorage.setAttributedString(MarkdownDocument.attributed(from: markdown, image: image))
+        let document = MarkdownDocument.attributed(from: markdown) { id in
+            ImageAttachment.cached(imageID: id) ?? ImageAttachment(imageID: id, image: image(id))
+        }
+        textView.textStorage.setAttributedString(document)
         MarkdownStyler.style(textView.textStorage)
         coordinator.pendingStyleRange = nil
-        textView.typingAttributes = MarkdownStyler.typingAttributes
         if NSMaxRange(selection) <= textView.textStorage.length {
             textView.selectedRange = selection
         }
+        controller.updateTypingAttributes()
         coordinator.lastMarkdown = markdown
     }
 
@@ -107,6 +110,12 @@ struct MarkdownEditor<Header: View>: UIViewRepresentable {
             parent.isEditing = false
         }
 
+        func textViewDidChangeSelection(_ textView: UITextView) {
+            guard !isProcessing else { return }
+            parent.controller.updateTypingAttributes()
+            parent.controller.refreshState()
+        }
+
         func textStorage(
             _ textStorage: NSTextStorage,
             didProcessEditing editedMask: NSTextStorage.EditActions,
@@ -123,14 +132,24 @@ struct MarkdownEditor<Header: View>: UIViewRepresentable {
             }
         }
 
+        /// True while the editor makes its own edits, so they aren't processed twice.
+        private var isProcessing = false
+
         func textDidChange(in textView: UITextView) {
+            guard !isProcessing, let textView = textView as? MarkdownTextView else { return }
             // Restyling during IME composition would break the marked text; the range is kept
             // and styled once the composition is committed.
             if textView.markedTextRange == nil, let range = pendingStyleRange {
+                isProcessing = true
+                let caretParagraph = (textView.textStorage.string as NSString)
+                    .paragraphRange(for: NSRange(location: min(textView.selectedRange.location, textView.textStorage.length), length: 0))
+                let edited = pendingStyleRange.map { NSUnionRange($0, range) } ?? range
                 pendingStyleRange = nil
-                MarkdownStyler.style(textView.textStorage, in: range)
-                textView.typingAttributes = MarkdownStyler.typingAttributes
+                MarkdownStyler.style(textView.textStorage, in: NSUnionRange(edited, caretParagraph))
+                parent.controller.updateTypingAttributes()
+                isProcessing = false
             }
+            parent.controller.refreshState()
             let markdown = MarkdownDocument.markdown(from: textView.textStorage)
             lastMarkdown = markdown
             if parent.text != markdown {
@@ -138,46 +157,96 @@ struct MarkdownEditor<Header: View>: UIViewRepresentable {
             }
         }
 
-        /// Return continues a list (or ends it on an empty item).
+        /// Return continues a list (or ends it on an empty item), leaves a title or heading for body
+        /// text, and stays in a quote until an empty line.
         func textView(_ textView: UITextView, shouldChangeTextIn range: NSRange, replacementText text: String) -> Bool {
-            guard text == "\n", range.length == 0, let textView = textView as? MarkdownTextView else { return true }
-            let ns = textView.textStorage.string as NSString
-            let lineStart = ns.lineRange(for: NSRange(location: range.location, length: 0)).location
+            guard text == "\n", range.length == 0, !isProcessing,
+                  let textView = textView as? MarkdownTextView, textView.markedTextRange == nil
+            else { return true }
+            let storage = textView.textStorage
+            let ns = storage.string as NSString
+            let paragraph = ns.paragraphRange(for: NSRange(location: range.location, length: 0))
+            var contentEnd = NSMaxRange(paragraph)
+            if paragraph.length > 0, ns.character(at: contentEnd - 1) == 0x0A { contentEnd -= 1 }
+            let lineStart = paragraph.location
+            let line = ns.substring(with: NSRange(location: lineStart, length: contentEnd - lineStart))
             let beforeCaret = ns.substring(with: NSRange(location: lineStart, length: range.location - lineStart))
-            let local = NSRange(location: 0, length: (beforeCaret as NSString).length)
-            guard let match = MarkdownStyler.listContinuation.firstMatch(in: beforeCaret, range: local) else { return true }
+            let block = parent.controller.contextBlock(at: range.location)
 
-            let prefix = (beforeCaret as NSString).substring(with: match.range)
-            let content = (beforeCaret as NSString).substring(from: match.range.length)
-            if content.trimmingCharacters(in: .whitespaces).isEmpty {
-                textView.replace(NSRange(location: lineStart, length: local.length), with: "")
-            } else {
-                var next = prefix
-                let indent = (beforeCaret as NSString).substring(with: match.range(at: 1))
-                if match.range(at: 3).location != NSNotFound,
-                   let number = Int((beforeCaret as NSString).substring(with: match.range(at: 3))) {
-                    next = "\(indent)\(number + 1)\((beforeCaret as NSString).substring(with: match.range(at: 4))) "
-                } else if prefix.contains("[") {
-                    next = "\(indent)- [ ] "
-                }
-                textView.replace(range, with: "\n" + next)
+            isProcessing = true
+            defer {
+                isProcessing = false
+                textDidChange(in: textView)
             }
-            textDidChange(in: textView)
+
+            let local = NSRange(location: 0, length: (beforeCaret as NSString).length)
+            if block == nil, let match = MarkdownDocument.listPrefix.firstMatch(in: beforeCaret, range: local) {
+                let prefix = (beforeCaret as NSString).substring(with: match.range)
+                let rest = (line as NSString).substring(from: match.range.length)
+                if rest.trimmingCharacters(in: .whitespaces).isEmpty {
+                    // Return on an empty item ends the list.
+                    textView.replace(NSRange(location: lineStart, length: match.range.length), with: "")
+                } else {
+                    let indent = (beforeCaret as NSString).substring(with: match.range(at: 1))
+                    var next = prefix
+                    if match.range(at: 3).location != NSNotFound,
+                       let number = Int((beforeCaret as NSString).substring(with: match.range(at: 3))) {
+                        next = "\(indent)\(number + 1)\((beforeCaret as NSString).substring(with: match.range(at: 4))) "
+                    } else if prefix.unicodeScalars.contains("\u{2611}") {
+                        next = "\(indent)\(MarkdownDocument.unchecked) "
+                    }
+                    textView.replace(range, with: "\n" + next)
+                }
+                return false
+            }
+
+            if block == .quote, line.trimmingCharacters(in: .whitespaces).isEmpty {
+                // Return on an empty quote line ends the quote.
+                parent.controller.applyBlock(nil, toParagraphAt: range.location)
+                parent.controller.updateTypingAttributes()
+                return false
+            }
+
+            textView.replace(range, with: "\n")
+            let caret = range.location + 1
+            // Return at the end of a title or heading starts body text; splitting one keeps the style.
+            let next: BlockStyle? = block?.isHeading == true && range.location == contentEnd ? nil : block
+            parent.controller.applyBlock(next, toParagraphAt: caret)
+            textView.selectedRange = NSRange(location: caret, length: 0)
+            parent.controller.updateTypingAttributes()
             return false
         }
 
-        /// Set when a tap lands on a photo, so that tap opens the viewer without starting editing.
-        private var tapIsOnPhoto = false
+        /// Set when a tap lands on a photo (or, while not editing, a link), so that tap opens it
+        /// without starting editing.
+        private var tapOpensSomething = false
 
         func gestureRecognizer(_ gestureRecognizer: UIGestureRecognizer, shouldReceive touch: UITouch) -> Bool {
             if let textView = gestureRecognizer.view as? MarkdownTextView {
-                tapIsOnPhoto = imageID(at: touch.location(in: textView), in: textView) != nil
+                let point = touch.location(in: textView)
+                tapOpensSomething = imageID(at: point, in: textView) != nil
+                    || (!textView.isFirstResponder && link(at: point, in: textView) != nil)
             }
             return true
         }
 
         func textViewShouldBeginEditing(_ textView: UITextView) -> Bool {
-            !tapIsOnPhoto
+            !tapOpensSomething
+        }
+
+        /// The link under `point`. While editing, a tap on a link just places the caret, so its text can be changed.
+        private func link(at point: CGPoint, in textView: MarkdownTextView) -> URL? {
+            guard let position = textView.closestPosition(to: point) else { return nil }
+            let index = textView.offset(from: textView.beginningOfDocument, to: position)
+            let storage = textView.textStorage
+            for candidate in [index, index - 1] where candidate >= 0 && candidate < storage.length {
+                if let string = storage.attribute(.linkURL, at: candidate, effectiveRange: nil) as? String,
+                   let rect = textView.rect(for: NSRange(location: candidate, length: 1)),
+                   rect.insetBy(dx: -4, dy: -6).contains(point) {
+                    return URL(string: string)
+                }
+            }
+            return nil
         }
 
         private func imageID(at point: CGPoint, in textView: MarkdownTextView) -> UUID? {
@@ -193,10 +262,10 @@ struct MarkdownEditor<Header: View>: UIViewRepresentable {
             return nil
         }
 
-        /// Tap a photo to view it; tap a checkbox to tick it.
+        /// Tap a photo to view it, a link to open it, a checkbox to tick it.
         @objc func handleTap(_ recognizer: UITapGestureRecognizer) {
             // Cleared after this event, once the text view has also consulted it.
-            defer { DispatchQueue.main.async { self.tapIsOnPhoto = false } }
+            defer { DispatchQueue.main.async { self.tapOpensSomething = false } }
             guard let textView = recognizer.view as? MarkdownTextView,
                   let position = textView.closestPosition(to: recognizer.location(in: textView))
             else { return }
@@ -208,17 +277,21 @@ struct MarkdownEditor<Header: View>: UIViewRepresentable {
                 parent.onImageTap(id)
                 return
             }
+            if !textView.isFirstResponder, let url = link(at: point, in: textView) {
+                UIApplication.shared.open(url)
+                return
+            }
 
             let ns = storage.string as NSString
             guard index <= ns.length else { return }
             let lineRange = ns.lineRange(for: NSRange(location: index, length: 0))
             let line = ns.substring(with: lineRange)
-            guard let match = MarkdownStyler.checklistLine.firstMatch(in: line, range: NSRange(location: 0, length: (line as NSString).length))
+            guard let match = MarkdownDocument.markerLine.firstMatch(in: line, range: NSRange(location: 0, length: (line as NSString).length))
             else { return }
-            let box = NSRange(location: lineRange.location + match.range(at: 1).location, length: 1)
-            guard abs(index - box.location) <= 2 else { return }
-            let isDone = ns.substring(with: box) != " "
-            textView.replace(box, with: isDone ? " " : "x")
+            let box = NSRange(location: lineRange.location + match.range(at: 2).location, length: match.range(at: 2).length)
+            let marker = ns.substring(with: box)
+            guard marker != MarkdownDocument.bullet, abs(index - box.location) <= 2 else { return }
+            textView.replace(box, with: MarkdownDocument.isChecked(marker) ? MarkdownDocument.unchecked : MarkdownDocument.checked)
             textDidChange(in: textView)
         }
 
@@ -330,7 +403,9 @@ final class MarkdownTextView: UITextView {
     override func copy(_ sender: Any?) {
         let selection = selectedRange
         guard selection.length > 0 else { return }
-        let markdown = MarkdownDocument.markdown(from: textStorage.attributedSubstring(from: selection))
+        let selected = textStorage.attributedSubstring(from: selection)
+        // A selection starting mid-paragraph still carries its paragraph's style.
+        let markdown = MarkdownDocument.markdown(from: selected)
         UIPasteboard.general.string = markdown
     }
 
@@ -358,55 +433,86 @@ final class MarkdownTextView: UITextView {
         return super.canPerformAction(action, withSender: sender)
     }
 
-    /// Plain text goes in through the undoable path; text containing photo tokens is rebuilt
-    /// with the photos inline (copied into this entry if they came from another one).
+    /// Pasted text is read as Markdown, so formatting carries over. Text alone goes in through the
+    /// undoable path; photos (copied into this entry if they came from another one) are rebuilt
+    /// inline, each on a line of its own.
     private func pasteMarkdown(_ string: String) {
         let selection = selectedRange
-        let ns = string as NSString
-        let matches = Markdown.imagePattern.matches(in: string, range: NSRange(location: 0, length: ns.length))
-        guard !matches.isEmpty else {
-            replace(selection, with: string)
+        let pasted = MarkdownDocument.attributed(from: string) { [weak self] id in
+            self?.pasteHandler?.resolvePastedImage(id).map { ImageAttachment(imageID: $0.id, image: $0.image) }
+        }
+        let hasAttachments = pasted.string.contains("\u{FFFC}")
+
+        if !hasAttachments {
+            replace(selection, with: pasted.string)
+            let inserted = NSRange(location: selection.location, length: pasted.length)
+            if NSMaxRange(inserted) <= textStorage.length {
+                for key in [NSAttributedString.Key.inlineStyle, .linkURL, .blockStyle] {
+                    textStorage.removeAttribute(key, range: inserted)
+                }
+                pasted.enumerateAttributes(in: NSRange(location: 0, length: pasted.length)) { attributes, run, _ in
+                    let target = NSRange(location: inserted.location + run.location, length: run.length)
+                    for key in [NSAttributedString.Key.inlineStyle, .linkURL, .blockStyle] {
+                        if let value = attributes[key] { textStorage.addAttribute(key, value: value, range: target) }
+                    }
+                }
+            }
             pasteHandler?.didEditText(in: self)
             return
         }
 
-        // Photos are always paragraphs of their own, so break the line around any pasted mid-line.
-        let existing = textStorage.string as NSString
-        let pasted = NSMutableAttributedString()
-        func endsLine() -> Bool {
-            if pasted.length > 0 { return pasted.string.hasSuffix("\n") }
-            return selection.location == 0 || existing.character(at: selection.location - 1) == 0x0A
-        }
-        var cursor = 0
-        for match in matches {
-            pasted.append(NSAttributedString(string: ns.substring(with: NSRange(location: cursor, length: match.range.location - cursor))))
-            cursor = NSMaxRange(match.range)
-            if let id = UUID(uuidString: ns.substring(with: match.range(at: 1))),
-               let resolved = pasteHandler?.resolvePastedImage(id) {
-                if !endsLine() {
-                    // "text ![](…)" → "text" / photo: the space before the break goes.
-                    while pasted.string.hasSuffix(" ") {
-                        pasted.deleteCharacters(in: NSRange(location: pasted.length - 1, length: 1))
-                    }
-                    pasted.append(NSAttributedString(string: "\n"))
-                }
-                pasted.append(NSAttributedString(attachment: ImageAttachment(imageID: resolved.id, image: resolved.image)))
-                while cursor < ns.length, ns.character(at: cursor) == 0x20 { cursor += 1 }
-                let followedByBreak = cursor < ns.length
-                    ? ns.character(at: cursor) == 0x0A
-                    : NSMaxRange(selection) < existing.length && existing.character(at: NSMaxRange(selection)) == 0x0A
-                if !followedByBreak { pasted.append(NSAttributedString(string: "\n")) }
-            }
-        }
-        pasted.append(NSAttributedString(string: ns.substring(from: cursor)))
+        isolateAttachments(in: pasted, replacing: selection)
         pasted.addAttributes(MarkdownStyler.typingAttributes, range: NSRange(location: 0, length: pasted.length))
-
         textStorage.replaceCharacters(in: selection, with: pasted)
         // Direct storage edits aren't undoable; drop the stack rather than let it go stale.
         undoManager?.removeAllActions()
         selectedRange = NSRange(location: selection.location + pasted.length, length: 0)
         scrollRangeToVisible(selectedRange)
         pasteHandler?.didEditText(in: self)
+    }
+
+    /// Photos are always paragraphs of their own: break the line around any that land mid-line,
+    /// dropping the spaces that the break replaces.
+    private func isolateAttachments(in pasted: NSMutableAttributedString, replacing selection: NSRange) {
+        let existing = textStorage.string as NSString
+        var index = 0
+        while index < pasted.length {
+            guard pasted.attribute(.attachment, at: index, effectiveRange: nil) != nil else {
+                index += 1
+                continue
+            }
+            var text = pasted.string as NSString
+            // Before: trailing spaces go, then a break unless the line already ends here.
+            var start = index
+            while start > 0, text.character(at: start - 1) == 0x20 { start -= 1 }
+            if start < index {
+                pasted.deleteCharacters(in: NSRange(location: start, length: index - start))
+                index = start
+            }
+            text = pasted.string as NSString
+            let lineEndsBefore = index > 0
+                ? text.character(at: index - 1) == 0x0A
+                : selection.location == 0 || existing.character(at: selection.location - 1) == 0x0A
+            if !lineEndsBefore {
+                pasted.insert(NSAttributedString(string: "\n"), at: index)
+                index += 1
+            }
+            // After: leading spaces go, then a break unless one follows.
+            text = pasted.string as NSString
+            var end = index + 1
+            while end < text.length, text.character(at: end) == 0x20 { end += 1 }
+            if end > index + 1 {
+                pasted.deleteCharacters(in: NSRange(location: index + 1, length: end - index - 1))
+            }
+            text = pasted.string as NSString
+            let breakFollows = index + 1 < text.length
+                ? text.character(at: index + 1) == 0x0A
+                : NSMaxRange(selection) < existing.length && existing.character(at: NSMaxRange(selection)) == 0x0A
+            if !breakFollows {
+                pasted.insert(NSAttributedString(string: "\n"), at: index + 1)
+            }
+            index += 1
+        }
     }
 
     func nsRange(for textRange: UITextRange) -> NSRange? {
@@ -437,19 +543,50 @@ final class MarkdownTextView: UITextView {
     }
 }
 
-/// Formatting commands for the keyboard toolbar.
-final class MarkdownEditorController {
-    enum Block {
-        case bullet, numbered, checklist, quote
+/// The text styles offered by the toolbar's text-style menu.
+enum TextStyle: String, CaseIterable, Identifiable {
+    case title, heading, regular
+
+    var id: String { rawValue }
+
+    var label: String {
+        switch self {
+        case .title: "Title"
+        case .heading: "Heading"
+        case .regular: "Regular"
+        }
     }
 
-    weak var textView: MarkdownTextView?
-    var didEdit: (() -> Void)?
+    var block: BlockStyle? {
+        switch self {
+        case .title: .title
+        case .heading: .heading
+        case .regular: nil
+        }
+    }
+}
 
-    private static let anyBlockPrefix = try! NSRegularExpression(
-        pattern: #"^(#{1,6}[ \t]+|>[ \t]?|[ \t]*[-*+][ \t]+\[[ xX]\][ \t]+|[ \t]*[-*+][ \t]+|[ \t]*\d+[.)][ \t]+)"#
-    )
-    private static let headingPrefix = try! NSRegularExpression(pattern: #"^(#{1,6})[ \t]+"#)
+/// Formatting commands for the keyboard toolbar, and the formatting at the caret (so the toolbar
+/// can show which styles are on).
+@Observable
+final class MarkdownEditorController {
+    /// Inline styles on at the caret (or across the whole selection).
+    private(set) var activeInline: InlineStyle = []
+    private(set) var activeBlock: BlockStyle?
+    private(set) var isLink = false
+
+    var textStyle: TextStyle {
+        switch activeBlock {
+        case .title: .title
+        case .heading, .subheading: .heading
+        case .quote, nil: .regular
+        }
+    }
+
+    @ObservationIgnored weak var textView: MarkdownTextView?
+    @ObservationIgnored var didEdit: (() -> Void)?
+    /// The paragraph style chosen for an empty last line, which has no characters to carry it.
+    @ObservationIgnored private var emptyLineBlock: (location: Int, block: BlockStyle?)?
 
     func endEditing() {
         textView?.resignFirstResponder()
@@ -461,95 +598,238 @@ final class MarkdownEditorController {
         return textView
     }
 
-    /// Wraps the selection in `marker` (or unwraps it if already wrapped).
-    func toggleWrap(_ marker: String) {
-        guard let textView = prepare() else { return }
-        let ns = textView.textStorage.string as NSString
-        let selection = textView.selectedRange
-        let length = (marker as NSString).length
-        let before = NSRange(location: selection.location - length, length: length)
-        let after = NSRange(location: NSMaxRange(selection), length: length)
+    // MARK: Formatting at the caret
 
-        if before.location >= 0, NSMaxRange(after) <= ns.length,
-           ns.substring(with: before) == marker, ns.substring(with: after) == marker,
-           !isPartOfLongerRun(marker, before: before, after: after, in: ns) {
-            textView.replace(after, with: "")
-            textView.replace(before, with: "")
-            textView.selectedRange = NSRange(location: before.location, length: selection.length)
-        } else {
-            // Insert the markers separately so an embedded photo inside the selection survives.
-            textView.replace(NSRange(location: NSMaxRange(selection), length: 0), with: marker)
-            textView.replace(NSRange(location: selection.location, length: 0), with: marker)
-            textView.selectedRange = NSRange(location: selection.location + length, length: selection.length)
+    /// The paragraph style where text typed at `location` would go.
+    func contextBlock(at location: Int) -> BlockStyle? {
+        context(at: location).block
+    }
+
+    private func context(at location: Int) -> (inline: InlineStyle, block: BlockStyle?) {
+        guard let storage = textView?.textStorage else { return ([], nil) }
+        let ns = storage.string as NSString
+        if location > 0, location <= ns.length, ns.character(at: location - 1) != 0x0A {
+            return (storage.inlineStyle(at: location - 1), storage.blockStyle(at: location - 1))
         }
-        didEdit?()
+        if location < ns.length {
+            // Start of a paragraph: its first character (or, for an empty one, its line break).
+            let isEmpty = ns.character(at: location) == 0x0A
+            return (isEmpty ? [] : storage.inlineStyle(at: location), storage.blockStyle(at: location))
+        }
+        if let pending = emptyLineBlock, pending.location == location {
+            return ([], pending.block)
+        }
+        return ([], nil)
     }
 
-    /// `*` directly inside `**…**` belongs to the bold markers, not to an italic pair.
-    private func isPartOfLongerRun(_ marker: String, before: NSRange, after: NSRange, in ns: NSString) -> Bool {
-        guard (marker as NSString).length == 1 else { return false }
-        let character = (marker as NSString).character(at: 0)
-        var runBefore = 0
-        var index = before.location
-        while index >= 0, ns.character(at: index) == character { runBefore += 1; index -= 1 }
-        var runAfter = 0
-        index = after.location
-        while index < ns.length, ns.character(at: index) == character { runAfter += 1; index += 1 }
-        return runBefore % 2 == 0 || runAfter % 2 == 0
+    /// Typing continues the formatting around the caret (never a link).
+    func updateTypingAttributes(clearInline: Bool = false) {
+        guard let textView, textView.selectedRange.length == 0 else { return }
+        let (inline, block) = context(at: textView.selectedRange.location)
+        textView.typingAttributes = MarkdownStyler.typingAttributes(block: block, inline: clearInline ? [] : inline)
     }
 
-    /// Plain → H1 → H2 → H3 → plain.
-    func cycleHeading() {
+    func refreshState() {
+        guard let textView else { return }
+        let storage = textView.textStorage
+        let ns = storage.string as NSString
+        let selection = textView.selectedRange
+        var inline: InlineStyle
+        var link = false
+
+        if selection.length == 0 {
+            inline = InlineStyle(rawValue: textView.typingAttributes[.inlineStyle] as? Int ?? 0)
+            let location = selection.location
+            if location > 0, location <= ns.length, ns.character(at: location - 1) != 0x0A {
+                link = storage.attribute(.linkURL, at: location - 1, effectiveRange: nil) != nil
+            }
+        } else {
+            var common: InlineStyle?
+            var allLinked = true
+            storage.enumerateAttributes(in: selection) { attributes, run, _ in
+                guard attributes[.attachment] == nil,
+                      ns.substring(with: run).contains(where: { !$0.isNewline }) else { return }
+                let style = InlineStyle(rawValue: attributes[.inlineStyle] as? Int ?? 0)
+                common = common.map { $0.intersection(style) } ?? style
+                if attributes[.linkURL] == nil { allLinked = false }
+            }
+            inline = common ?? []
+            link = common != nil && allLinked
+        }
+
+        let block = context(at: selection.location).block
+        if activeInline != inline { activeInline = inline }
+        if activeBlock != block { activeBlock = block }
+        if isLink != link { isLink = link }
+    }
+
+    // MARK: Commands
+
+    /// Bold, italic, strikethrough or code: on the selection, or for what's typed next.
+    func toggle(_ style: InlineStyle) {
         guard let textView = prepare() else { return }
-        let lines = selectedLines(in: textView)
-        guard let first = lines.first else { return }
-        let ns = textView.textStorage.string as NSString
-        let current = Self.headingPrefix.firstMatch(in: ns.substring(with: first), range: NSRange(location: 0, length: first.length))
-            .map { $0.range(at: 1).length } ?? 0
-        let next = (current + 1) % 4
-        applyPrefixes(to: lines, in: textView) { _, _ in next == 0 ? "" : String(repeating: "#", count: next) + " " }
-    }
-
-    func toggleBlock(_ block: Block) {
-        guard let textView = prepare() else { return }
-        let lines = selectedLines(in: textView)
-        let ns = textView.textStorage.string as NSString
-        let allHaveIt = lines.allSatisfy { has(block, line: ns.substring(with: $0)) }
-        applyPrefixes(to: lines, in: textView) { index, _ in
-            guard !allHaveIt else { return "" }
-            switch block {
-            case .bullet: return "- "
-            case .numbered: return "\(index + 1). "
-            case .checklist: return "- [ ] "
-            case .quote: return "> "
+        let selection = textView.selectedRange
+        if selection.length == 0 {
+            var attributes = textView.typingAttributes
+            let current = InlineStyle(rawValue: attributes[.inlineStyle] as? Int ?? 0)
+            let block = (attributes[.blockStyle] as? Int).flatMap(BlockStyle.init(rawValue:))
+            attributes = MarkdownStyler.typingAttributes(block: block, inline: current.symmetricDifference(style))
+            textView.typingAttributes = attributes
+            refreshState()
+            return
+        }
+        let turnOn = !activeInline.contains(style)
+        editAttributes(in: selection) { storage in
+            storage.enumerateAttributes(in: selection) { attributes, run, _ in
+                guard attributes[.attachment] == nil else { return }
+                var current = InlineStyle(rawValue: attributes[.inlineStyle] as? Int ?? 0)
+                if turnOn { current.insert(style) } else { current.remove(style) }
+                if current.isEmpty {
+                    storage.removeAttribute(.inlineStyle, range: run)
+                } else {
+                    storage.addAttribute(.inlineStyle, value: current.rawValue, range: run)
+                }
             }
         }
+        textView.selectedRange = selection
+        refreshState()
     }
 
-    func insertLink() {
+    func setTextStyle(_ style: TextStyle) {
+        setBlock(style.block)
+    }
+
+    func toggleQuote() {
+        setBlock(activeBlock == .quote ? nil : .quote)
+    }
+
+    /// Applies a paragraph style to every paragraph the selection touches.
+    private func setBlock(_ block: BlockStyle?) {
+        guard let textView = prepare() else { return }
+        let storage = textView.textStorage
+        let ns = storage.string as NSString
+        let selection = textView.selectedRange
+        let paragraphs = ns.paragraphRange(for: selection)
+        if paragraphs.length > 0 {
+            editAttributes(in: paragraphs) { storage in
+                if let block {
+                    storage.addAttribute(.blockStyle, value: block.rawValue, range: paragraphs)
+                } else {
+                    storage.removeAttribute(.blockStyle, range: paragraphs)
+                }
+            }
+        }
+        if NSMaxRange(selection) == ns.length, ns.length == 0 || ns.character(at: ns.length - 1) == 0x0A {
+            // The caret sits on an empty last line, which has nothing to carry the style yet.
+            emptyLineBlock = (ns.length, block)
+        }
+        textView.selectedRange = selection
+        updateTypingAttributes()
+        refreshState()
+    }
+
+    /// Sets the paragraph style of the paragraph containing `location`, without an undo step
+    /// (it's part of an edit that has one).
+    func applyBlock(_ block: BlockStyle?, toParagraphAt location: Int) {
+        guard let storage = textView?.textStorage else { return }
+        let ns = storage.string as NSString
+        let paragraph = ns.paragraphRange(for: NSRange(location: min(location, ns.length), length: 0))
+        if paragraph.length == 0 {
+            emptyLineBlock = (location, block)
+            return
+        }
+        if let block {
+            storage.addAttribute(.blockStyle, value: block.rawValue, range: paragraph)
+        } else {
+            storage.removeAttribute(.blockStyle, range: paragraph)
+        }
+        MarkdownStyler.style(storage, in: paragraph)
+    }
+
+    /// Asks for an address, then links the selection to it (or inserts it as a link).
+    func promptForLink() {
         guard let textView = prepare() else { return }
         let selection = textView.selectedRange
-        if selection.length > 0 {
-            textView.replace(NSRange(location: NSMaxRange(selection), length: 0), with: "](https://)")
-            textView.replace(NSRange(location: selection.location, length: 0), with: "[")
-            textView.selectedRange = NSRange(location: NSMaxRange(selection) + 3, length: 8)
-        } else {
-            textView.replace(selection, with: "[](https://)")
-            textView.selectedRange = NSRange(location: selection.location + 1, length: 0)
+        var presenter = textView.window?.rootViewController
+        while let presented = presenter?.presentedViewController { presenter = presented }
+        guard let presenter else { return }
+
+        let existing = selection.length > 0 && selection.location < textView.textStorage.length
+            ? textView.textStorage.attribute(.linkURL, at: selection.location, effectiveRange: nil) as? String
+            : nil
+        let alert = UIAlertController(title: existing == nil ? "Add Link" : "Edit Link", message: nil, preferredStyle: .alert)
+        alert.addTextField { field in
+            field.placeholder = "https://"
+            field.text = existing
+            field.keyboardType = .URL
+            field.autocapitalizationType = .none
+            field.autocorrectionType = .no
         }
-        didEdit?()
+        alert.addAction(UIAlertAction(title: "Cancel", style: .cancel) { [weak textView] _ in
+            textView?.becomeFirstResponder()
+            textView?.selectedRange = selection
+        })
+        if existing != nil {
+            alert.addAction(UIAlertAction(title: "Remove Link", style: .destructive) { [weak self, weak textView] _ in
+                textView?.becomeFirstResponder()
+                textView?.selectedRange = selection
+                self?.setLink(nil, on: selection)
+            })
+        }
+        alert.addAction(UIAlertAction(title: "Done", style: .default) { [weak self, weak textView, weak alert] _ in
+            textView?.becomeFirstResponder()
+            textView?.selectedRange = selection
+            let raw = alert?.textFields?.first?.text?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+            guard !raw.isEmpty else { return }
+            let url = raw.contains("://") || raw.hasPrefix("mailto:") ? raw : "https://" + raw
+            self?.setLink(url, on: selection, text: raw)
+        })
+        presenter.present(alert, animated: true)
     }
 
-    func insertTag() {
-        insertAtCaret("#", spaced: true)
+    private func setLink(_ url: String?, on selection: NSRange, text: String? = nil) {
+        guard let textView else { return }
+        var range = selection
+        if range.length == 0 {
+            guard let url, let text else { return }
+            textView.replace(selection, with: text)
+            range = NSRange(location: selection.location, length: (text as NSString).length)
+            textView.textStorage.addAttribute(.linkURL, value: url, range: range)
+            MarkdownStyler.style(textView.textStorage, in: range)
+            textView.selectedRange = NSRange(location: NSMaxRange(range), length: 0)
+            updateTypingAttributes()
+            didEdit?()
+        } else {
+            editAttributes(in: range) { storage in
+                if let url {
+                    storage.addAttribute(.linkURL, value: url, range: range)
+                } else {
+                    storage.removeAttribute(.linkURL, range: range)
+                }
+            }
+            textView.selectedRange = range
+        }
+        refreshState()
     }
 
+    /// A divider on its own line at the caret.
     func insertDivider() {
         guard let textView = prepare() else { return }
-        let ns = textView.textStorage.string as NSString
-        let location = textView.selectedRange.location
-        let atLineStart = location == 0 || ns.character(at: location - 1) == 0x0A
-        textView.replace(textView.selectedRange, with: (atLineStart ? "" : "\n") + "---\n")
+        let storage = textView.textStorage
+        let selection = textView.selectedRange
+        let ns = storage.string as NSString
+        let insertion = NSMutableAttributedString()
+        if selection.location > 0, ns.character(at: selection.location - 1) != 0x0A {
+            insertion.append(NSAttributedString(string: "\n"))
+        }
+        insertion.append(NSAttributedString(attachment: DividerAttachment()))
+        insertion.append(NSAttributedString(string: "\n"))
+        insertion.addAttributes(MarkdownStyler.typingAttributes, range: NSRange(location: 0, length: insertion.length))
+        storage.replaceCharacters(in: selection, with: insertion)
+        // Direct storage edits aren't undoable; drop the stack rather than let it go stale.
+        textView.undoManager?.removeAllActions()
+        textView.selectedRange = NSRange(location: selection.location + insertion.length, length: 0)
+        textView.scrollRangeToVisible(textView.selectedRange)
         didEdit?()
     }
 
@@ -601,73 +881,37 @@ final class MarkdownEditorController {
 
     // MARK: Helpers
 
-    private func insertAtCaret(_ string: String, spaced: Bool) {
-        guard let textView else { return }
-        let ns = textView.textStorage.string as NSString
-        let location = textView.selectedRange.location
-        let needsSpace = spaced && location > 0
-            && !CharacterSet.whitespacesAndNewlines.contains(UnicodeScalar(ns.character(at: location - 1)) ?? " ")
-        textView.replace(textView.selectedRange, with: (needsSpace ? " " : "") + string)
+    /// Changes formatting (never text) in `range` as one undoable step.
+    private func editAttributes(in range: NSRange, _ change: (NSTextStorage) -> Void) {
+        guard let textView, range.length > 0, NSMaxRange(range) <= textView.textStorage.length else { return }
+        let storage = textView.textStorage
+        let before = storage.attributedSubstring(from: range)
+        change(storage)
+        MarkdownStyler.style(storage, in: range)
+        registerUndo(restoring: before, in: range)
         didEdit?()
     }
 
-    private func has(_ block: Block, line: String) -> Bool {
-        switch block {
-        case .bullet:
-            line.range(of: #"^[ \t]*[-*+][ \t]+(?!\[[ xX]\])"#, options: .regularExpression) != nil
-        case .numbered:
-            line.range(of: #"^[ \t]*\d+[.)][ \t]+"#, options: .regularExpression) != nil
-        case .checklist:
-            line.range(of: #"^[ \t]*[-*+][ \t]+\[[ xX]\]"#, options: .regularExpression) != nil
-        case .quote:
-            line.hasPrefix(">")
+    private func registerUndo(restoring previous: NSAttributedString, in range: NSRange) {
+        guard let textView, let undoManager = textView.undoManager else { return }
+        let current = textView.textStorage.attributedSubstring(from: range)
+        undoManager.registerUndo(withTarget: self) { controller in
+            MainActor.assumeIsolated {
+                guard let storage = controller.textView?.textStorage, NSMaxRange(range) <= storage.length,
+                      storage.attributedSubstring(from: range).string == previous.string
+                else { return }
+                storage.replaceCharacters(in: range, with: previous)
+                controller.registerUndo(restoring: current, in: range)
+                MarkdownStyler.style(storage, in: range)
+                controller.didEdit?()
+                controller.updateTypingAttributes()
+                controller.refreshState()
+            }
         }
-    }
-
-    /// Line ranges (without terminators) touched by the selection.
-    private func selectedLines(in textView: MarkdownTextView) -> [NSRange] {
-        let ns = textView.textStorage.string as NSString
-        var lines: [NSRange] = []
-        let paragraphs = ns.paragraphRange(for: textView.selectedRange)
-        ns.enumerateSubstrings(in: paragraphs, options: [.byParagraphs, .substringNotRequired]) { _, range, _, _ in
-            lines.append(range)
-        }
-        if lines.isEmpty {
-            lines = [NSRange(location: paragraphs.location, length: 0)]
-        }
-        return lines
-    }
-
-    /// Replaces each line's existing block prefix with a new one, editing only the prefixes.
-    private func applyPrefixes(to lines: [NSRange], in textView: MarkdownTextView, prefix: (Int, String) -> String) {
-        let ns = textView.textStorage.string as NSString
-        let selection = textView.selectedRange
-        var firstDelta = 0
-        var totalDelta = 0
-        var edits: [(NSRange, String)] = []
-
-        for (index, line) in lines.enumerated() {
-            let text = ns.substring(with: line)
-            guard !text.contains("\u{FFFC}") else { continue }
-            let existing = Self.anyBlockPrefix.firstMatch(in: text, range: NSRange(location: 0, length: line.length))?.range.length ?? 0
-            let replacement = prefix(index, text)
-            edits.append((NSRange(location: line.location, length: existing), replacement))
-            let delta = (replacement as NSString).length - existing
-            if index == 0 { firstDelta = delta }
-            totalDelta += delta
-        }
-        for (range, replacement) in edits.reversed() {
-            textView.replace(range, with: replacement)
-        }
-
-        let start = max(lines.first?.location ?? 0, selection.location + firstDelta)
-        let length = selection.length == 0 ? 0 : max(0, selection.length + totalDelta - firstDelta)
-        textView.selectedRange = NSRange(location: min(start, textView.textStorage.length), length: length)
-        didEdit?()
     }
 }
 
-/// The bar above the keyboard: every Markdown action, then a checkmark to finish.
+/// The bar above the keyboard: formatting tools (lit while on at the caret), then a checkmark to finish.
 struct MarkdownToolbar: View {
     static let height: CGFloat = 50
 
@@ -677,19 +921,16 @@ struct MarkdownToolbar: View {
     var body: some View {
         HStack(spacing: 0) {
             ScrollView(.horizontal) {
-                HStack(spacing: 0) {
+                HStack(spacing: 2) {
                     tool("Insert Photo", "photo", action: onImage)
-                    tool("Heading", "textformat.size") { controller.cycleHeading() }
-                    tool("Bold", "bold") { controller.toggleWrap("**") }
-                    tool("Italic", "italic") { controller.toggleWrap("*") }
-                    tool("Strikethrough", "strikethrough") { controller.toggleWrap("~~") }
-                    tool("Bulleted List", "list.bullet") { controller.toggleBlock(.bullet) }
-                    tool("Numbered List", "list.number") { controller.toggleBlock(.numbered) }
-                    tool("Checklist", "checklist") { controller.toggleBlock(.checklist) }
-                    tool("Quote", "text.quote") { controller.toggleBlock(.quote) }
-                    tool("Code", "chevron.left.forwardslash.chevron.right") { controller.toggleWrap("`") }
-                    tool("Link", "link") { controller.insertLink() }
-                    tool("Tag", "number") { controller.insertTag() }
+                    textStyleMenu
+                    tool("Bold", "bold", isOn: controller.activeInline.contains(.bold)) { controller.toggle(.bold) }
+                    tool("Italic", "italic", isOn: controller.activeInline.contains(.italic)) { controller.toggle(.italic) }
+                    tool("Strikethrough", "strikethrough", isOn: controller.activeInline.contains(.strikethrough)) {
+                        controller.toggle(.strikethrough)
+                    }
+                    tool("Quote", "text.quote", isOn: controller.activeBlock == .quote) { controller.toggleQuote() }
+                    tool("Link", "link", isOn: controller.isLink) { controller.promptForLink() }
                     tool("Divider", "minus") { controller.insertDivider() }
                 }
                 .padding(.horizontal, Spacing.xs)
@@ -698,14 +939,14 @@ struct MarkdownToolbar: View {
 
             Rectangle()
                 .fill(Theme.hairline)
-                .frame(width: 1, height: 24)
+                .frame(width: 1, height: 26)
 
             Button {
                 controller.endEditing()
             } label: {
                 Image(systemName: "checkmark")
-                    .font(.system(size: 17, weight: .semibold))
-                    .frame(width: 54, height: 50)
+                    .font(.system(size: 20, weight: .semibold))
+                    .frame(width: 56, height: Self.height)
                     .contentShape(.rect)
             }
             .accessibilityLabel("Done")
@@ -719,13 +960,47 @@ struct MarkdownToolbar: View {
         .buttonStyle(.plain)
     }
 
-    private func tool(_ label: String, _ symbol: String, action: @escaping () -> Void) -> some View {
+    /// Title / Heading / Regular, with the current one checked.
+    private var textStyleMenu: some View {
+        Menu {
+            Picker("Text Style", selection: Binding(get: { controller.textStyle }, set: { controller.setTextStyle($0) })) {
+                ForEach(TextStyle.allCases) { style in
+                    Text(style.label).tag(style)
+                }
+            }
+        } label: {
+            ToolIcon(symbol: "textformat.size", isOn: controller.textStyle != .regular)
+        }
+        .menuOrder(.fixed)
+        .accessibilityLabel("Text Style")
+        .accessibilityValue(controller.textStyle.label)
+    }
+
+    private func tool(_ label: String, _ symbol: String, isOn: Bool = false, action: @escaping () -> Void) -> some View {
         Button(action: action) {
-            Image(systemName: symbol)
-                .font(.system(size: 16))
-                .frame(width: 42, height: 50)
-                .contentShape(.rect)
+            ToolIcon(symbol: symbol, isOn: isOn)
         }
         .accessibilityLabel(label)
+        .accessibilityAddTraits(isOn ? .isSelected : [])
+    }
+}
+
+private struct ToolIcon: View {
+    let symbol: String
+    let isOn: Bool
+
+    var body: some View {
+        Image(systemName: symbol)
+            .font(.system(size: 19, weight: isOn ? .semibold : .regular))
+            .foregroundStyle(Theme.primaryText)
+            .frame(width: 40, height: 36)
+            .background {
+                if isOn {
+                    Color.clear.glassBackground(in: .rect(cornerRadius: 10, style: .continuous))
+                }
+            }
+            .frame(width: 44, height: MarkdownToolbar.height)
+            .contentShape(.rect)
+            .animation(.easeOut(duration: 0.15), value: isOn)
     }
 }

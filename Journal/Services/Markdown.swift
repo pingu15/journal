@@ -47,13 +47,34 @@ nonisolated enum Markdown {
         (regex(#"(?<![\w_])_(?=\S)([^_\n]+?)(?<=\S)_(?![\w_])"#), "$1"),
     ]
 
-    /// The text as a reader would see it: no syntax, no image tokens.
+    private static let escapedCharacter = regex(#"\\([\p{P}\p{S}])"#)
+
+    /// The text as a reader would see it: no syntax, no image tokens. Backslash-escaped characters
+    /// are literal text, so they're set aside while the syntax is stripped.
     static func plainText(_ text: String) -> String {
-        stripRules.reduce(text) { result, rule in
+        var escapes: [String] = []
+        let ns = text as NSString
+        var protected = ""
+        var cursor = 0
+        for match in escapedCharacter.matches(in: text, range: NSRange(location: 0, length: ns.length)) {
+            protected += ns.substring(with: NSRange(location: cursor, length: match.range.location - cursor))
+            protected += String(UnicodeScalar(0xE000 + escapes.count) ?? "?")
+            escapes.append(ns.substring(with: match.range(at: 1)))
+            cursor = NSMaxRange(match.range)
+        }
+        protected += ns.substring(from: cursor)
+
+        var result = stripRules.reduce(protected) { result, rule in
             rule.0.stringByReplacingMatches(
                 in: result, range: NSRange(location: 0, length: (result as NSString).length),
                 withTemplate: rule.1
             )
         }
+        for (index, character) in escapes.enumerated() {
+            if let scalar = UnicodeScalar(0xE000 + index) {
+                result = result.replacingOccurrences(of: String(scalar), with: character)
+            }
+        }
+        return result
     }
 }
