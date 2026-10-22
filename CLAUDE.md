@@ -67,6 +67,9 @@ A premium, minimal, editorial journaling app. Native iOS, Swift + SwiftUI, **iPh
 xcodebuild -project Journal.xcodeproj -scheme Journal -destination 'platform=iOS Simulator,name=iPhone 18 Pro' -derivedDataPath build build
 ```
 
+## Git
+- One commit per distinct fix or feature — never group unrelated changes into one commit. When the working tree holds several, stage and commit them separately (`git add <files>` / `git add -p`), each with its own message. Docs that describe a change go in that change's commit.
+
 ## Roadmap (not yet)
 - iCloud sync (needs a CloudKit container on the team), widgets (needs an extension target + App Group).
 - AI features (on-device Foundation Models: prompts, reflections) — later.
