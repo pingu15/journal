@@ -107,8 +107,8 @@ extension Entry {
     func matches(_ query: String) -> Bool {
         let words = query.lowercased().split(whereSeparator: \.isWhitespace).map(String.init)
         guard !words.isEmpty else { return true }
-        // Image tokens carry UUIDs; never let their hex digits match a query.
-        let content = Markdown.replacingImages(in: text, with: " ") + " " + (placeName ?? "")
+        // Searched as read: no Markdown syntax, and no image tokens (whose hex digits would match).
+        let content = Markdown.plainText(text) + " " + (placeName ?? "")
         let dates = dateTokens
         return words.allSatisfy { word in
             content.localizedStandardContains(word)
