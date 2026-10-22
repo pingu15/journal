@@ -215,7 +215,8 @@ struct EntryHeader: View {
 
                 if let weather = entry.weather {
                     Text("·")
-                    Label("\(weather.formattedTemperature) \(weather.condition)", systemImage: weather.symbol)
+                    // Icon and temperature only; the condition is still spoken by VoiceOver.
+                    Label(weather.formattedTemperature, systemImage: weather.symbol)
                         .lineLimit(1)
                         .accessibilityLabel("Weather: \(weather.formattedTemperature), \(weather.condition)")
                 }
