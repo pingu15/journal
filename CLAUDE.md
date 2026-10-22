@@ -27,7 +27,7 @@ A premium, minimal, editorial journaling app. Native iOS, Swift + SwiftUI, **iPh
 - iOS 18.0+, Swift 6, default actor isolation = MainActor.
 - SwiftData for persistence. Keep models CloudKit-compatible (defaults on every property, no `@Attribute(.unique)`, relationships optional) — iCloud sync is planned.
 - LocalAuthentication for the optional Face ID lock (`Services/AppLock.swift`). The lock screen lives in its own `UIWindow` above everything (`PrivacyShield`) so sheets and full-screen covers are hidden too; Face ID is only requested once the scene is `.active`.
-- WeatherKit (`Services/WeatherFetcher.swift`) — **requires a development team and the WeatherKit capability + App Service enabled on the App ID**. Until then requests fail with `WDSJWTAuthenticatorServiceListener.Errors error 2` and entries just show no weather. Entitlement is in `Journal.entitlements`. **Apple's WeatherKit attribution was removed from Settings at the user's request — it must be shown somewhere (e.g. the editor header) before App Store submission.**
+- WeatherKit (`Services/WeatherFetcher.swift`) — signed with team `L3957C4ZBL`, WeatherKit enabled on the App ID (works in the Simulator too). If requests fail with `WDSJWTAuthenticatorServiceListener.Errors error 2`, the build isn't carrying the team/entitlement. Weather is fetched when a place is set or changed, when the date changes, and when an entry with a place but no weather opens. Entitlement is in `Journal.entitlements`. **Apple's WeatherKit attribution was removed from Settings at the user's request — it must be shown somewhere (e.g. the editor header) before App Store submission.**
 - CoreLocation + MapKit for places (`Services/LocationService.swift`).
 - No third-party dependencies, no analytics.
 
@@ -68,6 +68,6 @@ xcodebuild -project Journal.xcodeproj -scheme Journal -destination 'platform=iOS
 ```
 
 ## Roadmap (not yet)
-- iCloud sync (needs a development team + CloudKit container), widgets (needs an extension target + App Group).
+- iCloud sync (needs a CloudKit container on the team), widgets (needs an extension target + App Group).
 - AI features (on-device Foundation Models: prompts, reflections) — later.
 - Monetization / StoreKit — later. **No paywall for now.**
