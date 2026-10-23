@@ -590,13 +590,13 @@ nonisolated private struct InlineParser {
 
 /// Derives fonts, colors and paragraph styles from the semantic formatting attributes.
 enum MarkdownStyler {
-    static var bodyFont: UIFont { .serif(.body) }
+    static var bodyFont: UIFont { .sans(.body) }
 
     static func font(for block: BlockStyle?) -> UIFont {
         switch block {
-        case .title: .serif(.title1, bold: true)
-        case .heading: .serif(.title2, bold: true)
-        case .subheading: .serif(.title3, bold: true)
+        case .title: .sans(.title1, bold: true)
+        case .heading: .sans(.title2, bold: true)
+        case .subheading: .sans(.title3, bold: true)
         case .quote, nil: bodyFont
         }
     }

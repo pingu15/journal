@@ -18,7 +18,7 @@ struct SettingsView: View {
             Form {
                 Section {
                     TextField(JournalName.default, text: $journalName)
-                        .font(.system(.body, design: .serif))
+                        .font(.body)
                         .submitLabel(.done)
                         .onSubmit {
                             journalName = JournalName.display(journalName)

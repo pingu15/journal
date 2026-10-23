@@ -41,22 +41,24 @@ enum Theme {
     static let activityFilled = primaryText.opacity(0.8)
     static let activityEmpty = primaryText.opacity(0.07)
 
-    /// Serif navigation titles to match the editorial type.
+    /// Bar titles (sheets: Settings, Set Location, Entry Date) are sans; tab titles draw their own serif.
     static func applyNavigationBarAppearance() {
         let bar = UINavigationBar.appearance()
         bar.largeTitleTextAttributes = [
-            .font: UIFont.serif(.largeTitle, bold: true),
+            .font: UIFont.sans(.largeTitle, bold: true),
             .foregroundColor: UITheme.primaryText,
         ]
         bar.titleTextAttributes = [
-            .font: UIFont.serif(.headline, bold: true),
+            .font: UIFont.sans(.headline, bold: true),
             .foregroundColor: UITheme.primaryText,
         ]
     }
 }
 
 enum Typography {
-    static let entryTitle = Font.system(.title3, design: .serif).weight(.semibold)
+    /// Entry text (titles and excerpts in lists, and the editor) is sans; page titles stay serif.
+    static let entryTitle = Font.system(.title3).weight(.semibold)
+    static let entryExcerpt = Font.system(.subheadline)
     static let body = Font.system(.body, design: .serif)
     static let excerpt = Font.system(.subheadline, design: .serif)
     static let dayNumber = Font.system(.title2, design: .serif)
@@ -102,6 +104,14 @@ extension UIFont {
     static func serif(_ style: UIFont.TextStyle, bold: Bool = false) -> UIFont {
         var descriptor = UIFontDescriptor.preferredFontDescriptor(withTextStyle: style)
         descriptor = descriptor.withDesign(.serif) ?? descriptor
+        if bold {
+            descriptor = descriptor.withSymbolicTraits(.traitBold) ?? descriptor
+        }
+        return UIFont(descriptor: descriptor, size: 0)
+    }
+
+    static func sans(_ style: UIFont.TextStyle, bold: Bool = false) -> UIFont {
+        var descriptor = UIFontDescriptor.preferredFontDescriptor(withTextStyle: style)
         if bold {
             descriptor = descriptor.withSymbolicTraits(.traitBold) ?? descriptor
         }

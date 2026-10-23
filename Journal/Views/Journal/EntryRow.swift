@@ -26,7 +26,7 @@ struct EntryRow: View {
                         .lineLimit(1)
                     if !entry.excerpt.isEmpty {
                         Text(entry.excerpt)
-                            .font(Typography.excerpt)
+                            .font(Typography.entryExcerpt)
                             .foregroundStyle(Theme.secondaryText)
                             .lineLimit(2)
                     }
