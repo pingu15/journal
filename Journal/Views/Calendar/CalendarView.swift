@@ -18,6 +18,10 @@ struct CalendarView: View {
     /// The pager's position, and how far through it the swipe is (in pages, fractional mid-swipe).
     @State private var pagerMonth: Int? = 0
     @State private var pagePosition: CGFloat = 0
+    /// The month the title and the pager's height show: it switches as soon as a swipe is let go,
+    /// before the pager settles. `titleForward` picks the side the new title slides in from.
+    @State private var shownMonth = 0
+    @State private var titleForward = true
     @Namespace private var transition
 
     private let calendar = Calendar.current
@@ -84,6 +88,7 @@ struct CalendarView: View {
         .sensoryFeedback(.impact(weight: .light), trigger: newEntryCount)
         .onChange(of: monthOffset) { _, offset in
             followMonth(offset)
+            show(offset)
             // Arrows and Today change the month directly; bring the pager along.
             if pagerMonth != offset {
                 withAnimation(.snappy) { pagerMonth = offset }
@@ -104,14 +109,21 @@ struct CalendarView: View {
                 .disabled(monthOffset == monthRange.lowerBound)
                 .frame(width: 44, height: 44)
                 .contentShape(.rect)
-            Spacer()
-            Text(month(at: monthOffset).formatted(.dateTime.month(.wide).year()))
-                .font(.system(.title3, design: .serif).weight(.semibold))
-                .foregroundStyle(Theme.primaryText)
-                .contentTransition(.numericText())
-                .lineLimit(1)
-                .minimumScaleFactor(0.7)
-            Spacer()
+            ZStack {
+                Text(month(at: shownMonth).formatted(.dateTime.month(.wide).year()))
+                    .font(.system(.title3, design: .serif).weight(.semibold))
+                    .foregroundStyle(Theme.primaryText)
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.7)
+                    .id(shownMonth)
+                    // Slides in from the side the month comes from, like the grid.
+                    .transition(.asymmetric(
+                        insertion: .move(edge: titleForward ? .trailing : .leading).combined(with: .opacity),
+                        removal: .move(edge: titleForward ? .leading : .trailing).combined(with: .opacity)
+                    ))
+            }
+            .frame(maxWidth: .infinity)
+            .clipped()
             Button("Next Month", systemImage: "chevron.right") { shiftMonth(by: 1) }
                 .disabled(monthOffset == monthRange.upperBound)
                 .frame(width: 44, height: 44)
@@ -122,8 +134,8 @@ struct CalendarView: View {
         .foregroundStyle(Theme.primaryText)
     }
 
-    /// Months side by side, a page per swipe. The pager is as tall as the visible month, and
-    /// mid-swipe it eases between the two months' heights, so what's below follows the grid's foot.
+    /// Months side by side, a page per swipe. The pager is as tall as the shown month, so what's
+    /// below sits at the grid's foot; it takes the new month's height as soon as a swipe is let go.
     private func monthPager(days: [Date: DayInfo]) -> some View {
         ScrollView(.horizontal) {
             LazyHStack(alignment: .top, spacing: 0) {
@@ -151,12 +163,27 @@ struct CalendarView: View {
         }) { _, position in
             pagePosition = position
         }
-        // Only a settled pager picks the month: mid-scroll it reports months it's passing through.
-        .onScrollPhaseChange { _, phase in
-            guard phase == .idle else { return }
-            let settled = Int(pagePosition.rounded())
-            if monthRange.contains(settled), settled != monthOffset {
-                withAnimation(.snappy) { monthOffset = settled }
+        .onScrollPhaseChange { old, phase, context in
+            switch phase {
+            case .decelerating where old == .interacting:
+                // Let go: the pager moves at most one month, the way the swipe was going.
+                let start = shownMonth
+                let velocity = context.velocity?.dx ?? 0
+                let target = abs(velocity) > 0.05
+                    ? start + (velocity > 0 ? 1 : -1)
+                    : min(max(Int(pagePosition.rounded()), start - 1), start + 1)
+                if monthRange.contains(target) { show(target) }
+            case .idle:
+                // Only a settled pager picks the month (and the selection): mid-scroll it reports
+                // months it's passing through.
+                let settled = Int(pagePosition.rounded())
+                guard monthRange.contains(settled) else { return }
+                show(settled)
+                if settled != monthOffset {
+                    withAnimation(.snappy) { monthOffset = settled }
+                }
+            default:
+                break
             }
         }
         // Always six rows tall inside, shown only down to the current height.
@@ -168,11 +195,23 @@ struct CalendarView: View {
     }
 
     private var pagerHeight: CGFloat {
-        let lower = Int(pagePosition.rounded(.down))
-        let progress = pagePosition - CGFloat(lower)
-        let from = gridHeight(rows: rows(at: lower))
-        let to = gridHeight(rows: rows(at: lower + 1))
-        return from + (to - from) * progress
+        gridHeight(rows: rows(at: shownMonth))
+    }
+
+    /// Switches the title and the pager's height to `month`, animated.
+    private func show(_ month: Int) {
+        guard month != shownMonth else { return }
+        let forward = month > shownMonth
+        if forward == titleForward {
+            withAnimation(.snappy) { shownMonth = month }
+        } else {
+            // The outgoing title leaves with the transition it last rendered, so flip the direction
+            // first and change the month on the next pass.
+            titleForward = forward
+            DispatchQueue.main.async {
+                withAnimation(.snappy) { shownMonth = month }
+            }
+        }
     }
 
     private func gridHeight(rows: Int) -> CGFloat {
