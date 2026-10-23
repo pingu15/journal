@@ -210,7 +210,8 @@ private struct TagList: View {
                 .buttonStyle(.plain)
                 .accessibilityHint("Shows entries with this tag")
                 if item.tag != tags.last?.tag {
-                    Divider().overlay(Theme.hairline)
+                    // 1 pt, like the list separators elsewhere (Divider is a single pixel).
+                    Rectangle().fill(Theme.hairline).frame(height: 1)
                 }
             }
         }
