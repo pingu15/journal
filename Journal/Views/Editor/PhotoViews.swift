@@ -1,7 +1,7 @@
 import SwiftUI
 
-/// Full-screen, swipeable viewer for an entry's embedded photos,
-/// with delete and "Set as Cover Image" in the top-right.
+/// Full-screen, swipeable viewer for an entry's embedded photos, with "Set as Cover Image"
+/// and delete in the ⋯ menu.
 struct PhotoViewer: View {
     let onSetCover: (UUID) -> Void
     let onDelete: (UUID) -> Void
@@ -32,7 +32,7 @@ struct PhotoViewer: View {
 
             TabView(selection: $selection) {
                 ForEach(photos) { photo in
-                    FullImage(attachment: photo)
+                    FullImage(attachment: photo) { dismiss() }
                         .tag(photo.identifier)
                 }
             }
@@ -40,19 +40,13 @@ struct PhotoViewer: View {
             .ignoresSafeArea()
         }
         .overlay(alignment: .top) {
-            HStack(spacing: Spacing.xs) {
-                Button("Close", systemImage: "xmark") { dismiss() }
-                    .buttonStyle(.plain)
-                    .frame(width: 44, height: 44)
-                Spacer()
-                if currentCover == selection {
-                    Text("Cover")
-                        .font(.caption.weight(.semibold))
-                        .padding(.horizontal, 10)
-                        .padding(.vertical, 5)
-                        .background(.white.opacity(0.18), in: .capsule)
-                        .transition(.opacity)
+            HStack(spacing: Spacing.s) {
+                Button { dismiss() } label: {
+                    GlassIcon(symbol: "xmark")
                 }
+                .buttonStyle(.plain)
+                .accessibilityLabel("Close")
+                Spacer()
                 Menu {
                     Button(
                         currentCover == selection ? "Cover Image" : "Set as Cover Image",
@@ -62,21 +56,19 @@ struct PhotoViewer: View {
                         onSetCover(selection)
                     }
                     .disabled(currentCover == selection)
+                    Button("Delete Photo", systemImage: "trash", role: .destructive) {
+                        confirmingDelete = true
+                    }
                 } label: {
-                    Image(systemName: "ellipsis")
-                        .frame(width: 44, height: 44)
-                        .contentShape(.rect)
+                    GlassIcon(symbol: "ellipsis")
                 }
                 .accessibilityLabel("More")
-                Button("Delete Photo", systemImage: "trash") { confirmingDelete = true }
-                    .buttonStyle(.plain)
-                    .frame(width: 44, height: 44)
             }
-            .labelStyle(.iconOnly)
-            .font(.body.weight(.semibold))
             .foregroundStyle(.white)
             .tint(.white)
-            .padding(.horizontal, Spacing.s)
+            // Always over a black backdrop, so the glass is the dark kind.
+            .environment(\.colorScheme, .dark)
+            .padding(.horizontal, Spacing.m)
         }
         .confirmationDialog("Delete this photo?", isPresented: $confirmingDelete, titleVisibility: .visible) {
             Button("Delete", role: .destructive, action: deleteCurrent)
@@ -100,8 +92,23 @@ struct PhotoViewer: View {
     }
 }
 
+/// A toolbar-style glass circle around an icon.
+private struct GlassIcon: View {
+    let symbol: String
+
+    var body: some View {
+        Image(systemName: symbol)
+            .font(.body.weight(.semibold))
+            .frame(width: 44, height: 44)
+            .glassBackground(in: .circle)
+            .contentShape(.circle)
+    }
+}
+
+/// One photo, fitted to the screen. A tap on the black around it calls `onTapOutside`.
 private struct FullImage: View {
     let attachment: Attachment
+    let onTapOutside: () -> Void
     @State private var image: UIImage?
 
     var body: some View {
@@ -110,11 +117,18 @@ private struct FullImage: View {
                 Image(uiImage: image)
                     .resizable()
                     .scaledToFit()
+                    // Taps on the photo itself do nothing (and don't reach the backdrop).
+                    .onTapGesture {}
             } else {
                 ProgressView().tint(.white)
             }
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .background {
+            Color.black
+                .contentShape(.rect)
+                .onTapGesture(perform: onTapOutside)
+        }
         .task {
             if let data = attachment.imageData {
                 image = UIImage(data: data)
