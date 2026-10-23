@@ -93,6 +93,9 @@ struct MarkdownEditor<Header: View>: UIViewRepresentable {
         var lastMarkdown = ""
         /// Characters changed since the last restyle (post-edit coordinates).
         var pendingStyleRange: NSRange?
+        /// A word the keyboard is replacing (autocorrect, a suggestion), with the formatting it had,
+        /// so the replacement keeps it instead of falling back to plain text.
+        private var pendingReplacement: (range: NSRange, inline: InlineStyle, link: Any?)?
 
         init(parent: MarkdownEditor) {
             self.parent = parent
@@ -137,6 +140,20 @@ struct MarkdownEditor<Header: View>: UIViewRepresentable {
 
         func textDidChange(in textView: UITextView) {
             guard !isProcessing, let textView = textView as? MarkdownTextView else { return }
+            if let replacement = pendingReplacement {
+                pendingReplacement = nil
+                let storage = textView.textStorage
+                if NSMaxRange(replacement.range) <= storage.length {
+                    storage.removeAttribute(.inlineStyle, range: replacement.range)
+                    storage.removeAttribute(.linkURL, range: replacement.range)
+                    if !replacement.inline.isEmpty {
+                        storage.addAttribute(.inlineStyle, value: replacement.inline.rawValue, range: replacement.range)
+                    }
+                    if let link = replacement.link {
+                        storage.addAttribute(.linkURL, value: link, range: replacement.range)
+                    }
+                }
+            }
             // Restyling during IME composition would break the marked text; the range is kept
             // and styled once the composition is committed.
             if textView.markedTextRange == nil, let range = pendingStyleRange {
@@ -160,6 +177,15 @@ struct MarkdownEditor<Header: View>: UIViewRepresentable {
         /// Return continues a list (or ends it on an empty item), leaves a title or heading for body
         /// text, and stays in a quote until an empty line.
         func textView(_ textView: UITextView, shouldChangeTextIn range: NSRange, replacementText text: String) -> Bool {
+            if range.length > 0, !text.isEmpty, text != "\n", !isProcessing, textView.markedTextRange == nil,
+               NSMaxRange(range) <= textView.textStorage.length {
+                let storage = textView.textStorage
+                pendingReplacement = (
+                    NSRange(location: range.location, length: (text as NSString).length),
+                    storage.inlineStyle(at: range.location),
+                    storage.attribute(.linkURL, at: range.location, effectiveRange: nil)
+                )
+            }
             guard text == "\n", range.length == 0, !isProcessing,
                   let textView = textView as? MarkdownTextView, textView.markedTextRange == nil
             else { return true }
