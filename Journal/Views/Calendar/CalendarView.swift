@@ -153,10 +153,13 @@ struct CalendarView: View {
                         path.append(entry)
                     } label: {
                         EntryRow(entry: entry, dateStyle: .time)
+                            // The Journal tab's List adds this much around each row; match it.
+                            .padding(.vertical, 6)
                             .matchedTransitionSource(id: entry.id, in: transition)
                     }
                     .buttonStyle(.plain)
-                    Divider().overlay(Theme.hairline)
+                    // 1 pt, like the Journal list's separators (Divider is a single pixel).
+                    Rectangle().fill(Theme.hairline).frame(height: 1)
                 }
             }
         }
