@@ -57,6 +57,7 @@ struct EntryEditorView: View {
         .animation(.easeOut(duration: 0.2), value: isEditing)
         .background(Theme.background.ignoresSafeArea())
         .navigationBarTitleDisplayMode(.inline)
+        .hidesBackButtonMenu()
         .toolbar(.hidden, for: .tabBar)
         .toolbar {
             ToolbarItem(placement: .topBarTrailing) {

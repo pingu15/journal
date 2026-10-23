@@ -307,3 +307,36 @@ private struct PressScaleStyle: ButtonStyle {
             .animation(.spring(duration: 0.25), value: configuration.isPressed)
     }
 }
+
+extension View {
+    /// Turns off the back button's long-press menu (which lists the previous screens by title —
+    /// for the editor, the journal's name) on the screen this is applied to.
+    func hidesBackButtonMenu() -> some View {
+        background(BackMenuRemover().frame(width: 0, height: 0))
+    }
+}
+
+private struct BackMenuRemover: UIViewControllerRepresentable {
+    func makeUIViewController(context: Context) -> Controller { Controller() }
+    func updateUIViewController(_ controller: Controller, context: Context) {}
+
+    final class Controller: UIViewController {
+        override func viewWillAppear(_ animated: Bool) {
+            super.viewWillAppear(animated)
+            // The back button belongs to the screen below this one.
+            guard let stack = navigationController?.viewControllers, stack.count > 1 else { return }
+            let below = stack[stack.count - 2]
+            if !(below.navigationItem.backBarButtonItem is MenuFreeBackItem) {
+                below.navigationItem.backBarButtonItem = MenuFreeBackItem(title: "", style: .plain, target: nil, action: nil)
+            }
+        }
+    }
+
+    /// UIKit fills in a back item's `menu` with the stack's titles; refusing it leaves no menu.
+    final class MenuFreeBackItem: UIBarButtonItem {
+        override var menu: UIMenu? {
+            get { nil }
+            set {}
+        }
+    }
+}
