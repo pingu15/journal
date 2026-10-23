@@ -141,6 +141,8 @@ private struct FullImage: View {
 struct DateEditSheet: View {
     @Binding var date: Date
     @Environment(\.dismiss) private var dismiss
+    /// The picker's height, so the sheet opens tall enough to show the time row too.
+    @State private var pickerHeight: CGFloat = 420
 
     var body: some View {
         NavigationStack {
@@ -148,6 +150,8 @@ struct DateEditSheet: View {
                 .datePickerStyle(.graphical)
                 .tint(Theme.primaryText)
                 .padding(.horizontal)
+                .fixedSize(horizontal: false, vertical: true)
+                .onGeometryChange(for: CGFloat.self, of: { $0.size.height }) { pickerHeight = $0 }
                 .frame(maxHeight: .infinity, alignment: .top)
                 .navigationTitle("Entry Date")
                 .navigationBarTitleDisplayMode(.inline)
@@ -157,6 +161,7 @@ struct DateEditSheet: View {
                     }
                 }
         }
-        .presentationDetents([.medium, .large])
+        // Picker plus the sheet's title bar.
+        .presentationDetents([.height(pickerHeight + 80)])
     }
 }
