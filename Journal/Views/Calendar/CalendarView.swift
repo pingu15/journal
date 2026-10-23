@@ -287,8 +287,12 @@ private struct DayCell: View {
                         .frame(width: size, height: size)
                         .clipped()
                     Color.black.opacity(0.22)
+                } else if info != nil {
+                    // Written day: sand, a shade deeper when selected.
+                    shape.fill(Theme.accent)
+                    if isSelected { shape.fill(Theme.onAccent.opacity(0.25)) }
                 } else {
-                    shape.fill(info != nil ? Theme.accent : Theme.primaryText.opacity(0.05))
+                    shape.fill(Theme.primaryText.opacity(0.05))
                 }
 
                 Text(day.formatted(.dateTime.day()))
