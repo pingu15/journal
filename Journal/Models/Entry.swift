@@ -74,12 +74,17 @@ extension Entry {
             .filter { !$0.isEmpty }
     }
 
-    var title: String {
-        lines.first ?? (photos.isEmpty ? "Untitled" : "Photo")
+    /// The first line with text, if it's in the Title style (`# `); otherwise the entry has no title.
+    var title: String? {
+        let first = text.split(whereSeparator: \.isNewline)
+            .first { !Markdown.plainText(String($0)).trimmingCharacters(in: .whitespaces).isEmpty }
+        guard let first, first.hasPrefix("# ") else { return nil }
+        return lines.first
     }
 
+    /// Everything after the title (or all of the text, when there's no title), as one line.
     var excerpt: String {
-        lines.dropFirst().joined(separator: " ")
+        lines.dropFirst(title == nil ? 0 : 1).joined(separator: " ")
     }
 
     var wordCount: Int {

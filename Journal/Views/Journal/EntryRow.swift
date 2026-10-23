@@ -20,15 +20,24 @@ struct EntryRow: View {
                 dateColumn
 
                 VStack(alignment: .leading, spacing: Spacing.xs) {
-                    Text(entry.title)
-                        .font(Typography.entryTitle)
-                        .foregroundStyle(Theme.primaryText)
-                        .lineLimit(1)
-                    if !entry.excerpt.isEmpty {
-                        Text(entry.excerpt)
+                    let title = entry.title
+                    let excerpt = entry.excerpt
+                    // A title only when the entry's first line is in the Title style.
+                    if let title {
+                        Text(title)
+                            .font(Typography.entryTitle)
+                            .foregroundStyle(Theme.primaryText)
+                            .lineLimit(1)
+                    }
+                    if !excerpt.isEmpty {
+                        Text(excerpt)
                             .font(Typography.entryExcerpt)
                             .foregroundStyle(Theme.secondaryText)
-                            .lineLimit(2)
+                            .lineLimit(title == nil ? 3 : 2)
+                    } else if title == nil {
+                        Text(entry.photos.isEmpty ? "Empty entry" : "Photo")
+                            .font(Typography.entryExcerpt)
+                            .foregroundStyle(Theme.secondaryText)
                     }
                     EntryMetaLine(entry: entry)
                         .padding(.top, 2)
