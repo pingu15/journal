@@ -19,11 +19,7 @@ struct EntryRow: View {
         let excerpt = entry.excerpt
         let photo = entry.coverPhoto
 
-        EntryRowLayout(
-            dateCapTop: dateFont.ascender - dateFont.capHeight,
-            textCapTop: (title == nil ? UIFont.sans(.subheadline) : UIFont.sans(.title3, bold: true)).capTopInset,
-            hasPhoto: photo != nil
-        ) {
+        EntryRowLayout(hasPhoto: photo != nil) {
             dateColumn
 
             VStack(alignment: .leading, spacing: Spacing.xs) {
@@ -57,14 +53,6 @@ struct EntryRow: View {
         .contentShape(.rect)
     }
 
-    /// The font of the date column's first line, for lining its cap height up with the text.
-    private var dateFont: UIFont {
-        switch dateStyle {
-        case .day, .dayAndYear: .serif(.title2)
-        case .time: .preferredFont(forTextStyle: .caption2)
-        }
-    }
-
     @ViewBuilder
     private var dateColumn: some View {
         switch dateStyle {
@@ -85,16 +73,9 @@ struct EntryRow: View {
     }
 }
 
-private extension UIFont {
-    /// From the top of a line of this font to the top of its capital letters.
-    var capTopInset: CGFloat { ascender - capHeight }
-}
-
-/// Date, text and cover photo side by side: the date and text with the tops of their letters on
-/// one line, and the photo spanning the row's full height.
+/// Date, text and cover photo side by side: the date centered vertically in the row, and the
+/// photo spanning the row's full height.
 private struct EntryRowLayout: Layout {
-    let dateCapTop: CGFloat
-    let textCapTop: CGFloat
     let hasPhoto: Bool
 
     private let dateSpacing: CGFloat = 16 // Spacing.m
@@ -112,16 +93,10 @@ private struct EntryRowLayout: Layout {
         let textWidth = max(0, width - dateSize.width - dateSpacing - (hasPhoto ? photoWidth + photoSpacing : 0))
         let textDimensions = subviews[1].dimensions(in: ProposedViewSize(width: textWidth, height: nil))
 
-        // Cap tops line up at y = line; everything is placed relative to it.
-        let textTop = textCapTop
-        let line = max(dateCapTop, textTop)
-        let date = CGRect(x: 0, y: line - dateCapTop, width: dateSize.width, height: dateSize.height)
-        let text = CGRect(
-            x: dateSize.width + dateSpacing, y: line - textTop,
-            width: textWidth, height: textDimensions.height
-        )
+        let text = CGRect(x: dateSize.width + dateSpacing, y: 0, width: textWidth, height: textDimensions.height)
+        let height = max(dateSize.height, text.height, hasPhoto ? minPhotoHeight : 0)
+        let date = CGRect(x: 0, y: (height - dateSize.height) / 2, width: dateSize.width, height: dateSize.height)
         // The photo spans the row's full height, top to bottom.
-        let height = max(date.maxY, text.maxY, minPhotoHeight)
         let photo = hasPhoto
             ? CGRect(x: text.maxX + photoSpacing, y: 0, width: photoWidth, height: height)
             : CGRect(x: text.maxX, y: 0, width: 0, height: 0)
