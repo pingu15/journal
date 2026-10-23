@@ -127,7 +127,8 @@ struct LocationPicker: View {
     private var results: some View {
         List {
             map
-                .listRowInsets(EdgeInsets(top: 0, leading: Spacing.m, bottom: 0, trailing: Spacing.m))
+                // The List already insets rows to its card width; no extra inset, so the map matches the cards.
+                .listRowInsets(EdgeInsets())
                 .listRowBackground(Color.clear)
                 .listRowSeparator(.hidden)
 
