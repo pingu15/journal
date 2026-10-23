@@ -131,10 +131,13 @@ private struct ActivityHeatmap: View {
                 }
             }
 
-            Text(detail)
-                .font(.footnote)
-                .foregroundStyle(Theme.secondaryText)
-                .contentTransition(.opacity)
+            // Only once a day is tapped: its date and word count.
+            if let detail {
+                Text(detail)
+                    .font(.footnote)
+                    .foregroundStyle(Theme.secondaryText)
+                    .transition(.opacity)
+            }
         }
         .sensoryFeedback(.selection, trigger: selectedDay)
     }
@@ -168,11 +171,8 @@ private struct ActivityHeatmap: View {
         }
     }
 
-    private var detail: String {
-        guard let selectedDay else {
-            let active = wordsByDay.keys.filter { $0 >= (columns.first ?? .now) }.count
-            return "\(active == 1 ? "1 day" : "\(active) days") written in \(weeks) weeks"
-        }
+    private var detail: String? {
+        guard let selectedDay else { return nil }
         let date = selectedDay.formatted(.dateTime.month(.abbreviated).day())
         guard let words = wordsByDay[selectedDay] else { return "\(date) · nothing written" }
         return "\(date) · \(words.formatted()) words"
