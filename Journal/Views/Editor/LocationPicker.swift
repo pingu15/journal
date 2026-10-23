@@ -193,6 +193,8 @@ struct LocationPicker: View {
         .scrollContentBackground(.hidden)
         .scrollDismissesKeyboard(.immediately)
         .contentMargins(.top, 0, for: .scrollContent)
+        // Same gap as between the search field and the map.
+        .listSectionSpacing(Spacing.m)
     }
 
     // MARK: - Actions
