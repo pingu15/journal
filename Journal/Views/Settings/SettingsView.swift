@@ -42,6 +42,7 @@ struct SettingsView: View {
                     }
                     .pickerStyle(.segmented)
                     .controlSize(.large)
+                    .onAppear(perform: SegmentedFont.matchBody)
                     .listRowBackground(Color.clear)
                     .listRowInsets(EdgeInsets())
                 }
@@ -227,6 +228,16 @@ private enum ShareSheet {
             }
             try? await Task.sleep(for: .milliseconds(50))
         }
+    }
+}
+
+/// Segmented controls take their font from UIKit; this makes the appearance options the same
+/// size as the rest of Settings (body text). It's the app's only segmented control.
+private enum SegmentedFont {
+    static func matchBody() {
+        let appearance = UISegmentedControl.appearance()
+        appearance.setTitleTextAttributes([.font: UIFont.preferredFont(forTextStyle: .body)], for: .normal)
+        appearance.setTitleTextAttributes([.font: UIFont.preferredFont(forTextStyle: .body)], for: .selected)
     }
 }
 
