@@ -85,6 +85,8 @@ struct CalendarView: View {
             }
             .animation(.snappy, value: selectedDay <= .now)
         }
+        // Hidden from the stack, not the editor, so it returns as soon as the editor starts closing.
+        .toolbar(path.isEmpty ? .visible : .hidden, for: .tabBar)
         .sensoryFeedback(.impact(weight: .light), trigger: newEntryCount)
         .onChange(of: monthOffset) { _, offset in
             followMonth(offset)

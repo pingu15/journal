@@ -73,6 +73,9 @@ struct EntriesView: View {
                 .animation(.easeOut(duration: 0.15), value: router.journalPath.isEmpty)
             }
         }
+        // Hidden from the stack rather than the editor, so it's back as soon as the editor starts
+        // closing (a pushed view's own setting only lifts once its pop animation ends).
+        .toolbar(router.journalPath.isEmpty ? .visible : .hidden, for: .tabBar)
         .sensoryFeedback(.impact(weight: .light), trigger: newEntryCount)
         .onChange(of: router.journalPath) { _, path in
             if path.isEmpty {
