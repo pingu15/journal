@@ -21,7 +21,7 @@ struct InsightsView: View {
                             .foregroundStyle(Theme.primaryText)
                     } description: {
                         Text("Insights appear as you write.")
-                            .font(Typography.excerpt)
+                            .font(Typography.note)
                             .foregroundStyle(Theme.secondaryText)
                     }
                     .padding(.top, 120)
@@ -134,7 +134,7 @@ private struct ActivityHeatmap: View {
             // Only once a day is tapped: its date and word count.
             if let detail {
                 Text(detail)
-                    .font(.footnote)
+                    .font(Typography.note)
                     .foregroundStyle(Theme.secondaryText)
                     .transition(.opacity)
             }

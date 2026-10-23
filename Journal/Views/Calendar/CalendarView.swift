@@ -144,7 +144,7 @@ struct CalendarView: View {
 
             if entriesForDay.isEmpty {
                 Text(selectedDay > .now ? "This day hasn't happened yet." : "Nothing written on this day.")
-                    .font(Typography.excerpt)
+                    .font(Typography.note)
                     .foregroundStyle(Theme.secondaryText)
                     .padding(.vertical, Spacing.s)
             } else {

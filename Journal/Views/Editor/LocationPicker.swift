@@ -91,7 +91,7 @@ struct LocationPicker: View {
                         Image(systemName: "map")
                             .font(.title2.weight(.light))
                         Text("No location set")
-                            .font(Typography.excerpt)
+                            .font(Typography.note)
                     }
                     .foregroundStyle(Theme.secondaryText)
                 }

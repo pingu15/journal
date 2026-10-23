@@ -155,7 +155,7 @@ struct EntriesView: View {
                         .foregroundStyle(Theme.primaryText)
                 } description: {
                     Text("Write a few lines about today.")
-                        .font(Typography.excerpt)
+                        .font(Typography.note)
                         .foregroundStyle(Theme.secondaryText)
                 }
                 .padding(.top, 140)
@@ -393,7 +393,7 @@ private struct TrashList<Header: View>: View {
                     Image(systemName: "trash")
                         .font(.title2)
                     Text("Deleted entries stay here for \(Entry.trashRetentionDays) days.")
-                        .font(.footnote)
+                        .font(Typography.note)
                         .multilineTextAlignment(.center)
                 }
                 .foregroundStyle(Theme.secondaryText)

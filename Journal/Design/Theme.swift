@@ -61,6 +61,8 @@ enum Typography {
     static let entryExcerpt = Font.system(.subheadline)
     static let body = Font.system(.body, design: .serif)
     static let excerpt = Font.system(.subheadline, design: .serif)
+    /// Empty-state and explanatory notes ("Nothing written on this day.").
+    static let note = Font.system(.footnote)
     static let dayNumber = Font.system(.title2, design: .serif)
     /// Small uppercase labels (dates, section headers). Pair with `.tracking(Typography.metaTracking)`.
     static let meta = Font.system(.caption2).weight(.semibold)

@@ -20,6 +20,7 @@ A premium, minimal, editorial journaling app. Native iOS, Swift + SwiftUI, **iPh
 - Journal name: `@AppStorage(JournalName.storageKey)`, default "Journal", editable in Settings; shown as the home title and on the lock screen. Use `JournalName.display(_:)` (empty → default).
 - New entries: round sand `NewEntryButton` floating bottom-right of the Journal and Calendar tabs (Calendar writes for the selected day; hidden for future days).
 - Appearance is applied by setting `overrideUserInterfaceStyle` on every window (`Appearance.apply`), not `.preferredColorScheme`, so open sheets and the lock window switch together.
+- Empty-state and explanatory notes ("Nothing written on this day.", "Deleted entries stay here…", empty-tab descriptions, "No location set") all use `Typography.note` (footnote sans) in secondary text.
 - Stone on paper is low contrast: use it only for secondary/meta text, never for body copy.
 - Always support Dynamic Type and dark mode.
 

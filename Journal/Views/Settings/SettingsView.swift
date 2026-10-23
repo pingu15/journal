@@ -62,7 +62,7 @@ struct SettingsView: View {
                         } label: {
                             Text("Notifications are off for Journal. ") + Text("Open Settings").underline()
                         }
-                        .font(.footnote)
+                        .font(Typography.note)
                         .foregroundStyle(Theme.secondaryText)
                         .multilineTextAlignment(.leading)
                         .frame(maxWidth: .infinity, alignment: .leading)
