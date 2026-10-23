@@ -104,7 +104,7 @@ struct LocationPicker: View {
     private var liveMap: some View {
         Map(position: $camera) {
             if let coordinate = entry.location?.coordinate {
-                Annotation(entry.placeName ?? "", coordinate: coordinate, anchor: .bottom) {
+                Annotation(entry.placeName ?? "", coordinate: coordinate, anchor: .center) {
                     MapPin()
                 }
                 .annotationTitles(.hidden)
@@ -233,21 +233,18 @@ struct LocationPicker: View {
 }
 
 /// Ink teardrop pin with a sand dot — reads clearly on the light map tiles.
+/// The exact spot: a sand dot ringed in white, on a soft sand halo.
 private struct MapPin: View {
     var body: some View {
-        VStack(spacing: -4) {
+        ZStack {
             Circle()
-                .fill(Color(uiColor: UIColor(hex: Palette.ink)))
-                .frame(width: 30, height: 30)
-                .overlay {
-                    Circle().fill(Theme.accent).frame(width: 10, height: 10)
-                }
-                .overlay { Circle().strokeBorder(.white, lineWidth: 2) }
-            Image(systemName: "triangle.fill")
-                .font(.system(size: 10))
-                .rotationEffect(.degrees(180))
-                .foregroundStyle(Color(uiColor: UIColor(hex: Palette.ink)))
+                .fill(Theme.accent.opacity(0.3))
+                .frame(width: 44, height: 44)
+            Circle()
+                .fill(Theme.accent)
+                .frame(width: 16, height: 16)
+                .overlay { Circle().strokeBorder(.white, lineWidth: 3) }
+                .shadow(color: .black.opacity(0.3), radius: 2, y: 1)
         }
-        .shadow(color: .black.opacity(0.25), radius: 3, y: 2)
     }
 }
