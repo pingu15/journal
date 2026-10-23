@@ -327,19 +327,7 @@ private struct TrashList<Header: View>: View {
         List {
             header
 
-            if entries.isEmpty {
-                ContentUnavailableView {
-                    Image(systemName: "trash")
-                        .foregroundStyle(Theme.secondaryText)
-                } description: {
-                    Text("Deleted entries stay here for \(Entry.trashRetentionDays) days.")
-                        .font(.footnote)
-                        .foregroundStyle(Theme.secondaryText)
-                }
-                .padding(.top, 80)
-                .listRowBackground(Color.clear)
-                .listRowSeparator(.hidden)
-            } else {
+            if !entries.isEmpty {
                 Section {
                     HStack {
                         MetaLabel("Deleted after \(Entry.trashRetentionDays) days")
@@ -398,6 +386,21 @@ private struct TrashList<Header: View>: View {
         .scrollContentBackground(.hidden)
         .scrollDismissesKeyboard(.immediately)
         .tracksTitleScroll(titleScroll)
+        .overlay {
+            // Centered on the screen rather than placed in the list.
+            if entries.isEmpty {
+                VStack(spacing: Spacing.m) {
+                    Image(systemName: "trash")
+                        .font(.title2)
+                    Text("Deleted entries stay here for \(Entry.trashRetentionDays) days.")
+                        .font(.footnote)
+                        .multilineTextAlignment(.center)
+                }
+                .foregroundStyle(Theme.secondaryText)
+                .padding(.horizontal, Spacing.l)
+                .allowsHitTesting(false)
+            }
+        }
         .confirmationDialog(
             "Permanently delete \(entries.count == 1 ? "1 entry" : "\(entries.count) entries")?",
             isPresented: $confirmingDeleteAll,
