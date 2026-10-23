@@ -49,23 +49,26 @@ struct EntryMetaLine: View {
 }
 
 /// Rounded portrait thumbnail from an attachment's inline thumbnail data.
+/// `height` nil fills whatever height it's given (the entry row sizes it to the text beside it).
 struct PhotoThumbnail: View {
     let attachment: Attachment
     var width: CGFloat = 72
-    var height: CGFloat = 90
+    var height: CGFloat?
 
     var body: some View {
-        Group {
-            if let image = ThumbnailCache.image(for: attachment) {
-                Image(uiImage: image)
-                    .resizable()
-                    .scaledToFill()
-            } else {
-                Theme.surface
+        Color.clear
+            .overlay {
+                if let image = ThumbnailCache.image(for: attachment) {
+                    Image(uiImage: image)
+                        .resizable()
+                        .scaledToFill()
+                } else {
+                    Theme.surface
+                }
             }
-        }
-        .frame(width: width, height: height)
-        .clipShape(.rect(cornerRadius: 5, style: .continuous))
+            .frame(width: width)
+            .frame(height: height)
+            .clipShape(.rect(cornerRadius: 5, style: .continuous))
     }
 }
 
