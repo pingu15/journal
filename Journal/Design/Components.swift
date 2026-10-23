@@ -34,26 +34,16 @@ extension ButtonStyle where Self == AccentButtonStyle {
     static var accent: AccentButtonStyle { AccentButtonStyle() }
 }
 
-/// Place and tags in one quiet line.
+/// The entry's place, as one quiet line (tags already show in the excerpt).
 struct EntryMetaLine: View {
     let entry: Entry
 
     var body: some View {
-        let tags = entry.tags
-        if entry.placeName != nil || !tags.isEmpty {
-            HStack(spacing: Spacing.s) {
-                if let place = entry.placeName {
-                    Text(place)
-                        .lineLimit(1)
-                        .layoutPriority(1)
-                }
-                if !tags.isEmpty {
-                    Text(tags.map { "#\($0)" }.joined(separator: " "))
-                        .lineLimit(1)
-                }
-            }
-            .font(.caption)
-            .foregroundStyle(Theme.secondaryText)
+        if let place = entry.placeName {
+            Text(place)
+                .lineLimit(1)
+                .font(.caption)
+                .foregroundStyle(Theme.secondaryText)
         }
     }
 }
@@ -75,7 +65,7 @@ struct PhotoThumbnail: View {
             }
         }
         .frame(width: width, height: height)
-        .clipShape(.rect(cornerRadius: 10, style: .continuous))
+        .clipShape(.rect(cornerRadius: 5, style: .continuous))
     }
 }
 

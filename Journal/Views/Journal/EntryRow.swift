@@ -15,7 +15,7 @@ struct EntryRow: View {
     var dateStyle: DateStyle = .day
 
     var body: some View {
-        HStack(alignment: .top, spacing: Spacing.m) {
+        HStack(alignment: .top, spacing: Spacing.s) {
             HStack(alignment: .firstTextBaseline, spacing: Spacing.m) {
                 dateColumn
 
@@ -40,7 +40,7 @@ struct EntryRow: View {
                     .padding(.top, 4)
             }
         }
-        .padding(.vertical, Spacing.s)
+        .padding(.vertical, Spacing.xs)
         .contentShape(.rect)
     }
 
