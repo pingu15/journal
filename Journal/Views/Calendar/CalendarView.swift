@@ -15,11 +15,16 @@ struct CalendarView: View {
     @State private var width: CGFloat = 360
     @State private var titleScroll = TitleScroll()
     @State private var newEntryCount = 0
+    /// The pager's position, and how far through it the swipe is (in pages, fractional mid-swipe).
+    @State private var pagerMonth: Int? = 0
+    @State private var pagePosition: CGFloat = 0
     @Namespace private var transition
 
     private let calendar = Calendar.current
     private let monthRange = -120...12
     private let gap: CGFloat = 6
+    /// The calendar's side inset; each month page reaches past it, so months swipe in from the screen edge.
+    private let inset = Spacing.m + 4
 
     var body: some View {
         let days = dayIndex
@@ -33,26 +38,13 @@ struct CalendarView: View {
                     VStack(spacing: Spacing.m) {
                         monthHeader
                         weekdayRow
-                        TabView(selection: $monthOffset.animation(.snappy)) {
-                            ForEach(monthRange, id: \.self) { offset in
-                                MonthGrid(
-                                    month: month(at: offset),
-                                    selectedDay: $selectedDay,
-                                    days: days,
-                                    cellSize: cellSize,
-                                    gap: gap
-                                )
-                                .tag(offset)
-                            }
-                        }
-                        .tabViewStyle(.page(indexDisplayMode: .never))
-                        .frame(height: cellSize * 6 + gap * 5)
+                        monthPager(days: days)
                     }
                     .onGeometryChange(for: CGFloat.self, of: { $0.size.width }) { width = $0 }
 
                     dayEntries
                 }
-                .padding(.horizontal, Spacing.m + 4)
+                .padding(.horizontal, inset)
                 .padding(.top, Spacing.m)
             }
             .tracksTitleScroll(titleScroll)
@@ -92,6 +84,10 @@ struct CalendarView: View {
         .sensoryFeedback(.impact(weight: .light), trigger: newEntryCount)
         .onChange(of: monthOffset) { _, offset in
             followMonth(offset)
+            // Arrows and Today change the month directly; bring the pager along.
+            if pagerMonth != offset {
+                withAnimation(.snappy) { pagerMonth = offset }
+            }
         }
         .onChange(of: path) { _, path in
             if path.isEmpty {
@@ -124,6 +120,72 @@ struct CalendarView: View {
         .labelStyle(.iconOnly)
         .font(.body.weight(.medium))
         .foregroundStyle(Theme.primaryText)
+    }
+
+    /// Months side by side, a page per swipe. The pager is as tall as the visible month, and
+    /// mid-swipe it eases between the two months' heights, so what's below follows the grid's foot.
+    private func monthPager(days: [Date: DayInfo]) -> some View {
+        ScrollView(.horizontal) {
+            LazyHStack(alignment: .top, spacing: 0) {
+                ForEach(monthRange, id: \.self) { offset in
+                    MonthGrid(
+                        month: month(at: offset),
+                        selectedDay: $selectedDay,
+                        days: days,
+                        cellSize: cellSize,
+                        gap: gap
+                    )
+                    .frame(width: width, height: gridHeight(rows: 6), alignment: .top)
+                    .containerRelativeFrame(.horizontal)
+                    .id(offset)
+                }
+            }
+            .scrollTargetLayout()
+        }
+        .scrollPosition(id: $pagerMonth)
+        .scrollTargetBehavior(.viewAligned(limitBehavior: .alwaysByOne))
+        .scrollIndicators(.hidden)
+        .onScrollGeometryChange(for: CGFloat.self, of: { geometry in
+            guard geometry.containerSize.width > 0 else { return CGFloat(monthOffset) }
+            return geometry.contentOffset.x / geometry.containerSize.width + CGFloat(monthRange.lowerBound)
+        }) { _, position in
+            pagePosition = position
+        }
+        // Only a settled pager picks the month: mid-scroll it reports months it's passing through.
+        .onScrollPhaseChange { _, phase in
+            guard phase == .idle else { return }
+            let settled = Int(pagePosition.rounded())
+            if monthRange.contains(settled), settled != monthOffset {
+                withAnimation(.snappy) { monthOffset = settled }
+            }
+        }
+        // Always six rows tall inside, shown only down to the current height.
+        .frame(height: gridHeight(rows: 6))
+        .frame(height: pagerHeight, alignment: .top)
+        .clipped()
+        .contentShape(.rect)
+        .padding(.horizontal, -inset)
+    }
+
+    private var pagerHeight: CGFloat {
+        let lower = Int(pagePosition.rounded(.down))
+        let progress = pagePosition - CGFloat(lower)
+        let from = gridHeight(rows: rows(at: lower))
+        let to = gridHeight(rows: rows(at: lower + 1))
+        return from + (to - from) * progress
+    }
+
+    private func gridHeight(rows: Int) -> CGFloat {
+        cellSize * CGFloat(rows) + gap * CGFloat(rows - 1)
+    }
+
+    /// Weeks the month spans (4–6).
+    private func rows(at offset: Int) -> Int {
+        let clamped = min(max(offset, monthRange.lowerBound), monthRange.upperBound)
+        let month = month(at: clamped)
+        let blanks = (calendar.component(.weekday, from: month) - calendar.firstWeekday + 7) % 7
+        let count = calendar.range(of: .day, in: .month, for: month)?.count ?? 30
+        return (blanks + count + 6) / 7
     }
 
     private var weekdayRow: some View {
