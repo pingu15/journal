@@ -6,6 +6,8 @@ import UIKit
 struct JournalPDF {
     let entries: [Entry]
     let journalName: String
+    /// A whole-journal export opens with a title page; a single entry starts on page one.
+    var includesTitlePage = true
 
     private let page: CGRect
     private let content: CGRect
@@ -14,9 +16,10 @@ struct JournalPDF {
     private let stone = UITheme.secondaryText.resolvedColor(with: UITraitCollection(userInterfaceStyle: .light))
 
     /// `entries` should already be in reading order.
-    init(entries: [Entry], journalName: String) {
+    init(entries: [Entry], journalName: String, includesTitlePage: Bool = true) {
         self.entries = entries
         self.journalName = journalName
+        self.includesTitlePage = includesTitlePage
         // A4 where the metric system is used, US Letter elsewhere.
         let size = Locale.current.measurementSystem == .us ? CGSize(width: 612, height: 792) : CGSize(width: 595, height: 842)
         page = CGRect(origin: .zero, size: size)
@@ -65,8 +68,10 @@ struct JournalPDF {
         let format = UIGraphicsPDFRendererFormat()
         format.documentInfo = [kCGPDFContextTitle as String: journalName]
         return UIGraphicsPDFRenderer(bounds: page, format: format).pdfData { context in
-            context.beginPage()
-            drawTitlePage()
+            if includesTitlePage {
+                context.beginPage()
+                drawTitlePage()
+            }
             for (index, container) in containers.enumerated() {
                 let range = layout.glyphRange(for: container)
                 guard range.length > 0 else { continue }

@@ -63,7 +63,7 @@ struct EntryEditorView: View {
             ToolbarItem(placement: .topBarTrailing) {
                 Menu("More", systemImage: "ellipsis") {
                     Section {
-                        ShareLink(item: entry.shareText)
+                        Button("Share", systemImage: "square.and.arrow.up", action: sharePDF)
                         Button("Delete Entry", systemImage: "trash", role: .destructive) {
                             confirmingDelete = true
                         }
@@ -125,6 +125,14 @@ struct EntryEditorView: View {
                 context.delete(entry)
             }
             try? context.save()
+        }
+    }
+
+    /// Shares the entry as a PDF.
+    private func sharePDF() {
+        Task {
+            guard let url = try? JournalExport.writePDF(of: entry) else { return }
+            await ShareSheet.present(url)
         }
     }
 

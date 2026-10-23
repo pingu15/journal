@@ -37,6 +37,14 @@ enum JournalExport {
         return url
     }
 
+    /// One entry as a PDF (no title page), named after its title or, without one, its date.
+    static func writePDF(of entry: Entry) throws -> URL {
+        let name = entry.title ?? entry.createdAt.formatted(date: .abbreviated, time: .omitted)
+        let url = URL.temporaryDirectory.appending(path: "\(fileSafe(name)).pdf")
+        try JournalPDF(entries: [entry], journalName: name, includesTitlePage: false).render().write(to: url, options: .atomic)
+        return url
+    }
+
     static func markdown(entries: [Entry], journalName: String) -> String {
         let body = entries
             .map { entry in

@@ -207,30 +207,6 @@ private struct ExportRow: View {
     }
 }
 
-/// Presents the system share sheet over whatever is on screen (here, the Settings sheet).
-private enum ShareSheet {
-    static func present(_ url: URL) async {
-        guard let root = UIApplication.shared.connectedScenes
-            .compactMap({ $0 as? UIWindowScene })
-            .flatMap(\.windows)
-            .first(where: \.isKeyWindow)?
-            .rootViewController
-        else { return }
-        // Wait out any dismissal still in flight (the format dialog), so the presentation isn't dropped.
-        for _ in 0..<20 {
-            var top = root
-            while let presented = top.presentedViewController, !presented.isBeingDismissed { top = presented }
-            if top.presentedViewController == nil {
-                let controller = UIActivityViewController(activityItems: [url], applicationActivities: nil)
-                controller.popoverPresentationController?.sourceView = top.view
-                top.present(controller, animated: true)
-                return
-            }
-            try? await Task.sleep(for: .milliseconds(50))
-        }
-    }
-}
-
 /// Segmented controls take their font from UIKit; this makes the appearance options the same
 /// size as the rest of Settings (body text). It's the app's only segmented control.
 private enum SegmentedFont {
