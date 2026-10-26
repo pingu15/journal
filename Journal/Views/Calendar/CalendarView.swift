@@ -18,10 +18,11 @@ struct CalendarView: View {
     /// The pager's position, and how far through it the swipe is (in pages, fractional mid-swipe).
     @State private var pagerMonth: Int? = 0
     @State private var pagePosition: CGFloat = 0
-    /// The month the title and the pager's height show: it switches as soon as a swipe is let go,
-    /// before the pager settles. `titleForward` picks the side the new title slides in from.
+    /// The month the pager's height shows: it switches as soon as a swipe is let go, before the
+    /// pager settles.
     @State private var shownMonth = 0
-    @State private var titleForward = true
+    /// The title slot's width: a title slides across it for each page the pager moves.
+    @State private var titleWidth: CGFloat = 200
     @Namespace private var transition
 
     private let calendar = Calendar.current
@@ -111,20 +112,26 @@ struct CalendarView: View {
                 .disabled(monthOffset == monthRange.lowerBound)
                 .frame(width: 44, height: 44)
                 .contentShape(.rect)
+            // The titles either side of the pager's position, moved with it: mid-swipe, each is as far
+            // through the slot as its month is through the screen.
             ZStack {
-                Text(month(at: shownMonth).formatted(.dateTime.month(.wide).year()))
-                    .font(.system(.title3, design: .serif).weight(.semibold))
-                    .foregroundStyle(Theme.primaryText)
-                    .lineLimit(1)
-                    .minimumScaleFactor(0.7)
-                    .id(shownMonth)
-                    // Slides in from the side the month comes from, like the grid.
-                    .transition(.asymmetric(
-                        insertion: .move(edge: titleForward ? .trailing : .leading).combined(with: .opacity),
-                        removal: .move(edge: titleForward ? .leading : .trailing).combined(with: .opacity)
-                    ))
+                let base = Int(pagePosition.rounded(.down))
+                ForEach([base, base + 1], id: \.self) { offset in
+                    if monthRange.contains(offset) {
+                        let progress = CGFloat(offset) - pagePosition
+                        Text(month(at: offset).formatted(.dateTime.month(.wide).year()))
+                            .font(.system(.title3, design: .serif).weight(.semibold))
+                            .foregroundStyle(Theme.primaryText)
+                            .lineLimit(1)
+                            .minimumScaleFactor(0.7)
+                            .offset(x: progress * titleWidth)
+                            .opacity(1 - abs(progress))
+                            .accessibilityHidden(abs(progress) >= 0.5)
+                    }
+                }
             }
             .frame(maxWidth: .infinity)
+            .onGeometryChange(for: CGFloat.self, of: { $0.size.width }) { titleWidth = $0 }
             .clipped()
             Button("Next Month", systemImage: "chevron.right") { shiftMonth(by: 1) }
                 .disabled(monthOffset == monthRange.upperBound)
@@ -200,20 +207,10 @@ struct CalendarView: View {
         gridHeight(rows: rows(at: shownMonth))
     }
 
-    /// Switches the title and the pager's height to `month`, animated.
+    /// Animates the pager's height to `month`'s.
     private func show(_ month: Int) {
         guard month != shownMonth else { return }
-        let forward = month > shownMonth
-        if forward == titleForward {
-            withAnimation(.snappy) { shownMonth = month }
-        } else {
-            // The outgoing title leaves with the transition it last rendered, so flip the direction
-            // first and change the month on the next pass.
-            titleForward = forward
-            DispatchQueue.main.async {
-                withAnimation(.snappy) { shownMonth = month }
-            }
-        }
+        withAnimation(.snappy) { shownMonth = month }
     }
 
     private func gridHeight(rows: Int) -> CGFloat {
