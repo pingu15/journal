@@ -164,7 +164,11 @@ struct CalendarView: View {
             .scrollTargetLayout()
         }
         .scrollPosition(id: $pagerMonth)
-        .scrollTargetBehavior(.viewAligned(limitBehavior: .alwaysByOne))
+        .scrollTargetBehavior(ReportingPaging(heading: shownMonth - monthRange.lowerBound) { page in
+            // Where the pager will stop, known as soon as a swipe is let go.
+            let target = page + monthRange.lowerBound
+            if monthRange.contains(target) { show(target) }
+        })
         .scrollIndicators(.hidden)
         .onScrollGeometryChange(for: CGFloat.self, of: { geometry in
             guard geometry.containerSize.width > 0 else { return CGFloat(monthOffset) }
@@ -172,16 +176,8 @@ struct CalendarView: View {
         }) { _, position in
             pagePosition = position
         }
-        .onScrollPhaseChange { old, phase, context in
+        .onScrollPhaseChange { _, phase in
             switch phase {
-            case .decelerating where old == .interacting:
-                // Let go: the pager moves at most one month, the way the swipe was going.
-                let start = shownMonth
-                let velocity = context.velocity?.dx ?? 0
-                let target = abs(velocity) > 0.05
-                    ? start + (velocity > 0 ? 1 : -1)
-                    : min(max(Int(pagePosition.rounded()), start - 1), start + 1)
-                if monthRange.contains(target) { show(target) }
             case .idle:
                 // Only a settled pager picks the month (and the selection): mid-scroll it reports
                 // months it's passing through.
@@ -362,6 +358,31 @@ private struct MonthGrid: View {
     private var dates: [Date] {
         guard let range = calendar.range(of: .day, in: .month, for: month) else { return [] }
         return range.compactMap { calendar.date(byAdding: .day, value: $0 - 1, to: month) }
+    }
+}
+
+/// Pages one month at a time (a stand-in for `.viewAligned(limitBehavior: .alwaysByOne)`, which
+/// can't say where it's going), and reports the page the pager will stop on as soon as it's decided
+/// (when a swipe is let go), before it gets there.
+private struct ReportingPaging: ScrollTargetBehavior {
+    /// The page the pager is on or on its way to.
+    let heading: Int
+    let onTarget: (Int) -> Void
+
+    func updateTarget(_ target: inout ScrollTarget, context: TargetContext) {
+        let width = context.containerSize.width
+        guard width > 0 else { return }
+        // Counted from the page it's heading for, so a swipe that interrupts one still settling
+        // moves on another month rather than back to the nearest.
+        let position = context.originalTarget.rect.minX / width
+        let start = abs(position - CGFloat(heading)) < 1 ? CGFloat(heading) : position.rounded()
+        let velocity = context.velocity.dx
+        // A flick moves a page the way it was going; a slow drag goes to the nearer page.
+        let page = abs(velocity) > 0.05
+            ? start + (velocity > 0 ? 1 : -1)
+            : min(max((target.rect.minX / width).rounded(), start - 1), start + 1)
+        target.rect.origin.x = page * width
+        onTarget(Int(page))
     }
 }
 
