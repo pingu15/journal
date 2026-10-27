@@ -49,7 +49,8 @@ struct MarkdownEditor<Header: View>: UIViewRepresentable {
 
     func updateUIView(_ textView: MarkdownTextView, context: Context) {
         context.coordinator.parent = self
-        let toolbarClearance: CGFloat = isEditing ? MarkdownToolbar.height : 0
+        // The keyboard bar floats a little above the keyboard.
+        let toolbarClearance: CGFloat = isEditing ? MarkdownToolbar.height + Spacing.s : 0
         if textView.contentInset.bottom != toolbarClearance {
             textView.contentInset.bottom = toolbarClearance
             textView.verticalScrollIndicatorInsets.bottom = toolbarClearance
@@ -937,54 +938,40 @@ final class MarkdownEditorController {
     }
 }
 
-/// The bar above the keyboard: formatting tools (lit while on at the caret), then a checkmark to finish.
+/// The bar above the keyboard: a rounded glass bar floating just clear of it, holding the formatting
+/// tools (lit while on at the caret); it scrolls sideways when they don't fit. Finishing is the
+/// editor's sand checkmark in the navigation bar.
 struct MarkdownToolbar: View {
-    static let height: CGFloat = 50
+    static let height: CGFloat = 52
 
     let controller: MarkdownEditorController
     @State private var choosingTextStyle = false
     let onImage: () -> Void
 
     var body: some View {
-        HStack(spacing: 0) {
-            ScrollView(.horizontal) {
-                HStack(spacing: 2) {
-                    tool("Insert Photo", "photo", action: onImage)
-                    textStyleMenu
-                    tool("Bold", "bold", isOn: controller.activeInline.contains(.bold)) { controller.toggle(.bold) }
-                    tool("Italic", "italic", isOn: controller.activeInline.contains(.italic)) { controller.toggle(.italic) }
-                    tool("Strikethrough", "strikethrough", isOn: controller.activeInline.contains(.strikethrough)) {
-                        controller.toggle(.strikethrough)
-                    }
-                    tool("Quote", "text.quote", isOn: controller.activeBlock == .quote) { controller.toggleQuote() }
-                    tool("Link", "link", isOn: controller.isLink) { controller.promptForLink() }
-                    tool("Divider", "minus") { controller.insertDivider() }
+        ScrollView(.horizontal) {
+            HStack(spacing: 4) {
+                tool("Insert Photo", "photo", action: onImage)
+                textStyleMenu
+                tool("Bold", "bold", isOn: controller.activeInline.contains(.bold)) { controller.toggle(.bold) }
+                tool("Italic", "italic", isOn: controller.activeInline.contains(.italic)) { controller.toggle(.italic) }
+                tool("Strikethrough", "strikethrough", isOn: controller.activeInline.contains(.strikethrough)) {
+                    controller.toggle(.strikethrough)
                 }
-                .padding(.horizontal, Spacing.xs)
+                tool("Quote", "text.quote", isOn: controller.activeBlock == .quote) { controller.toggleQuote() }
+                tool("Link", "link", isOn: controller.isLink) { controller.promptForLink() }
+                tool("Divider", "minus") { controller.insertDivider() }
             }
-            .scrollIndicators(.hidden)
-
-            Rectangle()
-                .fill(Theme.hairline)
-                .frame(width: 1, height: 26)
-
-            Button {
-                controller.endEditing()
-            } label: {
-                Image(systemName: "checkmark")
-                    .font(.system(size: 20, weight: .semibold))
-                    .frame(width: 56, height: Self.height)
-                    .contentShape(.rect)
-            }
-            .accessibilityLabel("Done")
+            .padding(.horizontal, Spacing.s)
         }
+        .scrollIndicators(.hidden)
         .foregroundStyle(Theme.primaryText)
         .frame(height: Self.height)
-        .background(Theme.background)
-        .overlay(alignment: .top) {
-            Rectangle().fill(Theme.hairline).frame(height: 1)
-        }
+        .clipShape(.capsule)
+        .glassBackground(in: .capsule)
         .buttonStyle(.plain)
+        .padding(.horizontal, Spacing.s)
+        .padding(.bottom, Spacing.s)
     }
 
     /// Title / Heading / Regular, each shown in its own font, with the current one checked. A popover
@@ -1043,15 +1030,15 @@ private struct ToolIcon: View {
 
     var body: some View {
         Image(systemName: symbol)
-            .font(.system(size: 19, weight: isOn ? .semibold : .regular))
+            .font(.system(size: 22, weight: isOn ? .semibold : .regular))
             .foregroundStyle(Theme.primaryText)
-            .frame(width: 40, height: 36)
+            .frame(width: 46, height: 40)
             .background {
                 if isOn {
-                    Color.clear.glassBackground(in: .rect(cornerRadius: 10, style: .continuous))
+                    Color.clear.glassBackground(in: .capsule)
                 }
             }
-            .frame(width: 44, height: MarkdownToolbar.height)
+            .frame(width: 50, height: MarkdownToolbar.height)
             .contentShape(.rect)
             .animation(.easeOut(duration: 0.15), value: isOn)
     }

@@ -63,6 +63,15 @@ struct EntryEditorView: View {
         .navigationBarTitleDisplayMode(.inline)
         .hidesBackButtonMenu()
         .toolbar {
+            if isEditing {
+                // Finishes editing (puts the keyboard away); moved here from the keyboard bar.
+                ToolbarItem(placement: .topBarTrailing) {
+                    Button("Done", systemImage: "checkmark") { editor.endEditing() }
+                        .buttonStyle(.borderedProminent)
+                        .tint(Theme.accent)
+                        .foregroundStyle(Theme.onAccent)
+                }
+            }
             ToolbarItem(placement: .topBarTrailing) {
                 Menu("More", systemImage: "ellipsis") {
                     Section {
