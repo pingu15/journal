@@ -60,7 +60,7 @@ struct PhotoViewer: View {
                 Spacer()
                 Menu {
                     Button(
-                        currentCover == selection ? "Cover Image" : "Set as Cover Image",
+                        "Set as Cover Image",
                         systemImage: currentCover == selection ? "checkmark" : "photo.badge.checkmark"
                     ) {
                         withAnimation { currentCover = selection }
