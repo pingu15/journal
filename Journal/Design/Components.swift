@@ -342,22 +342,33 @@ private struct BackMenuRemover: UIViewControllerRepresentable {
 }
 
 extension View {
-    /// For a screen pushed with a zoom transition: once it has opened, going back (button or edge
-    /// swipe) slides it away like a normal push instead of shrinking it back into its source.
-    func slidesBack() -> some View {
-        background(SlideBackSetter().frame(width: 0, height: 0))
+    /// For a screen pushed with a zoom transition: the back button still zooms it back into its
+    /// source, but an edge swipe slides it away at full size.
+    func slidesBackOnEdgeSwipe() -> some View {
+        background(EdgeSwipeSlide().frame(width: 0, height: 0))
     }
 }
 
-private struct SlideBackSetter: UIViewControllerRepresentable {
+private struct EdgeSwipeSlide: UIViewControllerRepresentable {
     func makeUIViewController(context: Context) -> Controller { Controller() }
     func updateUIViewController(_ controller: Controller, context: Context) {}
 
     final class Controller: UIViewController {
+        private weak var screen: UIViewController?
+
         override func viewDidAppear(_ animated: Bool) {
             super.viewDidAppear(animated)
-            // The pushed screen is the stack's top controller; dropping its zoom leaves the default pop.
-            navigationController?.topViewController?.preferredTransition = nil
+            guard let top = navigationController?.topViewController, screen !== top else { return }
+            screen = top
+            let zoom = top.preferredTransition
+            // Without a preferred transition the edge swipe is the plain slide (the zoom's own edge
+            // pan shrinks the page); the back button puts the zoom back just before popping.
+            top.preferredTransition = nil
+            top.navigationItem.backAction = UIAction { [weak top] _ in
+                guard let top else { return }
+                top.preferredTransition = zoom
+                top.navigationController?.popViewController(animated: true)
+            }
         }
     }
 }
