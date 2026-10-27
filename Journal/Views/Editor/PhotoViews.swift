@@ -11,6 +11,8 @@ struct PhotoViewer: View {
     @State private var selection: UUID
     @State private var currentCover: UUID?
     @State private var confirmingDelete = false
+    /// How far a swipe-down has pulled the photo toward closing (0–1); fades the backdrop and buttons.
+    @State private var dismissProgress: CGFloat = 0
 
     init(
         photos: [Attachment],
@@ -28,11 +30,20 @@ struct PhotoViewer: View {
 
     var body: some View {
         ZStack {
-            Color.black.ignoresSafeArea()
+            Color.black
+                .opacity(1 - dismissProgress)
+                .ignoresSafeArea()
 
             TabView(selection: $selection) {
                 ForEach(photos) { photo in
-                    FullImage(attachment: photo) { dismiss() }
+                    FullImage(attachment: photo, onDragDown: { progress in
+                        // A cancelled swipe springs back; bring the backdrop back with it.
+                        if progress == 0 {
+                            withAnimation(.snappy) { dismissProgress = 0 }
+                        } else {
+                            dismissProgress = progress
+                        }
+                    }) { dismiss() }
                         .tag(photo.identifier)
                 }
             }
@@ -69,6 +80,7 @@ struct PhotoViewer: View {
             // Always over a black backdrop, so the glass is the dark kind.
             .environment(\.colorScheme, .dark)
             .padding(.horizontal, Spacing.m)
+            .opacity(1 - min(1, dismissProgress * 3))
         }
         // An alert rather than a confirmation dialog: the dialog's glass took on the photo's colors
         // and was hard to read, and had no Cancel.
@@ -80,6 +92,8 @@ struct PhotoViewer: View {
         }
         .sensoryFeedback(.success, trigger: currentCover)
         .statusBarHidden()
+        // Lets the editor show through as the photo is swiped down.
+        .presentationBackground(.clear)
     }
 
     private func deleteCurrent() {
@@ -108,33 +122,164 @@ private struct GlassIcon: View {
     }
 }
 
-/// One photo, fitted to the screen. A tap on the black around it calls `onTapOutside`.
+/// One photo, fitted to the screen. Pinch or double-tap to zoom; at normal size, swiping down
+/// closes it (`onDragDown` reports how far, 0–1), and so does a tap on the black around it.
 private struct FullImage: View {
     let attachment: Attachment
-    let onTapOutside: () -> Void
+    let onDragDown: (CGFloat) -> Void
+    let onClose: () -> Void
     @State private var image: UIImage?
 
     var body: some View {
         Group {
             if let image {
-                Image(uiImage: image)
-                    .resizable()
-                    .scaledToFit()
-                    // Taps on the photo itself do nothing (and don't reach the backdrop).
-                    .onTapGesture {}
+                ZoomableImage(image: image, onDragDown: onDragDown, onClose: onClose)
             } else {
                 ProgressView().tint(.white)
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
+                    .contentShape(.rect)
+                    .onTapGesture(perform: onClose)
             }
-        }
-        .frame(maxWidth: .infinity, maxHeight: .infinity)
-        .background {
-            Color.black
-                .contentShape(.rect)
-                .onTapGesture(perform: onTapOutside)
         }
         .task {
             if let data = attachment.imageData {
                 image = UIImage(data: data)
+            }
+        }
+    }
+}
+
+/// A `UIScrollView` for the zooming, plus a pan that only starts for a downward swipe at normal size,
+/// so it leaves sideways swipes to the page view and pans of a zoomed photo to the scroll view.
+private struct ZoomableImage: UIViewRepresentable {
+    let image: UIImage
+    let onDragDown: (CGFloat) -> Void
+    let onClose: () -> Void
+
+    func makeUIView(context: Context) -> ZoomView {
+        let view = ZoomView(image: image)
+        view.onDragDown = onDragDown
+        view.onClose = onClose
+        return view
+    }
+
+    func updateUIView(_ view: ZoomView, context: Context) {
+        view.onDragDown = onDragDown
+        view.onClose = onClose
+    }
+
+    final class ZoomView: UIScrollView, UIScrollViewDelegate, UIGestureRecognizerDelegate {
+        var onDragDown: (CGFloat) -> Void = { _ in }
+        var onClose: () -> Void = {}
+        private let imageView: UIImageView
+        private let dismissPan = UIPanGestureRecognizer()
+        /// The drag a swipe-down needs to close the photo, and the drag that fully fades the backdrop.
+        private let closeDistance: CGFloat = 120
+        private let fadeDistance: CGFloat = 300
+
+        init(image: UIImage) {
+            imageView = UIImageView(image: image)
+            super.init(frame: .zero)
+            delegate = self
+            minimumZoomScale = 1
+            maximumZoomScale = 4
+            showsHorizontalScrollIndicator = false
+            showsVerticalScrollIndicator = false
+            contentInsetAdjustmentBehavior = .never
+            backgroundColor = .clear
+            imageView.contentMode = .scaleAspectFit
+            addSubview(imageView)
+
+            let doubleTap = UITapGestureRecognizer(target: self, action: #selector(doubleTapped(_:)))
+            doubleTap.numberOfTapsRequired = 2
+            addGestureRecognizer(doubleTap)
+            let tap = UITapGestureRecognizer(target: self, action: #selector(tapped(_:)))
+            tap.require(toFail: doubleTap)
+            addGestureRecognizer(tap)
+
+            dismissPan.addTarget(self, action: #selector(panned(_:)))
+            dismissPan.delegate = self
+            addGestureRecognizer(dismissPan)
+        }
+
+        required init?(coder: NSCoder) { fatalError("init(coder:) has not been implemented") }
+
+        override func layoutSubviews() {
+            super.layoutSubviews()
+            guard zoomScale == minimumZoomScale, imageView.transform == .identity else { return }
+            imageView.frame = CGRect(origin: .zero, size: fittedSize())
+            contentSize = imageView.frame.size
+            centerContent()
+        }
+
+        /// The image's size fitted inside the bounds.
+        private func fittedSize() -> CGSize {
+            guard let size = imageView.image?.size, size.width > 0, size.height > 0 else { return bounds.size }
+            let scale = min(bounds.width / size.width, bounds.height / size.height)
+            return CGSize(width: size.width * scale, height: size.height * scale)
+        }
+
+        /// Centers the photo with insets while it's smaller than the screen in either direction.
+        private func centerContent() {
+            let x = max(0, (bounds.width - contentSize.width) / 2)
+            let y = max(0, (bounds.height - contentSize.height) / 2)
+            contentInset = UIEdgeInsets(top: y, left: x, bottom: y, right: x)
+        }
+
+        // MARK: Zoom
+
+        func viewForZooming(in scrollView: UIScrollView) -> UIView? { imageView }
+
+        func scrollViewDidZoom(_ scrollView: UIScrollView) {
+            centerContent()
+        }
+
+        @objc private func doubleTapped(_ gesture: UITapGestureRecognizer) {
+            if zoomScale > minimumZoomScale {
+                setZoomScale(minimumZoomScale, animated: true)
+            } else {
+                let point = gesture.location(in: imageView)
+                let scale = maximumZoomScale / 2
+                let size = CGSize(width: bounds.width / scale, height: bounds.height / scale)
+                zoom(to: CGRect(origin: CGPoint(x: point.x - size.width / 2, y: point.y - size.height / 2), size: size), animated: true)
+            }
+        }
+
+        @objc private func tapped(_ gesture: UITapGestureRecognizer) {
+            // Only taps on the black around the photo close it.
+            if !imageView.frame.contains(gesture.location(in: self)) { onClose() }
+        }
+
+        // MARK: Swipe down to close
+
+        override func gestureRecognizerShouldBegin(_ gesture: UIGestureRecognizer) -> Bool {
+            guard gesture === dismissPan else { return super.gestureRecognizerShouldBegin(gesture) }
+            guard zoomScale == minimumZoomScale else { return false }
+            let velocity = dismissPan.velocity(in: self)
+            return velocity.y > 0 && velocity.y > abs(velocity.x)
+        }
+
+        @objc private func panned(_ gesture: UIPanGestureRecognizer) {
+            let translation = gesture.translation(in: self)
+            switch gesture.state {
+            case .changed:
+                let y = max(0, translation.y)
+                // Shrinks a little as it's pulled down, like Photos.
+                let scale = 1 - min(y / fadeDistance, 1) * 0.25
+                imageView.transform = CGAffineTransform(translationX: translation.x, y: y).scaledBy(x: scale, y: scale)
+                onDragDown(min(y / fadeDistance, 1))
+            case .ended, .cancelled:
+                let velocity = gesture.velocity(in: self).y
+                if gesture.state == .ended, translation.y > closeDistance || velocity > 800 {
+                    onClose()
+                } else {
+                    UIView.animate(springDuration: 0.35, bounce: 0.15) {
+                        imageView.transform = .identity
+                    }
+                    onDragDown(0)
+                }
+            default:
+                break
             }
         }
     }
