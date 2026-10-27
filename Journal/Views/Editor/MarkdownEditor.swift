@@ -42,6 +42,8 @@ struct MarkdownEditor<Header: View>: UIViewRepresentable {
         setHeader(on: textView)
 
         if autofocus {
+            // A new entry starts on its title.
+            if text.isEmpty { controller.setTextStyle(.title) }
             textView.focusWhenReady()
         }
         return textView
