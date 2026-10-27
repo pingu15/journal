@@ -340,3 +340,24 @@ private struct BackMenuRemover: UIViewControllerRepresentable {
         }
     }
 }
+
+extension View {
+    /// For a screen pushed with a zoom transition: once it has opened, going back (button or edge
+    /// swipe) slides it away like a normal push instead of shrinking it back into its source.
+    func slidesBack() -> some View {
+        background(SlideBackSetter().frame(width: 0, height: 0))
+    }
+}
+
+private struct SlideBackSetter: UIViewControllerRepresentable {
+    func makeUIViewController(context: Context) -> Controller { Controller() }
+    func updateUIViewController(_ controller: Controller, context: Context) {}
+
+    final class Controller: UIViewController {
+        override func viewDidAppear(_ animated: Bool) {
+            super.viewDidAppear(animated)
+            // The pushed screen is the stack's top controller; dropping its zoom leaves the default pop.
+            navigationController?.topViewController?.preferredTransition = nil
+        }
+    }
+}
