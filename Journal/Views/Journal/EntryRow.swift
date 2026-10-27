@@ -35,8 +35,9 @@ struct EntryRow: View {
                         .font(Typography.entryExcerpt)
                         .foregroundStyle(Theme.secondaryText)
                         .lineLimit(title == nil ? 3 : 2)
-                } else if title == nil {
-                    Text(entry.photos.isEmpty ? "Empty entry" : "Photo")
+                } else if title == nil && entry.photos.isEmpty {
+                    // A photo-only entry needs no stand-in text: its thumbnail shows beside the row.
+                    Text("Empty entry")
                         .font(Typography.entryExcerpt)
                         .foregroundStyle(Theme.secondaryText)
                 }
