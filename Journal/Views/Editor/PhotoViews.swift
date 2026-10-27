@@ -70,7 +70,10 @@ struct PhotoViewer: View {
             .environment(\.colorScheme, .dark)
             .padding(.horizontal, Spacing.m)
         }
-        .confirmationDialog("Delete this photo?", isPresented: $confirmingDelete, titleVisibility: .visible) {
+        // An alert rather than a confirmation dialog: the dialog's glass took on the photo's colors
+        // and was hard to read, and had no Cancel.
+        .alert("Delete this photo?", isPresented: $confirmingDelete) {
+            Button("Cancel", role: .cancel) {}
             Button("Delete", role: .destructive, action: deleteCurrent)
         } message: {
             Text("It will be removed from the entry.")
