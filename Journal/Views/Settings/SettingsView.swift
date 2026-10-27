@@ -11,7 +11,9 @@ struct SettingsView: View {
     @AppStorage(Appearance.storageKey) private var appearance = Appearance.system
     @AppStorage(ReminderScheduler.enabledKey) private var reminderEnabled = false
     @AppStorage(ReminderScheduler.minutesKey) private var reminderMinutes = ReminderScheduler.defaultMinutes
+    @AppStorage(LocationService.autoTagKey) private var autoTagLocation = false
     @State private var notificationsDenied = false
+    @State private var locationDenied = false
 
     var body: some View {
         NavigationStack {
@@ -67,6 +69,28 @@ struct SettingsView: View {
                         .multilineTextAlignment(.leading)
                         .frame(maxWidth: .infinity, alignment: .leading)
                         .buttonStyle(.plain)
+                    }
+                }
+
+                Section {
+                    Toggle("Add current location", isOn: autoTagBinding)
+                        .tint(Theme.secondaryText)
+                } header: {
+                    Text("Location")
+                } footer: {
+                    if locationDenied {
+                        Button {
+                            if let url = URL(string: UIApplication.openSettingsURLString) { openURL(url) }
+                        } label: {
+                            Text("Location access is off for Journal. ") + Text("Open Settings").underline()
+                        }
+                        .font(Typography.note)
+                        .foregroundStyle(Theme.secondaryText)
+                        .multilineTextAlignment(.leading)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                        .buttonStyle(.plain)
+                    } else {
+                        Text("New entries are tagged with where you are when you start writing.")
                     }
                 }
 
@@ -140,6 +164,26 @@ struct SettingsView: View {
                 notificationsDenied = false
                 withAnimation { reminderEnabled = true }
                 await ReminderScheduler.schedule(minutesAfterMidnight: reminderMinutes)
+            }
+        }
+    }
+
+    /// Turning it on asks for location access first; it stays off if that's refused.
+    private var autoTagBinding: Binding<Bool> {
+        Binding {
+            autoTagLocation
+        } set: { enable in
+            guard enable else {
+                autoTagLocation = false
+                return
+            }
+            Task {
+                guard await LocationService.shared.requestAuthorization() else {
+                    locationDenied = true
+                    return
+                }
+                locationDenied = false
+                autoTagLocation = true
             }
         }
     }

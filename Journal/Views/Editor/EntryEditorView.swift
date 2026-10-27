@@ -19,6 +19,10 @@ struct EntryEditorView: View {
     @State private var pickerItems: [PhotosPickerItem] = []
     @State private var viewingPhoto: PhotoSelection?
     @State private var isEditing = false
+    @AppStorage(LocationService.autoTagKey) private var autoTagLocation = false
+    /// The place was added automatically, not chosen; an entry with nothing else is still discarded.
+    @State private var autoPlaced = false
+    @State private var autoPlaceTask: Task<Void, Never>?
     /// Captured before the editor is built, so a fresh page opens with the keyboard up.
     private let startsEmpty: Bool
 
@@ -84,6 +88,7 @@ struct EntryEditorView: View {
         }
         .sheet(isPresented: $editingLocation) {
             LocationPicker(entry: entry) {
+                autoPlaced = false
                 Task { await refreshWeather() }
             }
         }
@@ -112,14 +117,21 @@ struct EntryEditorView: View {
             if entry.location != nil && entry.weather == nil {
                 Task { await refreshWeather() }
             }
+            if startsEmpty && autoTagLocation {
+                autoPlaceTask = Task { await addCurrentPlace() }
+            }
         }
         .onChange(of: entry.text) {
             entry.updatedAt = .now
         }
         .onDisappear {
             router.openEntries.remove(entry.persistentModelID)
+            autoPlaceTask?.cancel()
             guard !isTrashed else { return }
             entry.removeUnreferencedPhotos(in: context)
+            if autoPlaced && !entry.hasText && entry.photos.isEmpty {
+                entry.clearPlace()
+            }
             if entry.isBlank {
                 context.delete(entry)
             }
@@ -183,6 +195,19 @@ struct EntryEditorView: View {
         context.insert(copy)
         copy.entry = entry
         return (copy.identifier, image)
+    }
+
+    /// The "Add current location" setting: tags a fresh entry for today with where the user is.
+    /// Never prompts — Settings asked for access when the setting was turned on.
+    private func addCurrentPlace() async {
+        guard LocationService.shared.isAuthorized, Calendar.current.isDateInToday(entry.createdAt),
+              let location = try? await LocationService.shared.currentLocation() else { return }
+        let name = await LocationService.shared.placeName(for: location) ?? "Current Location"
+        // Not if the editor has closed, or a place was picked meanwhile.
+        guard !Task.isCancelled, entry.placeName == nil else { return }
+        entry.setPlace(name: name, coordinate: location.coordinate)
+        autoPlaced = true
+        await refreshWeather()
     }
 
     private func refreshWeather() async {

@@ -13,6 +13,8 @@ final class LocationService: NSObject, CLLocationManagerDelegate {
     }
 
     static let shared = LocationService()
+    /// Settings: tag new entries with the current place.
+    static let autoTagKey = "autoTagLocation"
 
     private let manager = CLLocationManager()
     private var authorizationWaiters: [CheckedContinuation<Void, Never>] = []
@@ -28,7 +30,8 @@ final class LocationService: NSObject, CLLocationManagerDelegate {
         [.authorizedWhenInUse, .authorizedAlways].contains(manager.authorizationStatus)
     }
 
-    func currentLocation() async throws -> CLLocation {
+    /// Asks for permission if it hasn't been asked yet; true when location is allowed.
+    func requestAuthorization() async -> Bool {
         if manager.authorizationStatus == .notDetermined {
             await SystemPrompts.shared.during {
                 await withCheckedContinuation { continuation in
@@ -37,7 +40,11 @@ final class LocationService: NSObject, CLLocationManagerDelegate {
                 }
             }
         }
-        guard [.authorizedWhenInUse, .authorizedAlways].contains(manager.authorizationStatus) else {
+        return isAuthorized
+    }
+
+    func currentLocation() async throws -> CLLocation {
+        guard await requestAuthorization() else {
             throw Failure.denied
         }
         return try await withCheckedThrowingContinuation { continuation in
