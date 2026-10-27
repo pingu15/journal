@@ -942,6 +942,7 @@ struct MarkdownToolbar: View {
     static let height: CGFloat = 50
 
     let controller: MarkdownEditorController
+    @State private var choosingTextStyle = false
     let onImage: () -> Void
 
     var body: some View {
@@ -986,20 +987,45 @@ struct MarkdownToolbar: View {
         .buttonStyle(.plain)
     }
 
-    /// Title / Heading / Regular, with the current one checked.
+    /// Title / Heading / Regular, each shown in its own font, with the current one checked. A popover
+    /// rather than a menu, since menu items can't take custom fonts. The button itself never lights up.
     private var textStyleMenu: some View {
-        Menu {
-            Picker("Text Style", selection: Binding(get: { controller.textStyle }, set: { controller.setTextStyle($0) })) {
-                ForEach(TextStyle.allCases) { style in
-                    Text(style.label).tag(style)
-                }
-            }
+        Button {
+            choosingTextStyle = true
         } label: {
-            ToolIcon(symbol: "textformat.size", isOn: controller.textStyle != .regular)
+            ToolIcon(symbol: "textformat.size", isOn: false)
         }
-        .menuOrder(.fixed)
         .accessibilityLabel("Text Style")
         .accessibilityValue(controller.textStyle.label)
+        .popover(isPresented: $choosingTextStyle, arrowEdge: .bottom) {
+            VStack(spacing: 0) {
+                ForEach(TextStyle.allCases) { style in
+                    Button {
+                        controller.setTextStyle(style)
+                        choosingTextStyle = false
+                    } label: {
+                        HStack(spacing: Spacing.m) {
+                            Text(style.label)
+                                .font(Font(MarkdownStyler.font(for: style.block)))
+                                .foregroundStyle(Theme.primaryText)
+                            Spacer(minLength: 0)
+                            Image(systemName: "checkmark")
+                                .font(.body.weight(.semibold))
+                                .foregroundStyle(Theme.primaryText)
+                                .opacity(controller.textStyle == style ? 1 : 0)
+                        }
+                        .padding(.horizontal, Spacing.m)
+                        .frame(minHeight: 48)
+                        .contentShape(.rect)
+                    }
+                    .buttonStyle(.plain)
+                    .accessibilityAddTraits(controller.textStyle == style ? .isSelected : [])
+                }
+            }
+            .padding(.vertical, Spacing.xs)
+            .frame(width: 220)
+            .presentationCompactAdaptation(.popover)
+        }
     }
 
     private func tool(_ label: String, _ symbol: String, isOn: Bool = false, action: @escaping () -> Void) -> some View {
