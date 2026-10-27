@@ -1,34 +1,30 @@
 import SwiftData
 import SwiftUI
 
-/// Swipeable month grid — each written day shows its cover photo — with the selected day's entries below.
+/// Months stacked vertically in one long scroll (ten years back, two forward), each day a rounded
+/// square — sand when written, or its cover photo. Tapping a day opens `DaySheet`.
 struct CalendarView: View {
     @Environment(\.modelContext) private var context
     @Environment(AppRouter.self) private var router
     @Query(filter: #Predicate<Entry> { $0.deletedAt == nil }, sort: \Entry.createdAt)
     private var entries: [Entry]
 
-    /// Months relative to the current month; the pager spans ten years back and one forward.
-    @State private var monthOffset = 0
-    @State private var selectedDay = Calendar.current.startOfDay(for: .now)
     @State private var path: [Entry] = []
     @State private var width: CGFloat = 360
-    @State private var titleScroll = TitleScroll()
+    /// The month at the top of the scroll, as an offset from this month.
+    @State private var visibleMonth: Int? = 0
+    @State private var openDay: DaySelection?
     @State private var newEntryCount = 0
-    /// The pager's position, and how far through it the swipe is (in pages, fractional mid-swipe).
-    @State private var pagerMonth: Int? = 0
-    @State private var pagePosition: CGFloat = 0
-    /// The month the pager's height shows: it switches as soon as a swipe is let go, before the
-    /// pager settles.
-    @State private var shownMonth = 0
-    /// The title slot's width: a title slides across it for each page the pager moves.
-    @State private var titleWidth: CGFloat = 200
-    @Namespace private var transition
+    /// The calendar has no large title to scroll away (it scrolls both ways), so the small one shows throughout.
+    @State private var titleScroll: TitleScroll = {
+        let scroll = TitleScroll()
+        scroll.progress = 1
+        return scroll
+    }()
 
     private let calendar = Calendar.current
-    private let monthRange = -120...12
+    private let monthRange = -120...24
     private let gap: CGFloat = 6
-    /// The calendar's side inset; each month page reaches past it, so months swipe in from the screen edge.
     private let inset = Spacing.m + 4
 
     var body: some View {
@@ -36,36 +32,45 @@ struct CalendarView: View {
 
         NavigationStack(path: $path) {
             ScrollView {
-                LargePageTitle("Calendar", topPadding: Spacing.xs)
-                    .padding(.horizontal, Spacing.m)
-
-                VStack(alignment: .leading, spacing: Spacing.l) {
-                    VStack(spacing: Spacing.m) {
-                        monthHeader
-                        weekdayRow
-                        monthPager(days: days)
+                LazyVStack(alignment: .leading, spacing: Spacing.l + Spacing.s) {
+                    ForEach(monthRange, id: \.self) { offset in
+                        MonthSection(
+                            month: month(at: offset),
+                            days: days,
+                            openDay: openDay?.day,
+                            cellSize: cellSize,
+                            gap: gap
+                        ) { day in
+                            openDay = DaySelection(day: day)
+                        }
+                        .id(offset)
                     }
-                    .onGeometryChange(for: CGFloat.self, of: { $0.size.width }) { width = $0 }
-
-                    dayEntries
                 }
+                .scrollTargetLayout()
                 .padding(.horizontal, inset)
-                .padding(.top, Spacing.m)
+                .padding(.bottom, Spacing.m)
+                .onGeometryChange(for: CGFloat.self, of: { $0.size.width - inset * 2 }) { width = $0 }
             }
-            .tracksTitleScroll(titleScroll)
-            // Room for the floating new-entry button below the day's entries.
+            .scrollPosition(id: $visibleMonth, anchor: .top)
+            .scrollIndicators(.hidden)
+            // Room for the floating new-entry button below the last month.
             .contentMargins(.bottom, 96, for: .scrollContent)
+            .safeAreaInset(edge: .top, spacing: 0) {
+                weekdayRow
+                    .padding(.horizontal, inset)
+                    .padding(.vertical, Spacing.s)
+                    .background(Theme.background)
+                    .overlay(alignment: .bottom) {
+                        Rectangle().fill(Theme.hairline).frame(height: 1)
+                    }
+            }
             .background(Theme.background)
             .inlinePageTitle("Calendar", scroll: titleScroll)
             .toolbar {
                 ToolbarItem(placement: .topBarTrailing) {
                     Button("Today", systemImage: "\(calendar.component(.day, from: .now)).square") {
-                        withAnimation(.snappy) {
-                            monthOffset = 0
-                            selectedDay = calendar.startOfDay(for: .now)
-                        }
+                        withAnimation(.snappy) { visibleMonth = 0 }
                     }
-                    .disabled(monthOffset == 0 && calendar.isDateInToday(selectedDay))
                 }
                 ToolbarItem(placement: .topBarTrailing) {
                     SettingsButton()
@@ -73,153 +78,33 @@ struct CalendarView: View {
             }
             .navigationDestination(for: Entry.self) { entry in
                 EntryEditorView(entry: entry)
-                    .navigationTransition(.zoom(sourceID: entry.id, in: transition))
             }
             .overlay(alignment: .bottomTrailing) {
-                // Writes for the selected day; there's nothing to write about a day that hasn't happened.
-                if selectedDay <= .now {
-                    NewEntryButton(action: newEntry)
-                        .padding(.trailing, Spacing.l)
-                        .padding(.bottom, Spacing.l)
-                        .transition(.scale.combined(with: .opacity))
-                }
+                NewEntryButton(action: { newEntry(on: nil) })
+                    .padding(.trailing, Spacing.l)
+                    .padding(.bottom, Spacing.l)
             }
-            .animation(.snappy, value: selectedDay <= .now)
         }
         // Hidden from the stack, not the editor, so it returns as soon as the editor starts closing.
         .toolbar(path.isEmpty ? .visible : .hidden, for: .tabBar)
         .sensoryFeedback(.impact(weight: .light), trigger: newEntryCount)
-        .onChange(of: monthOffset) { _, offset in
-            followMonth(offset)
-            show(offset)
-            // Arrows and Today change the month directly; bring the pager along.
-            if pagerMonth != offset {
-                withAnimation(.snappy) { pagerMonth = offset }
-            }
+        .sensoryFeedback(.selection, trigger: openDay?.day)
+        .sheet(item: $openDay) { selection in
+            DaySheet(
+                day: selection.day,
+                entries: entries,
+                onOpen: { entry in open(entry) },
+                onNewEntry: { day in
+                    openDay = nil
+                    newEntry(on: day)
+                }
+            )
         }
         .onChange(of: path) { _, path in
             if path.isEmpty {
                 Entry.deleteBlankEntries(in: context, keeping: router.openEntries)
             }
         }
-    }
-
-    // MARK: - Pieces
-
-    private var monthHeader: some View {
-        HStack {
-            Button("Previous Month", systemImage: "chevron.left") { shiftMonth(by: -1) }
-                .disabled(monthOffset == monthRange.lowerBound)
-                .frame(width: 44, height: 44)
-                .contentShape(.rect)
-            // The titles either side of the pager's position, moved with it: mid-swipe, each is as far
-            // through the slot as its month is through the screen.
-            ZStack {
-                let base = Int(pagePosition.rounded(.down))
-                ForEach([base, base + 1], id: \.self) { offset in
-                    if monthRange.contains(offset) {
-                        let progress = CGFloat(offset) - pagePosition
-                        Text(month(at: offset).formatted(.dateTime.month(.wide).year()))
-                            .font(.system(.title3, design: .serif).weight(.semibold))
-                            .foregroundStyle(Theme.primaryText)
-                            .lineLimit(1)
-                            .minimumScaleFactor(0.7)
-                            .offset(x: progress * titleWidth)
-                            .opacity(1 - abs(progress))
-                            .accessibilityHidden(abs(progress) >= 0.5)
-                    }
-                }
-            }
-            .frame(maxWidth: .infinity)
-            .onGeometryChange(for: CGFloat.self, of: { $0.size.width }) { titleWidth = $0 }
-            .clipped()
-            Button("Next Month", systemImage: "chevron.right") { shiftMonth(by: 1) }
-                .disabled(monthOffset == monthRange.upperBound)
-                .frame(width: 44, height: 44)
-                .contentShape(.rect)
-        }
-        .labelStyle(.iconOnly)
-        .font(.body.weight(.medium))
-        .foregroundStyle(Theme.primaryText)
-    }
-
-    /// Months side by side, a page per swipe. The pager is as tall as the shown month, so what's
-    /// below sits at the grid's foot; it takes the new month's height as soon as a swipe is let go.
-    private func monthPager(days: [Date: DayInfo]) -> some View {
-        ScrollView(.horizontal) {
-            LazyHStack(alignment: .top, spacing: 0) {
-                ForEach(monthRange, id: \.self) { offset in
-                    MonthGrid(
-                        month: month(at: offset),
-                        selectedDay: $selectedDay,
-                        days: days,
-                        cellSize: cellSize,
-                        gap: gap
-                    )
-                    .frame(width: width, height: gridHeight(rows: 6), alignment: .top)
-                    .containerRelativeFrame(.horizontal)
-                    .id(offset)
-                }
-            }
-            .scrollTargetLayout()
-        }
-        .scrollPosition(id: $pagerMonth)
-        .scrollTargetBehavior(ReportingPaging(heading: shownMonth - monthRange.lowerBound) { page in
-            // Where the pager will stop, known as soon as a swipe is let go.
-            let target = page + monthRange.lowerBound
-            if monthRange.contains(target) { show(target) }
-        })
-        .scrollIndicators(.hidden)
-        .onScrollGeometryChange(for: CGFloat.self, of: { geometry in
-            guard geometry.containerSize.width > 0 else { return CGFloat(monthOffset) }
-            return geometry.contentOffset.x / geometry.containerSize.width + CGFloat(monthRange.lowerBound)
-        }) { _, position in
-            pagePosition = position
-        }
-        .onScrollPhaseChange { _, phase in
-            switch phase {
-            case .idle:
-                // Only a settled pager picks the month (and the selection): mid-scroll it reports
-                // months it's passing through.
-                let settled = Int(pagePosition.rounded())
-                guard monthRange.contains(settled) else { return }
-                show(settled)
-                if settled != monthOffset {
-                    withAnimation(.snappy) { monthOffset = settled }
-                }
-            default:
-                break
-            }
-        }
-        // Always six rows tall inside, shown only down to the current height.
-        .frame(height: gridHeight(rows: 6))
-        .frame(height: pagerHeight, alignment: .top)
-        .clipped()
-        .contentShape(.rect)
-        .padding(.horizontal, -inset)
-    }
-
-    private var pagerHeight: CGFloat {
-        gridHeight(rows: rows(at: shownMonth))
-    }
-
-    /// Animates the pager's height to `month`'s.
-    private func show(_ month: Int) {
-        guard month != shownMonth else { return }
-        withAnimation(.snappy) { shownMonth = month }
-    }
-
-    private func gridHeight(rows: Int) -> CGFloat {
-        cellSize * CGFloat(rows) + gap * CGFloat(rows - 1)
-    }
-
-    /// Weeks the month spans (4–6).
-    private func rows(at offset: Int) -> Int {
-        let clamped = min(max(offset, monthRange.lowerBound), monthRange.upperBound)
-        let month = month(at: clamped)
-        let blanks = (calendar.component(.weekday, from: month) - calendar.firstWeekday + 7) % 7
-        let count = calendar.range(of: .day, in: .month, for: month)?.count ?? 30
-        return (blanks + count + 6) / 7
     }
 
     private var weekdayRow: some View {
@@ -231,40 +116,27 @@ struct CalendarView: View {
         }
     }
 
-    @ViewBuilder
-    private var dayEntries: some View {
-        let entriesForDay = entries.filter { calendar.isDate($0.createdAt, inSameDayAs: selectedDay) }
-
-        VStack(alignment: .leading, spacing: Spacing.s) {
-            MetaLabel(selectedDay.formatted(.dateTime.weekday(.wide).day().month(.wide)))
-
-            if entriesForDay.isEmpty {
-                Text(selectedDay > .now ? "This day hasn't happened yet." : "Nothing written on this day.")
-                    .font(Typography.note)
-                    .foregroundStyle(Theme.secondaryText)
-                    .padding(.vertical, Spacing.s)
-            } else {
-                ForEach(entriesForDay) { entry in
-                    Button {
-                        path.append(entry)
-                    } label: {
-                        EntryRow(entry: entry, dateStyle: .time)
-                            // The Journal tab's List adds this much around each row; match it.
-                            .padding(.vertical, 6)
-                            .matchedTransitionSource(id: entry.id, in: transition)
-                    }
-                    .buttonStyle(.plain)
-                    // 1 pt, like the Journal list's separators (Divider is a single pixel).
-                    Rectangle().fill(Theme.hairline).frame(height: 1)
-                }
-            }
+    /// Opens an entry from the day sheet, once the sheet is out of the way.
+    private func open(_ entry: Entry) {
+        openDay = nil
+        Task {
+            try? await Task.sleep(for: .milliseconds(350))
+            path.append(entry)
         }
-        .animation(.snappy, value: selectedDay)
     }
 
-    private func newEntry() {
+    /// A new entry for `day` (today when nil).
+    private func newEntry(on day: Date?) {
         newEntryCount += 1
-        path.append(Entry.create(in: context, on: selectedDay))
+        let entry = Entry.create(in: context, on: day)
+        if day == nil {
+            path.append(entry)
+        } else {
+            Task {
+                try? await Task.sleep(for: .milliseconds(350))
+                path.append(entry)
+            }
+        }
     }
 
     // MARK: - Data
@@ -289,26 +161,6 @@ struct CalendarView: View {
         calendar.date(byAdding: .month, value: offset, to: calendar.startOfMonth(for: .now)) ?? .now
     }
 
-    /// When the month changes, the selection follows: today if it's in that month, else the
-    /// month's first written day, else the 1st.
-    private func followMonth(_ offset: Int) {
-        let month = month(at: offset)
-        guard !calendar.isDate(selectedDay, equalTo: month, toGranularity: .month) else { return }
-        if calendar.isDate(.now, equalTo: month, toGranularity: .month) {
-            selectedDay = calendar.startOfDay(for: .now)
-        } else if let first = entries.first(where: { calendar.isDate($0.createdAt, equalTo: month, toGranularity: .month) }) {
-            selectedDay = calendar.startOfDay(for: first.createdAt)
-        } else {
-            selectedDay = month
-        }
-    }
-
-    private func shiftMonth(by value: Int) {
-        let next = monthOffset + value
-        guard monthRange.contains(next) else { return }
-        withAnimation(.snappy) { monthOffset = next }
-    }
-
     private var weekdaySymbols: [String] {
         let symbols = calendar.veryShortStandaloneWeekdaySymbols
         let first = calendar.firstWeekday - 1
@@ -320,34 +172,49 @@ struct DayInfo {
     let cover: Attachment?
 }
 
-private struct MonthGrid: View {
+/// The day shown in the day sheet.
+private struct DaySelection: Identifiable {
+    let day: Date
+    var id: Date { day }
+}
+
+/// One month: a thin title over its grid of days.
+private struct MonthSection: View {
     let month: Date
-    @Binding var selectedDay: Date
     let days: [Date: DayInfo]
+    let openDay: Date?
     let cellSize: CGFloat
     let gap: CGFloat
+    let onSelect: (Date) -> Void
 
     private let calendar = Calendar.current
 
     var body: some View {
-        let columns = Array(repeating: GridItem(.fixed(cellSize), spacing: gap), count: 7)
-        LazyVGrid(columns: columns, spacing: gap) {
-            ForEach(0..<leadingBlanks, id: \.self) { _ in
-                Color.clear.frame(width: cellSize, height: cellSize)
-            }
-            ForEach(dates, id: \.self) { day in
-                DayCell(
-                    day: day,
-                    info: days[day],
-                    isSelected: calendar.isDate(day, inSameDayAs: selectedDay),
-                    size: cellSize
-                ) {
-                    selectedDay = day
+        VStack(alignment: .leading, spacing: Spacing.m) {
+            Text(month.formatted(calendar.isDate(month, equalTo: .now, toGranularity: .year)
+                                 ? .dateTime.month(.wide) : .dateTime.month(.wide).year()))
+                .font(.system(.title3, design: .serif).weight(.light))
+                .foregroundStyle(Theme.primaryText)
+                // Clear of the weekday row when the scroll lands a month at the top.
+                .padding(.top, Spacing.m)
+
+            let columns = Array(repeating: GridItem(.fixed(cellSize), spacing: gap), count: 7)
+            LazyVGrid(columns: columns, spacing: gap) {
+                ForEach(0..<leadingBlanks, id: \.self) { _ in
+                    Color.clear.frame(width: cellSize, height: cellSize)
+                }
+                ForEach(dates, id: \.self) { day in
+                    DayCell(
+                        day: day,
+                        info: days[day],
+                        isSelected: openDay.map { calendar.isDate(day, inSameDayAs: $0) } ?? false,
+                        size: cellSize
+                    ) {
+                        onSelect(day)
+                    }
                 }
             }
         }
-        .frame(maxHeight: .infinity, alignment: .top)
-        .sensoryFeedback(.selection, trigger: selectedDay)
     }
 
     private var leadingBlanks: Int {
@@ -358,31 +225,6 @@ private struct MonthGrid: View {
     private var dates: [Date] {
         guard let range = calendar.range(of: .day, in: .month, for: month) else { return [] }
         return range.compactMap { calendar.date(byAdding: .day, value: $0 - 1, to: month) }
-    }
-}
-
-/// Pages one month at a time (a stand-in for `.viewAligned(limitBehavior: .alwaysByOne)`, which
-/// can't say where it's going), and reports the page the pager will stop on as soon as it's decided
-/// (when a swipe is let go), before it gets there.
-private struct ReportingPaging: ScrollTargetBehavior {
-    /// The page the pager is on or on its way to.
-    let heading: Int
-    let onTarget: (Int) -> Void
-
-    func updateTarget(_ target: inout ScrollTarget, context: TargetContext) {
-        let width = context.containerSize.width
-        guard width > 0 else { return }
-        // Counted from the page it's heading for, so a swipe that interrupts one still settling
-        // moves on another month rather than back to the nearest.
-        let position = context.originalTarget.rect.minX / width
-        let start = abs(position - CGFloat(heading)) < 1 ? CGFloat(heading) : position.rounded()
-        let velocity = context.velocity.dx
-        // A flick moves a page the way it was going; a slow drag goes to the nearer page.
-        let page = abs(velocity) > 0.05
-            ? start + (velocity > 0 ? 1 : -1)
-            : min(max((target.rect.minX / width).rounded(), start - 1), start + 1)
-        target.rect.origin.x = page * width
-        onTarget(Int(page))
     }
 }
 

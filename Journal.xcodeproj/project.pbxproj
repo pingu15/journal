@@ -235,6 +235,7 @@
 				INFOPLIST_KEY_CFBundleDisplayName = Journal;
 				INFOPLIST_KEY_NSFaceIDUsageDescription = "Face ID keeps your journal private.";
 				INFOPLIST_KEY_NSLocationWhenInUseUsageDescription = "Journal tags an entry with your location only when you ask it to.";
+				INFOPLIST_KEY_NSPhotoLibraryUsageDescription = "Journal shows the photos you took on a day alongside what you wrote.";
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
 				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
@@ -272,6 +273,7 @@
 				INFOPLIST_KEY_CFBundleDisplayName = Journal;
 				INFOPLIST_KEY_NSFaceIDUsageDescription = "Face ID keeps your journal private.";
 				INFOPLIST_KEY_NSLocationWhenInUseUsageDescription = "Journal tags an entry with your location only when you ask it to.";
+				INFOPLIST_KEY_NSPhotoLibraryUsageDescription = "Journal shows the photos you took on a day alongside what you wrote.";
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
 				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
