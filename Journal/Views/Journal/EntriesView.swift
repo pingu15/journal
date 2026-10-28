@@ -232,7 +232,10 @@ struct EntriesView: View {
             router.journalPath.append(entry)
         } label: {
             EntryRow(entry: entry, dateStyle: dateStyle)
-                .matchedTransitionSource(id: entry.id, in: transition)
+                // The zoom hides its source for as long as the entry is open, and an edge swipe
+                // slides the entry away without bringing it back — so the source is a plain
+                // backdrop behind the row, and the row itself never disappears.
+                .background { Theme.background.matchedTransitionSource(id: entry.id, in: transition) }
         }
         .listRowBackground(Theme.background)
         .listRowSeparatorTint(Theme.hairline)
