@@ -62,7 +62,6 @@ struct EntryEditorView: View {
         .background(Theme.background.ignoresSafeArea())
         .navigationBarTitleDisplayMode(.inline)
         .hidesBackButtonMenu()
-        .slidesBackOnEdgeSwipe()
         .toolbar {
             ToolbarItem(placement: .topBarTrailing) {
                 Menu("More", systemImage: "ellipsis") {

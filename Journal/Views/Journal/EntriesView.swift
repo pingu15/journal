@@ -20,6 +20,8 @@ struct EntriesView: View {
     @State private var filter = JournalFilter.all
     @State private var newEntryCount = 0
     @Namespace private var transition
+    /// The open entry whose row shows a stand-in while the zoom hides it (see `row(for:)`).
+    @State private var releasedSource: PersistentIdentifier?
 
     private static let topID = "top"
 
@@ -46,6 +48,10 @@ struct EntriesView: View {
             .navigationDestination(for: Entry.self) { entry in
                 EntryEditorView(entry: entry)
                     .navigationTransition(.zoom(sourceID: entry.id, in: transition))
+                    .slidesBackOnEdgeSwipe(
+                        onOpened: { releasedSource = entry.id },
+                        beforeZoomBack: { releasedSource = nil }
+                    )
             }
             .overlay(alignment: .bottomTrailing) {
                 if filter == .all && !searchActive {
@@ -79,6 +85,7 @@ struct EntriesView: View {
         .sensoryFeedback(.impact(weight: .light), trigger: newEntryCount)
         .onChange(of: router.journalPath) { _, path in
             if path.isEmpty {
+                releasedSource = nil
                 Entry.deleteBlankEntries(in: context, keeping: router.openEntries)
             }
         }
@@ -232,10 +239,15 @@ struct EntriesView: View {
             router.journalPath.append(entry)
         } label: {
             EntryRow(entry: entry, dateStyle: dateStyle)
+                .matchedTransitionSource(id: entry.id, in: transition)
                 // The zoom hides its source for as long as the entry is open, and an edge swipe
-                // slides the entry away without bringing it back — so the source is a plain
-                // backdrop behind the row, and the row itself never disappears.
-                .background { Theme.background.matchedTransitionSource(id: entry.id, in: transition) }
+                // never brings it back. So once the entry is open a copy of the row stands in for
+                // it (showing behind a swiped page), and leaves just before a zoom back home.
+                .overlay {
+                    if releasedSource == entry.id {
+                        EntryRow(entry: entry, dateStyle: dateStyle)
+                    }
+                }
         }
         .listRowBackground(Theme.background)
         .listRowSeparatorTint(Theme.hairline)

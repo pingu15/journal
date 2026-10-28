@@ -343,17 +343,27 @@ private struct BackMenuRemover: UIViewControllerRepresentable {
 
 extension View {
     /// For a screen pushed with a zoom transition: the back button still zooms it back into its
-    /// source, but an edge swipe slides it away at full size.
-    func slidesBackOnEdgeSwipe() -> some View {
-        background(EdgeSwipeSlide().frame(width: 0, height: 0))
+    /// source, but an edge swipe slides it away at full size. `onOpened` runs once the screen has
+    /// appeared; `beforeZoomBack` runs a moment before the back button pops it, so the source can
+    /// be put back in place first.
+    func slidesBackOnEdgeSwipe(onOpened: @escaping () -> Void = {}, beforeZoomBack: @escaping () -> Void = {}) -> some View {
+        background(EdgeSwipeSlide(onOpened: onOpened, beforeZoomBack: beforeZoomBack).frame(width: 0, height: 0))
     }
 }
 
 private struct EdgeSwipeSlide: UIViewControllerRepresentable {
+    let onOpened: () -> Void
+    let beforeZoomBack: () -> Void
+
     func makeUIViewController(context: Context) -> Controller { Controller() }
-    func updateUIViewController(_ controller: Controller, context: Context) {}
+    func updateUIViewController(_ controller: Controller, context: Context) {
+        controller.onOpened = onOpened
+        controller.beforeZoomBack = beforeZoomBack
+    }
 
     final class Controller: UIViewController {
+        var onOpened: () -> Void = {}
+        var beforeZoomBack: () -> Void = {}
         private weak var screen: UIViewController?
 
         override func viewDidAppear(_ animated: Bool) {
@@ -364,11 +374,16 @@ private struct EdgeSwipeSlide: UIViewControllerRepresentable {
             // Without a preferred transition the edge swipe is the plain slide (the zoom's own edge
             // pan shrinks the page); the back button puts the zoom back just before popping.
             top.preferredTransition = nil
-            top.navigationItem.backAction = UIAction { [weak top] _ in
+            top.navigationItem.backAction = UIAction { [weak self, weak top] _ in
                 guard let top else { return }
+                self?.beforeZoomBack()
                 top.preferredTransition = zoom
-                top.navigationController?.popViewController(animated: true)
+                // Pop on the next turn, once SwiftUI has redrawn the source.
+                DispatchQueue.main.async {
+                    top.navigationController?.popViewController(animated: true)
+                }
             }
+            onOpened()
         }
     }
 }
