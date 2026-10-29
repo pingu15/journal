@@ -126,6 +126,8 @@ private struct PageTitle: ViewModifier {
                     .transition(.opacity)
             }
             content
+                // The scroll bar starts below the card's rounded corners.
+                .contentMargins(.top, Self.cornerRadius, for: .scrollIndicators)
                 .background(Theme.background)
                 .clipShape(UnevenRoundedRectangle(
                     topLeadingRadius: Self.cornerRadius,
