@@ -159,6 +159,8 @@ struct EntriesView: View {
             }
         }
         .listStyle(.plain)
+        // A pinned label being pushed out by the next one shouldn't fade as it goes.
+        .hidesTopScrollEdgeEffect()
         .listSectionSpacing(0)
         .environment(\.defaultMinListRowHeight, 0)
         .environment(\.defaultMinListHeaderHeight, 0)

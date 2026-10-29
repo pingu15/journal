@@ -96,6 +96,16 @@ extension View {
         modifier(PageTitle(title: title, isHidden: isHidden))
     }
 
+    /// Content scrolls out at the top edge as is, without iOS 26's soft fade there.
+    @ViewBuilder
+    func hidesTopScrollEdgeEffect() -> some View {
+        if #available(iOS 26.0, *) {
+            scrollEdgeEffectHidden(true, for: .top)
+        } else {
+            self
+        }
+    }
+
     /// Liquid Glass on iOS 26, a material before it — for custom controls that sit in the bar.
     @ViewBuilder
     func glassBackground(in shape: some Shape) -> some View {
