@@ -56,6 +56,9 @@ struct CalendarView: View {
                     .onGeometryChange(for: CGFloat.self, of: { $0.size.width - inset * 2 }) { width = $0 }
                 }
                 .scrollPosition($position)
+                // The starting position stops a month gap short of this month; scrolling to it
+                // again once it's laid out lands it where Today does.
+                .onAppear { position.scrollTo(id: 0, anchor: .top) }
                 .scrollIndicators(.hidden)
                 // Room for the floating tab bar below the last month.
                 .contentMargins(.bottom, 96, for: .scrollContent)
