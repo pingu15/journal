@@ -256,7 +256,7 @@ private struct DayCell: View {
                 }
 
                 Text(day.formatted(.dateTime.day()))
-                    .font(.system(.callout).weight(info != nil || isToday ? .semibold : .regular))
+                    .font(.system(.callout).weight(.semibold))
                     .foregroundStyle(
                         image != nil ? Color.white
                             : info != nil ? Theme.onAccent
