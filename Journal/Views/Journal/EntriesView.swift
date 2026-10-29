@@ -284,7 +284,8 @@ private struct SectionLabel: View {
         MetaLabel(text)
             .frame(maxWidth: .infinity, alignment: .leading)
             .padding(.top, Spacing.l)
-            .padding(.bottom, Spacing.xs)
+            // Room between the label and the rows passing under it while it's pinned.
+            .padding(.bottom, Spacing.s + Spacing.xs)
             // In line with the row separators.
             .padding(.leading, Spacing.m + EntriesView.separatorInset)
             .padding(.trailing, Spacing.m)
