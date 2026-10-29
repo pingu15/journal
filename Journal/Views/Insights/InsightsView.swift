@@ -21,7 +21,7 @@ struct InsightsView: View {
                     .padding(.top, 120)
                 } else {
                     let stats = JournalStats(entries: entries)
-                    VStack(alignment: .leading, spacing: Spacing.l + Spacing.s) {
+                    VStack(alignment: .leading, spacing: Spacing.l) {
                         InsightSection(title: "Writing activity") {
                             ActivityHeatmap(wordsByDay: stats.wordsByDay)
                         }
