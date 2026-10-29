@@ -272,8 +272,8 @@ struct EntriesView: View {
 /// A month or "On this day" label, as a row of its own.
 private struct SectionLabel: View {
     let text: String
-    /// The top label sits as far below the card's edge (with the list's top marker) as the
-    /// Insights tab's first heading; the rest keep a wider gap from the rows above.
+    /// The top label sits as far below the card's edge as the others sit below the separator
+    /// above them (the list's top marker makes up the difference).
     let isFirst: Bool
 
     init(_ text: String, isFirst: Bool = false) {
@@ -284,7 +284,7 @@ private struct SectionLabel: View {
     var body: some View {
         MetaLabel(text)
             .frame(maxWidth: .infinity, alignment: .leading)
-            .padding(.top, isFirst ? Spacing.m : Spacing.l)
+            .padding(.top, isFirst ? Spacing.l - Spacing.xs : Spacing.l)
             .padding(.bottom, Spacing.xs)
             // In line with the row separators.
             .listRowInsets(EdgeInsets(top: 0, leading: Spacing.m + EntriesView.separatorInset, bottom: 0, trailing: Spacing.m))

@@ -31,7 +31,8 @@ struct InsightsView: View {
                         }
                     }
                     .padding(.horizontal, Spacing.m + 4)
-                    .padding(.top, Spacing.m + 4)
+                    // The first heading starts where the journal's first month label does.
+                    .padding(.top, Spacing.l)
                     .padding(.bottom, Spacing.l)
                 }
             }
