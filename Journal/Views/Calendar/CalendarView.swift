@@ -57,6 +57,9 @@ struct CalendarView: View {
                     .overlay(alignment: .bottom) {
                         Rectangle().fill(Theme.hairline).frame(height: 1)
                     }
+                    // Taps on the row do nothing (otherwise they scroll the calendar to its top).
+                    .contentShape(.rect)
+                    .onTapGesture {}
             }
             .pageTitle()
             .toolbar {
