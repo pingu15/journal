@@ -21,6 +21,8 @@ struct EntriesView: View {
     private static let topID = "top"
     /// Where row separators start, from a row's content edge; month labels start there too.
     static let separatorInset = Spacing.xs
+    /// Above and below each row, as the list would give it.
+    private static let rowInset: CGFloat = 15
 
     var body: some View {
         @Bindable var router = router
@@ -141,7 +143,7 @@ struct EntriesView: View {
             if searchText.isEmpty && !onThisDay.isEmpty {
                 Section {
                     ForEach(onThisDay) { entry in
-                        row(for: entry, dateStyle: .dayAndYear)
+                        row(for: entry, dateStyle: .dayAndYear, isFirst: entry.id == onThisDay.first?.id)
                     }
                 } header: {
                     SectionLabel("On this day")
@@ -151,7 +153,7 @@ struct EntriesView: View {
             ForEach(sections, id: \.month) { section in
                 Section {
                     ForEach(section.entries) { entry in
-                        row(for: entry)
+                        row(for: entry, isFirst: entry.id == section.entries.first?.id)
                     }
                 } header: {
                     SectionLabel(section.month.formatted(.dateTime.month(.wide).year()))
@@ -192,7 +194,9 @@ struct EntriesView: View {
     }
 
     /// A plain button rather than a NavigationLink, so rows carry no disclosure chevron.
-    private func row(for entry: Entry, dateStyle: EntryRow.DateStyle = .day) -> some View {
+    /// `isFirst`: the first row under a label, which leaves the space above it to the label (see
+    /// `SectionLabel`).
+    private func row(for entry: Entry, dateStyle: EntryRow.DateStyle = .day, isFirst: Bool = false) -> some View {
         let inset = Self.separatorInset // Read here: the alignment guides run off the main actor.
         return Button {
             router.journalPath.append(entry)
@@ -202,6 +206,8 @@ struct EntriesView: View {
                 // the left.
                 .padding(.trailing, inset)
         }
+        // The list's own insets, but none above a section's first row.
+        .listRowInsets(EdgeInsets(top: isFirst ? 0 : Self.rowInset, leading: Spacing.m, bottom: Self.rowInset, trailing: Spacing.m))
         .listRowBackground(Theme.background)
         .listRowSeparatorTint(Theme.hairline)
         // Including under a month's last row, which a list leaves bare above the next header.
@@ -285,8 +291,10 @@ private struct SectionLabel: View {
     var body: some View {
         MetaLabel(text)
             .frame(maxWidth: .infinity, alignment: .leading)
-            // As much room below the label, where rows pass under it while it's pinned, as above.
-            .padding(.vertical, Spacing.l)
+            .padding(.top, Spacing.l)
+            // With the first row's own top padding (it has no inset above it), the label sits as far
+            // above that row's text as below the card's edge; while pinned, rows pass under here.
+            .padding(.bottom, Spacing.m)
             // In line with the row separators.
             .padding(.leading, Spacing.m + EntriesView.separatorInset)
             .padding(.trailing, Spacing.m)
