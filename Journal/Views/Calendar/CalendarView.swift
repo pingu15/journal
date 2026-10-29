@@ -52,7 +52,7 @@ struct CalendarView: View {
             .safeAreaInset(edge: .top, spacing: 0) {
                 weekdayRow
                     .padding(.horizontal, inset)
-                    .padding(.vertical, Spacing.s)
+                    .padding(.vertical, Spacing.s + 3)
                     .background(Theme.background)
                     .overlay(alignment: .bottom) {
                         Rectangle().fill(Theme.hairline).frame(height: 1)
