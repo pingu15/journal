@@ -79,7 +79,6 @@ struct EntriesView: View {
         .sensoryFeedback(.impact(weight: .light), trigger: newEntryCount)
         .onChange(of: router.journalPath) { _, path in
             if path.isEmpty {
-                releasedSource = nil
                 Entry.deleteBlankEntries(in: context, keeping: router.openEntries)
             }
         }
@@ -207,6 +206,9 @@ struct EntriesView: View {
     /// A plain button rather than a NavigationLink, so rows carry no disclosure chevron.
     private func row(for entry: Entry, dateStyle: EntryRow.DateStyle = .day) -> some View {
         Button {
+            // The stand-in outlives an edge swipe home (the real row comes back a moment after the
+            // pop), so it leaves only once a row is opened again.
+            releasedSource = nil
             router.journalPath.append(entry)
         } label: {
             EntryRow(entry: entry, dateStyle: dateStyle)
