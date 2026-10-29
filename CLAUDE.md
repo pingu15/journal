@@ -9,7 +9,7 @@ A premium, minimal, editorial journaling app. Native iOS, Swift + SwiftUI, **iPh
   |---|---|---|
   | ink | `#343434` | Primary text (light) |
   | stone | `#8E8B82` | Secondary text, metadata, hairlines, Markdown syntax |
-  | sand | `#C8A47A` | The single accent — button fills, highlights (always white text and icons on top, `Theme.onAccent`) |
+  | sand | `#D4B48C` | The single accent — button fills, highlights (always white text and icons on top, `Theme.onAccent`) |
   | paper | `#F3F3F3` | Background (light) / primary text (dark) |
   | night | `#121212` | Background (dark) — deliberately deeper than ink (not from the palette link) |
 - Use semantic tokens from `Journal/Design/Theme.swift` (`Theme` for SwiftUI, `UITheme` for UIKit, `Typography`, `Spacing`) — never hardcode colors, fonts, or spacing in views.

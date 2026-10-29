@@ -6,7 +6,7 @@ import UIKit
 nonisolated enum Palette {
     static let ink: UInt32 = 0x343434
     static let stone: UInt32 = 0x8E8B82
-    static let sand: UInt32 = 0xC8A47A
+    static let sand: UInt32 = 0xD4B48C
     static let paper: UInt32 = 0xF3F3F3
     /// Dark-mode background: near-black, a shade deeper than ink.
     static let night: UInt32 = 0x121212
