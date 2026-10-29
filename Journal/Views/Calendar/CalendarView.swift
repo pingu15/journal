@@ -18,7 +18,7 @@ struct CalendarView: View {
 
     private let calendar = Calendar.current
     private let monthRange = -120...24
-    private let gap: CGFloat = 6
+    private let gap: CGFloat = 3
     private let inset = Spacing.m + 4
 
     var body: some View {
