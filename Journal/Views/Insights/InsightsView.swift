@@ -21,7 +21,8 @@ struct InsightsView: View {
                     .padding(.top, 120)
                 } else {
                     let stats = JournalStats(entries: entries)
-                    VStack(alignment: .leading, spacing: Spacing.l) {
+                    // As far between sections as from each heading to its content.
+                    VStack(alignment: .leading, spacing: Spacing.m) {
                         InsightSection(title: "Writing activity") {
                             ActivityHeatmap(wordsByDay: stats.wordsByDay)
                         }
