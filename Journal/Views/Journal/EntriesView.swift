@@ -22,6 +22,8 @@ struct EntriesView: View {
     @State private var releasedSource: PersistentIdentifier?
 
     private static let topID = "top"
+    /// Where row separators start, from a row's content edge; month labels start there too.
+    static let separatorInset = Spacing.s
 
     var body: some View {
         @Bindable var router = router
@@ -217,9 +219,17 @@ struct EntriesView: View {
                         EntryRow(entry: entry, dateStyle: dateStyle)
                     }
                 }
+                // The text and photo end as far in from the right as the month labels start from
+                // the left.
+                .padding(.trailing, Self.separatorInset)
         }
         .listRowBackground(Theme.background)
         .listRowSeparatorTint(Theme.hairline)
+        // Every separator starts at the same point (by default each follows its row's weekday
+        // label, so they differed row to row) and ends where the row's content does, and the month
+        // labels start where it does.
+        .alignmentGuide(.listRowSeparatorLeading) { _ in Self.separatorInset }
+        .alignmentGuide(.listRowSeparatorTrailing) { d in d.width - Self.separatorInset }
         .swipeActions(edge: .trailing) {
             Button("Delete", systemImage: "trash", role: .destructive) {
                 withAnimation { entry.moveToTrash() }
@@ -294,7 +304,8 @@ private struct SectionLabel: View {
             .frame(maxWidth: .infinity, alignment: .leading)
             .padding(.top, Spacing.l)
             .padding(.bottom, Spacing.xs)
-            .listRowInsets(EdgeInsets(top: 0, leading: Spacing.m, bottom: 0, trailing: Spacing.m))
+            // In line with the row separators.
+            .listRowInsets(EdgeInsets(top: 0, leading: Spacing.m + EntriesView.separatorInset, bottom: 0, trailing: Spacing.m))
             .listRowBackground(Color.clear)
             .listRowSeparator(.hidden)
             .accessibilityAddTraits(.isHeader)
