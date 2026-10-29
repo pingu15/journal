@@ -42,10 +42,7 @@ struct EntriesView: View {
             .navigationDestination(for: Entry.self) { entry in
                 EntryEditorView(entry: entry)
                     .navigationTransition(.zoom(sourceID: entry.id, in: transition))
-                    .slidesBackOnEdgeSwipe(
-                        onOpened: { releasedSource = entry.id },
-                        beforeZoomBack: { releasedSource = nil }
-                    )
+                    .slidesBack(onOpened: { releasedSource = entry.id })
             }
             .overlay(alignment: .bottomTrailing) {
                 if filter == .all && !searchActive {
@@ -206,16 +203,16 @@ struct EntriesView: View {
     /// A plain button rather than a NavigationLink, so rows carry no disclosure chevron.
     private func row(for entry: Entry, dateStyle: EntryRow.DateStyle = .day) -> some View {
         Button {
-            // The stand-in outlives an edge swipe home (the real row comes back a moment after the
+            // The stand-in outlives the slide home (the real row comes back a moment after the
             // pop), so it leaves only once a row is opened again.
             releasedSource = nil
             router.journalPath.append(entry)
         } label: {
             EntryRow(entry: entry, dateStyle: dateStyle)
                 .matchedTransitionSource(id: entry.id, in: transition)
-                // The zoom hides its source for as long as the entry is open, and an edge swipe
-                // never brings it back. So once the entry is open a copy of the row stands in for
-                // it (showing behind a swiped page), and leaves just before a zoom back home.
+                // The zoom hides its source for as long as the entry is open, and the slide back
+                // doesn't bring it back in time. So once the entry is open a copy of the row stands
+                // in for it (showing behind the sliding page).
                 .overlay {
                     if releasedSource == entry.id {
                         EntryRow(entry: entry, dateStyle: dateStyle)
