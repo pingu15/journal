@@ -250,7 +250,7 @@ private struct DayCell: View {
                 } else if info != nil {
                     // Written day: sand, a shade deeper when selected.
                     shape.fill(Theme.accent)
-                    if isSelected { shape.fill(Theme.onAccent.opacity(0.25)) }
+                    if isSelected { shape.fill(Color.black.opacity(0.15)) }
                 } else {
                     shape.fill(Theme.primaryText.opacity(0.05))
                 }

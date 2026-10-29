@@ -6,7 +6,7 @@ import UIKit
 nonisolated enum Palette {
     static let ink: UInt32 = 0x343434
     static let stone: UInt32 = 0x8E8B82
-    static let sand: UInt32 = 0xE9DCBE
+    static let sand: UInt32 = 0xDBC3A2
     static let paper: UInt32 = 0xF3F3F3
     /// Dark-mode background: near-black, a shade deeper than ink.
     static let night: UInt32 = 0x121212
@@ -27,13 +27,13 @@ enum UITheme {
 }
 
 /// Semantic colors. Light mode is ink on paper; dark mode is paper on night.
-/// Sand is the single accent, used for fills (buttons, highlights) with ink on top.
+/// Sand is the single accent, used for fills (buttons, highlights) with white on top.
 enum Theme {
     static let background = Color(uiColor: UITheme.background)
     static let primaryText = Color(uiColor: UITheme.primaryText)
     static let secondaryText = Color(uiColor: UITheme.secondaryText)
     static let accent = Color(uiColor: UITheme.accent)
-    static let onAccent = Color(light: Palette.ink, dark: Palette.ink)
+    static let onAccent = Color.white
     static let hairline = Color(uiColor: UITheme.secondaryText).opacity(0.25)
     static let surface = Color(uiColor: UITheme.surface)
     /// A shade off the background, for bands that set a row apart (calendar month titles).

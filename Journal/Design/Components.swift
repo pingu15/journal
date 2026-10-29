@@ -137,10 +137,11 @@ private struct PageTitle: ViewModifier {
         .background(Theme.accent)
         .navigationTitle(name)
         .navigationBarTitleDisplayMode(.inline)
-        // The bar sits on sand in both modes, so its buttons and the status bar stay dark (ink).
+        // The bar sits on sand in both modes, so its buttons are white. (The status bar picks its
+        // own color from what's behind it, and on sand it goes dark.)
         .toolbarBackground(Theme.accent, for: .navigationBar)
         .toolbarBackground(.visible, for: .navigationBar)
-        .toolbarColorScheme(.light, for: .navigationBar)
+        .toolbarColorScheme(.dark, for: .navigationBar)
         .toolbar {
             ToolbarItem(placement: .principal) {
                 // Keeps the system from drawing the navigation title in the bar.
@@ -161,7 +162,7 @@ private struct PageTitle: ViewModifier {
     }
 }
 
-/// A tab's large serif title (and optional meta line), in ink on the sand band above the page's
+/// A tab's large serif title (and optional meta line), in white on the sand band above the page's
 /// content (see `pageTitle`) — every tab puts it in the same place, a little below the toolbar row.
 struct LargePageTitle: View {
     let title: String
@@ -181,11 +182,11 @@ struct LargePageTitle: View {
                 .minimumScaleFactor(0.7)
                 .accessibilityAddTraits(.isHeader)
             if let subtitle {
-                // Ink rather than stone: stone is too faint on sand.
+                // White rather than stone: stone is too faint on sand.
                 Text(subtitle.uppercased())
                     .font(Typography.meta)
                     .tracking(Typography.metaTracking)
-                    .foregroundStyle(Theme.onAccent.opacity(0.65))
+                    .foregroundStyle(Theme.onAccent.opacity(0.85))
             }
         }
         .frame(maxWidth: .infinity, alignment: .leading)
@@ -269,8 +270,8 @@ struct ExpandingSearchBar: View {
             }
         }
         .frame(height: size)
-        // It sits on the sand band in both modes, like the bar's own buttons.
-        .environment(\.colorScheme, .light)
+        // It sits on the sand band in both modes, white like the bar's own buttons.
+        .environment(\.colorScheme, .dark)
         .onAppear {
             withAnimation(.snappy) { expanded = true }
             guard focusOnAppear else { return }
