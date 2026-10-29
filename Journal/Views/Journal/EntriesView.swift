@@ -20,7 +20,7 @@ struct EntriesView: View {
 
     private static let topID = "top"
     /// Where row separators start, from a row's content edge; month labels start there too.
-    static let separatorInset = Spacing.s - 2
+    static let separatorInset = Spacing.xs
 
     var body: some View {
         @Bindable var router = router
@@ -139,9 +139,10 @@ struct EntriesView: View {
 
             // Section labels are ordinary rows rather than headers, so they scroll away instead of
             // pinning under the bar.
-            if searchText.isEmpty && !onThisDay.isEmpty {
+            let showsOnThisDay = searchText.isEmpty && !onThisDay.isEmpty
+            if showsOnThisDay {
                 Section {
-                    SectionLabel("On this day")
+                    SectionLabel("On this day", isFirst: true)
                     ForEach(onThisDay) { entry in
                         row(for: entry, dateStyle: .dayAndYear)
                     }
@@ -150,7 +151,10 @@ struct EntriesView: View {
 
             ForEach(sections, id: \.month) { section in
                 Section {
-                    SectionLabel(section.month.formatted(.dateTime.month(.wide).year()))
+                    SectionLabel(
+                        section.month.formatted(.dateTime.month(.wide).year()),
+                        isFirst: !showsOnThisDay && section.month == sections.first?.month
+                    )
                     ForEach(section.entries) { entry in
                         row(for: entry)
                     }
@@ -268,15 +272,19 @@ struct EntriesView: View {
 /// A month or "On this day" label, as a row of its own.
 private struct SectionLabel: View {
     let text: String
+    /// The top label sits as far below the card's edge (with the list's top marker) as the
+    /// Insights tab's first heading; the rest keep a wider gap from the rows above.
+    let isFirst: Bool
 
-    init(_ text: String) {
+    init(_ text: String, isFirst: Bool = false) {
         self.text = text
+        self.isFirst = isFirst
     }
 
     var body: some View {
         MetaLabel(text)
             .frame(maxWidth: .infinity, alignment: .leading)
-            .padding(.top, Spacing.l)
+            .padding(.top, isFirst ? Spacing.m : Spacing.l)
             .padding(.bottom, Spacing.xs)
             // In line with the row separators.
             .listRowInsets(EdgeInsets(top: 0, leading: Spacing.m + EntriesView.separatorInset, bottom: 0, trailing: Spacing.m))
