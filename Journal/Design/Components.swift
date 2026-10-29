@@ -85,48 +85,37 @@ enum ThumbnailCache {
     }
 }
 
-/// How far the page has scrolled through its title transition: 0 at rest, 1 once the large title
-/// has gone under the bar. Driven continuously by scroll position (like a system large title), and
-/// kept in its own observable so only the title views re-render while scrolling.
-@Observable
-final class TitleScroll {
-    var progress: Double = 0
-}
-
 extension View {
-    /// Apply to the page's scroll view. `range` is the scroll offset over which the title hands off —
-    /// by default, while a `LargePageTitle` at the top of the content slides under the bar.
-    func tracksTitleScroll(_ scroll: TitleScroll, range: ClosedRange<CGFloat> = 24...64) -> some View {
-        onScrollGeometryChange(for: Double.self) { geometry in
-            let offset = geometry.contentOffset.y + geometry.contentInsets.top
-            let raw = Double((offset - range.lowerBound) / (range.upperBound - range.lowerBound))
-            // Quantized so scrolling outside the hand-off never touches state.
-            return (min(max(raw, 0.0), 1.0) * 24.0).rounded() / 24.0
-        } action: { _, progress in
-            if scroll.progress != progress { scroll.progress = progress }
-        }
-    }
-
-    /// The small centered title that fades in once the page's `LargePageTitle` has scrolled away.
-    func inlinePageTitle(
-        _ title: String,
-        navigationTitle: String? = nil,
-        scroll: TitleScroll,
-        isHidden: Bool = false
-    ) -> some View {
-        self
-            .navigationTitle(navigationTitle ?? title)
-            .navigationBarTitleDisplayMode(.inline)
-            .toolbar {
-                ToolbarItem(placement: .principal) {
-                    if isHidden {
-                        // Leaves the bar free for a wide leading item without the system drawing its own title.
-                        Color.clear.frame(width: 1, height: 1)
-                    } else {
-                        InlineTitle(title: title, scroll: scroll)
-                    }
-                }
+    /// A tab's page: its `LargePageTitle` (and optional meta line) stays in place above the page's
+    /// scrolling content, which scrolls beneath it; the bar carries no title of its own.
+    /// `isHidden` lifts the title away (while searching, so results start under the bar).
+    func pageTitle(_ title: String, subtitle: String? = nil, isHidden: Bool = false) -> some View {
+        VStack(spacing: 0) {
+            if !isHidden {
+                LargePageTitle(title, subtitle: subtitle)
+                    .padding(.horizontal, Spacing.m)
+                    .padding(.bottom, Spacing.xs)
+                    .transition(.opacity)
             }
+            // Content fades out as it scrolls up to the title, rather than being cut off.
+            self.mask {
+                VStack(spacing: 0) {
+                    LinearGradient(colors: [.clear, .black], startPoint: .top, endPoint: .bottom)
+                        .frame(height: isHidden ? 0 : Spacing.m)
+                    Color.black
+                }
+                .ignoresSafeArea()
+            }
+        }
+        .background(Theme.background)
+        .navigationTitle(title)
+        .navigationBarTitleDisplayMode(.inline)
+        .toolbar {
+            ToolbarItem(placement: .principal) {
+                // Keeps the system from drawing the navigation title in the bar.
+                Color.clear.frame(width: 1, height: 1)
+            }
+        }
     }
 
     /// Liquid Glass on iOS 26, a material before it — for custom controls that sit in the bar.
@@ -140,17 +129,15 @@ extension View {
     }
 }
 
-/// A tab's large serif title (and optional meta line), at the top of its scrolling content — every
-/// tab puts it in the same place, a little below the toolbar row.
+/// A tab's large serif title (and optional meta line), fixed above its scrolling content (see
+/// `pageTitle`) — every tab puts it in the same place, a little below the toolbar row.
 struct LargePageTitle: View {
     let title: String
     var subtitle: String?
-    var topPadding: CGFloat
 
-    init(_ title: String, subtitle: String? = nil, topPadding: CGFloat = Spacing.l) {
+    init(_ title: String, subtitle: String? = nil) {
         self.title = title
         self.subtitle = subtitle
-        self.topPadding = topPadding
     }
 
     var body: some View {
@@ -166,26 +153,8 @@ struct LargePageTitle: View {
             }
         }
         .frame(maxWidth: .infinity, alignment: .leading)
-        .padding(.top, topPadding)
+        .padding(.top, Spacing.l)
         .padding(.bottom, Spacing.xs)
-    }
-}
-
-private struct InlineTitle: View {
-    let title: String
-    let scroll: TitleScroll
-
-    var body: some View {
-        let progress = scroll.progress
-        Text(title)
-            .font(.system(.headline, design: .serif).weight(.bold))
-            .foregroundStyle(Theme.primaryText)
-            .lineLimit(1)
-            .frame(maxWidth: 200)
-            .dynamicTypeSize(...DynamicTypeSize.xxxLarge)
-            .offset(y: 6 * (1 - progress))
-            .opacity(progress)
-            .accessibilityHidden(progress < 0.5)
     }
 }
 

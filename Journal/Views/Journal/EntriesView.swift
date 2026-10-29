@@ -16,7 +16,6 @@ struct EntriesView: View {
     /// False when search opens with a query already filled in (a tapped tag), so results aren't hidden by the keyboard.
     @State private var focusSearchOnOpen = true
     @FocusState private var isSearching: Bool
-    @State private var titleScroll = TitleScroll()
     @State private var filter = JournalFilter.all
     @State private var newEntryCount = 0
     @Namespace private var transition
@@ -37,13 +36,7 @@ struct EntriesView: View {
                         }
                     }
             }
-            .background(Theme.background)
-            .inlinePageTitle(
-                filter == .all ? JournalName.default : "Recently Deleted",
-                navigationTitle: pageName,
-                scroll: titleScroll,
-                isHidden: searchActive
-            )
+            .pageTitle(pageName, subtitle: filter == .all ? yearSpan : nil, isHidden: searchActive)
             .toolbar { toolbarContent }
             .navigationDestination(for: Entry.self) { entry in
                 EntryEditorView(entry: entry)
@@ -88,9 +81,6 @@ struct EntriesView: View {
                 releasedSource = nil
                 Entry.deleteBlankEntries(in: context, keeping: router.openEntries)
             }
-        }
-        .onChange(of: filter) {
-            titleScroll.progress = 0
         }
         .onChange(of: router.pendingNewEntry, initial: true) { _, pending in
             guard pending else { return }
@@ -148,15 +138,15 @@ struct EntriesView: View {
         case .all:
             timeline
         case .recentlyDeleted:
-            TrashList(entries: trashed.filter { $0.matches(searchText) }, titleScroll: titleScroll) {
-                header
+            TrashList(entries: trashed.filter { $0.matches(searchText) }) {
+                topMarker
             }
         }
     }
 
     private var timeline: some View {
         List {
-            header
+            topMarker
 
             if entries.isEmpty {
                 ContentUnavailableView {
@@ -201,22 +191,15 @@ struct EntriesView: View {
         .environment(\.defaultMinListRowHeight, 0)
         .scrollContentBackground(.hidden)
         .scrollDismissesKeyboard(.immediately)
-        .tracksTitleScroll(titleScroll)
         // Room for the floating new-entry button below the last row.
         .contentMargins(.bottom, 96, for: .scrollContent)
     }
 
-    /// The page's large title and year span — hidden while searching, so results start under the bar.
-    private var header: some View {
-        Group {
-            if searchActive {
-                Color.clear.frame(height: Spacing.xs)
-            } else {
-                LargePageTitle(pageName, subtitle: filter == .all ? yearSpan : nil)
-                    .transition(.opacity)
-            }
-        }
-        .id(Self.topID)
+    /// The top of the list, for scrolling back to when search opens.
+    private var topMarker: some View {
+        Color.clear
+            .frame(height: Spacing.xs)
+            .id(Self.topID)
         .listRowInsets(EdgeInsets(top: 0, leading: Spacing.m, bottom: 0, trailing: Spacing.m))
         .listRowBackground(Color.clear)
         .listRowSeparator(.hidden)
@@ -335,7 +318,6 @@ private struct SectionLabel: View {
 /// Deleted entries, kept for `Entry.trashRetentionDays` days.
 private struct TrashList<Header: View>: View {
     let entries: [Entry]
-    let titleScroll: TitleScroll
     @ViewBuilder let header: Header
 
     @Environment(\.modelContext) private var context
@@ -403,7 +385,6 @@ private struct TrashList<Header: View>: View {
         .environment(\.defaultMinListRowHeight, 0)
         .scrollContentBackground(.hidden)
         .scrollDismissesKeyboard(.immediately)
-        .tracksTitleScroll(titleScroll)
         .overlay {
             // Centered on the screen rather than placed in the list.
             if entries.isEmpty {

@@ -15,12 +15,6 @@ struct CalendarView: View {
     @State private var visibleMonth: Int? = 0
     @State private var openDay: DaySelection?
     @State private var newEntryCount = 0
-    /// The calendar has no large title to scroll away (it scrolls both ways), so the small one shows throughout.
-    @State private var titleScroll: TitleScroll = {
-        let scroll = TitleScroll()
-        scroll.progress = 1
-        return scroll
-    }()
 
     private let calendar = Calendar.current
     private let monthRange = -120...24
@@ -64,8 +58,8 @@ struct CalendarView: View {
                         Rectangle().fill(Theme.hairline).frame(height: 1)
                     }
             }
-            .background(Theme.background)
-            .inlinePageTitle("Calendar", scroll: titleScroll)
+            // The meta line names the year of the month in view (month titles only add it outside this year).
+            .pageTitle("Calendar", subtitle: String(calendar.component(.year, from: month(at: visibleMonth ?? 0))))
             .toolbar {
                 ToolbarItem(placement: .topBarTrailing) {
                     Button("Today", systemImage: "\(calendar.component(.day, from: .now)).square") {

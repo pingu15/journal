@@ -6,14 +6,9 @@ struct InsightsView: View {
     @Query(filter: #Predicate<Entry> { $0.deletedAt == nil }, sort: \Entry.createdAt, order: .reverse)
     private var entries: [Entry]
 
-    @State private var titleScroll = TitleScroll()
-
     var body: some View {
         NavigationStack {
             ScrollView {
-                LargePageTitle("Insights", topPadding: Spacing.xs)
-                    .padding(.horizontal, Spacing.m)
-
                 if entries.isEmpty {
                     ContentUnavailableView {
                         Text("Nothing to see yet")
@@ -45,9 +40,7 @@ struct InsightsView: View {
                     .padding(.bottom, Spacing.l)
                 }
             }
-            .tracksTitleScroll(titleScroll)
-            .background(Theme.background)
-            .inlinePageTitle("Insights", scroll: titleScroll)
+            .pageTitle("Insights")
             .toolbar {
                 ToolbarItem(placement: .topBarTrailing) {
                     SettingsButton()
