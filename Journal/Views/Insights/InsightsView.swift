@@ -22,9 +22,11 @@ struct InsightsView: View {
                 } else {
                     let stats = JournalStats(entries: entries)
                     VStack(alignment: .leading, spacing: Spacing.l + Spacing.s) {
-                        StatGrid(stats: stats)
                         InsightSection(title: "Writing activity") {
                             ActivityHeatmap(wordsByDay: stats.wordsByDay)
+                        }
+                        InsightSection(title: "Insights") {
+                            StatGrid(stats: stats)
                         }
                     }
                     .padding(.horizontal, Spacing.m + 4)
