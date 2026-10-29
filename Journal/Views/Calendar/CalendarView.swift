@@ -234,7 +234,7 @@ private struct DayCell: View {
         let isToday = Calendar.current.isDateInToday(day)
         let isFuture = day > .now
         let image = info?.cover.flatMap(ThumbnailCache.image(for:))
-        let shape = RoundedRectangle(cornerRadius: size * 0.22, style: .continuous)
+        let shape = RoundedRectangle(cornerRadius: size * 0.12, style: .continuous)
 
         Button(action: action) {
             ZStack {
