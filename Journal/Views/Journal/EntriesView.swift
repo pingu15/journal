@@ -17,9 +17,6 @@ struct EntriesView: View {
     @FocusState private var isSearching: Bool
     @State private var filter = JournalFilter.all
     @State private var newEntryCount = 0
-    @Namespace private var transition
-    /// The open entry whose row shows a stand-in while the zoom hides it (see `row(for:)`).
-    @State private var releasedSource: PersistentIdentifier?
 
     private static let topID = "top"
     /// Where row separators start, from a row's content edge; month labels start there too.
@@ -41,8 +38,6 @@ struct EntriesView: View {
             .toolbar { toolbarContent }
             .navigationDestination(for: Entry.self) { entry in
                 EntryEditorView(entry: entry)
-                    .navigationTransition(.zoom(sourceID: entry.id, in: transition))
-                    .slidesBack(onOpened: { releasedSource = entry.id })
             }
             .overlay(alignment: .bottomTrailing) {
                 if filter == .all && !searchActive {
@@ -203,21 +198,9 @@ struct EntriesView: View {
     /// A plain button rather than a NavigationLink, so rows carry no disclosure chevron.
     private func row(for entry: Entry, dateStyle: EntryRow.DateStyle = .day) -> some View {
         Button {
-            // The stand-in outlives the slide home (the real row comes back a moment after the
-            // pop), so it leaves only once a row is opened again.
-            releasedSource = nil
             router.journalPath.append(entry)
         } label: {
             EntryRow(entry: entry, dateStyle: dateStyle)
-                .matchedTransitionSource(id: entry.id, in: transition)
-                // The zoom hides its source for as long as the entry is open, and the slide back
-                // doesn't bring it back in time. So once the entry is open a copy of the row stands
-                // in for it (showing behind the sliding page).
-                .overlay {
-                    if releasedSource == entry.id {
-                        EntryRow(entry: entry, dateStyle: dateStyle)
-                    }
-                }
                 // The text and photo end as far in from the right as the month labels start from
                 // the left.
                 .padding(.trailing, Self.separatorInset)

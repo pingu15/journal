@@ -352,35 +352,3 @@ private struct BackMenuRemover: UIViewControllerRepresentable {
         }
     }
 }
-
-extension View {
-    /// For a screen pushed with a zoom transition: it zooms open, but closes — by the back button or
-    /// an edge swipe — by sliding away at full size. `onOpened` runs once the screen has appeared.
-    func slidesBack(onOpened: @escaping () -> Void = {}) -> some View {
-        background(SlideBack(onOpened: onOpened).frame(width: 0, height: 0))
-    }
-}
-
-private struct SlideBack: UIViewControllerRepresentable {
-    let onOpened: () -> Void
-
-    func makeUIViewController(context: Context) -> Controller { Controller() }
-    func updateUIViewController(_ controller: Controller, context: Context) {
-        controller.onOpened = onOpened
-    }
-
-    final class Controller: UIViewController {
-        var onOpened: () -> Void = {}
-        private weak var screen: UIViewController?
-
-        override func viewDidAppear(_ animated: Bool) {
-            super.viewDidAppear(animated)
-            guard let top = navigationController?.topViewController, screen !== top else { return }
-            screen = top
-            // Without a preferred transition the pop is the plain slide (the zoom's own edge pan
-            // shrinks the page, and its back button zooms it into the row).
-            top.preferredTransition = nil
-            onOpened()
-        }
-    }
-}
