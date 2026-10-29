@@ -26,7 +26,7 @@ struct CalendarView: View {
 
         NavigationStack(path: $path) {
             ScrollView {
-                LazyVStack(alignment: .leading, spacing: Spacing.m) {
+                LazyVStack(alignment: .leading, spacing: gap) {
                     ForEach(monthRange, id: \.self) { offset in
                         MonthSection(
                             month: month(at: offset),
@@ -187,7 +187,7 @@ private struct MonthSection: View {
     private let calendar = Calendar.current
 
     var body: some View {
-        VStack(alignment: .leading, spacing: Spacing.m) {
+        VStack(alignment: .leading, spacing: gap) {
             // Set like the editor's date line.
             MetaLabel(month.formatted(.dateTime.month(.wide).year()))
                 .frame(maxWidth: .infinity, alignment: .leading)
