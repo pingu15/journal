@@ -47,7 +47,7 @@ struct CalendarView: View {
             }
             .scrollPosition(id: $visibleMonth, anchor: .top)
             .scrollIndicators(.hidden)
-            // Room for the floating new-entry button below the last month.
+            // Room for the floating tab bar below the last month.
             .contentMargins(.bottom, 96, for: .scrollContent)
             .safeAreaInset(edge: .top, spacing: 0) {
                 weekdayRow
@@ -74,11 +74,6 @@ struct CalendarView: View {
             }
             .navigationDestination(for: Entry.self) { entry in
                 EntryEditorView(entry: entry)
-            }
-            .overlay(alignment: .bottomTrailing) {
-                NewEntryButton(action: { newEntry(on: nil) })
-                    .padding(.trailing, Spacing.l)
-                    .padding(.bottom, Spacing.l)
             }
         }
         // Hidden from the stack, not the editor, so it returns as soon as the editor starts closing.
@@ -121,17 +116,13 @@ struct CalendarView: View {
         }
     }
 
-    /// A new entry for `day` (today when nil).
-    private func newEntry(on day: Date?) {
+    /// A new entry for `day`, once the day sheet is out of the way.
+    private func newEntry(on day: Date) {
         newEntryCount += 1
         let entry = Entry.create(in: context, on: day)
-        if day == nil {
+        Task {
+            try? await Task.sleep(for: .milliseconds(350))
             path.append(entry)
-        } else {
-            Task {
-                try? await Task.sleep(for: .milliseconds(350))
-                path.append(entry)
-            }
         }
     }
 
