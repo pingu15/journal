@@ -23,15 +23,13 @@ struct InsightsView: View {
                     let stats = JournalStats(entries: entries)
                     // As far between sections as from each heading to its content.
                     VStack(alignment: .leading, spacing: Spacing.m) {
+                        StatGrid(stats: stats)
                         InsightSection(title: "Writing activity") {
                             ActivityHeatmap(wordsByDay: stats.wordsByDay)
                         }
-                        InsightSection(title: "Insights") {
-                            StatGrid(stats: stats)
-                        }
                     }
                     .padding(.horizontal, Spacing.m + 4)
-                    // The first heading starts where the journal's first month label does.
+                    // Starts where the journal's first month label does.
                     .padding(.top, Spacing.l)
                     .padding(.bottom, Spacing.l)
                 }
