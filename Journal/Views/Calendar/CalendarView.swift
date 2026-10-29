@@ -25,41 +25,40 @@ struct CalendarView: View {
         let days = dayIndex
 
         NavigationStack(path: $path) {
-            ScrollView {
-                LazyVStack(alignment: .leading, spacing: gap) {
-                    ForEach(monthRange, id: \.self) { offset in
-                        MonthSection(
-                            month: month(at: offset),
-                            days: days,
-                            openDay: openDay?.day,
-                            cellSize: cellSize,
-                            gap: gap,
-                            inset: inset
-                        ) { day in
-                            openDay = DaySelection(day: day)
-                        }
-                        .id(offset)
-                    }
-                }
-                .scrollTargetLayout()
-                .padding(.bottom, Spacing.m)
-                .onGeometryChange(for: CGFloat.self, of: { $0.size.width - inset * 2 }) { width = $0 }
-            }
-            .scrollPosition(id: $visibleMonth, anchor: .top)
-            .scrollIndicators(.hidden)
-            // Room for the floating tab bar below the last month.
-            .contentMargins(.bottom, 96, for: .scrollContent)
-            .safeAreaInset(edge: .top, spacing: 0) {
+            // The weekday row sits above the scroll rather than in its safe-area inset: as an
+            // inset, the opening scroll position put this month's title under it.
+            VStack(spacing: 0) {
                 weekdayRow
                     .padding(.horizontal, inset)
                     .padding(.vertical, Spacing.s + 3)
-                    .background(Theme.background)
                     .overlay(alignment: .bottom) {
                         Rectangle().fill(Theme.hairline).frame(height: 1)
                     }
-                    // Taps on the row do nothing (otherwise they scroll the calendar to its top).
-                    .contentShape(.rect)
-                    .onTapGesture {}
+
+                ScrollView {
+                    LazyVStack(alignment: .leading, spacing: gap) {
+                        ForEach(monthRange, id: \.self) { offset in
+                            MonthSection(
+                                month: month(at: offset),
+                                days: days,
+                                openDay: openDay?.day,
+                                cellSize: cellSize,
+                                gap: gap,
+                                inset: inset
+                            ) { day in
+                                openDay = DaySelection(day: day)
+                            }
+                            .id(offset)
+                        }
+                    }
+                    .scrollTargetLayout()
+                    .padding(.bottom, Spacing.m)
+                    .onGeometryChange(for: CGFloat.self, of: { $0.size.width - inset * 2 }) { width = $0 }
+                }
+                .scrollPosition(id: $visibleMonth, anchor: .top)
+                .scrollIndicators(.hidden)
+                // Room for the floating tab bar below the last month.
+                .contentMargins(.bottom, 96, for: .scrollContent)
             }
             .pageTitle()
             .toolbar {
