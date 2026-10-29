@@ -138,7 +138,7 @@ private struct PageTitle: ViewModifier {
         .navigationTitle(name)
         .navigationBarTitleDisplayMode(.inline)
         // The bar sits on sand in both modes, so its buttons are white. (The status bar picks its
-        // own color from what's behind it, and on sand it goes dark.)
+        // own color from what's behind it.)
         .toolbarBackground(Theme.accent, for: .navigationBar)
         .toolbarBackground(.visible, for: .navigationBar)
         .toolbarColorScheme(.dark, for: .navigationBar)
