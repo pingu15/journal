@@ -185,10 +185,9 @@ private struct MonthSection: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: Spacing.m) {
-            Text(month.formatted(calendar.isDate(month, equalTo: .now, toGranularity: .year)
-                                 ? .dateTime.month(.wide) : .dateTime.month(.wide).year()))
-                .font(.system(.title3).weight(.light))
-                .foregroundStyle(Theme.primaryText)
+            // Set like the editor's date line.
+            MetaLabel(month.formatted(calendar.isDate(month, equalTo: .now, toGranularity: .year)
+                                      ? .dateTime.month(.wide) : .dateTime.month(.wide).year()))
                 .frame(maxWidth: .infinity, alignment: .leading)
                 .padding(.horizontal, inset)
                 .padding(.vertical, Spacing.s + 2)
