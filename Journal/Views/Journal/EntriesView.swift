@@ -17,6 +17,7 @@ struct EntriesView: View {
     @FocusState private var isSearching: Bool
     @State private var filter = JournalFilter.all
     @State private var newEntryCount = 0
+    @State private var labelTops = LabelTops()
 
     private static let topID = "top"
     /// Where row separators start, from a row's content edge; month labels start there too.
@@ -139,37 +140,55 @@ struct EntriesView: View {
                     .listRowSeparator(.hidden)
             }
 
-            // Each section's label is its header, so the current one stays pinned at the top.
-            if searchText.isEmpty && !onThisDay.isEmpty {
+            // Section labels are ordinary rows; the one for the section at the top is drawn again,
+            // pinned, over the list (`PinnedSectionLabel`). A list's own pinned headers faded out, under
+            // the rows, as the next one came up.
+            ForEach(labelledSections, id: \.id) { section in
                 Section {
-                    ForEach(onThisDay) { entry in
-                        row(for: entry, dateStyle: .dayAndYear, isFirst: entry.id == onThisDay.first?.id)
+                    SectionLabel(section.title) { top in
+                        labelTops.tops[section.id] = top
                     }
-                } header: {
-                    SectionLabel("On this day")
-                }
-            }
-
-            ForEach(sections, id: \.month) { section in
-                Section {
                     ForEach(section.entries) { entry in
-                        row(for: entry, isFirst: entry.id == section.entries.first?.id)
+                        row(for: entry, dateStyle: section.dateStyle, isFirst: entry.id == section.entries.first?.id)
                     }
-                } header: {
-                    SectionLabel(section.month.formatted(.dateTime.month(.wide).year()))
                 }
             }
         }
         .listStyle(.plain)
-        // A pinned label being pushed out by the next one shouldn't fade as it goes.
+        // Rows pass under the pinned label with a clean edge, not iOS 26's soft fade.
         .hidesTopScrollEdgeEffect()
         .listSectionSpacing(0)
         .environment(\.defaultMinListRowHeight, 0)
-        .environment(\.defaultMinListHeaderHeight, 0)
         .scrollContentBackground(.hidden)
         .scrollDismissesKeyboard(.immediately)
         // Room for the floating new-entry button below the last row.
         .contentMargins(.bottom, 96, for: .scrollContent)
+        .onGeometryChange(for: CGFloat.self) { $0.frame(in: .global).minY } action: { labelTops.listTop = $0 }
+        .overlay {
+            // Clipped to the list, so a label pushed up out of it doesn't show above the card.
+            Color.clear
+                .overlay(alignment: .top) {
+                    PinnedSectionLabel(sections: labelledSections.map { ($0.id, $0.title) }, labelTops: labelTops)
+                }
+                .clipped()
+        }
+    }
+
+    /// "On this day" (when it shows), then each month, newest first.
+    private var labelledSections: [LabelledSection] {
+        var result: [LabelledSection] = []
+        if searchText.isEmpty && !onThisDay.isEmpty {
+            result.append(LabelledSection(id: .distantFuture, title: "On this day", entries: onThisDay, dateStyle: .dayAndYear))
+        }
+        for section in sections {
+            result.append(LabelledSection(
+                id: section.month,
+                title: section.month.formatted(.dateTime.month(.wide).year()),
+                entries: section.entries,
+                dateStyle: .day
+            ))
+        }
+        return result
     }
 
     /// The top of the list, for scrolling back to when search opens.
@@ -283,10 +302,32 @@ struct EntriesView: View {
 /// as far below the card's top edge, or the separator above it, as the label's top padding.
 private struct SectionLabel: View {
     let text: String
+    /// Reports the label's top on screen as it moves (a coordinate space named on the list doesn't
+    /// reach into its rows).
+    let onTopChange: (CGFloat) -> Void
 
-    init(_ text: String) {
+    init(_ text: String, onTopChange: @escaping (CGFloat) -> Void) {
         self.text = text
+        self.onTopChange = onTopChange
     }
+
+    var body: some View {
+        SectionLabelContent(text: text)
+            .onGeometryChange(for: CGFloat.self) { proxy in
+                proxy.frame(in: .global).minY
+            } action: { top in
+                onTopChange(top)
+            }
+            .listRowInsets(EdgeInsets())
+            .listRowBackground(Color.clear)
+            .listRowSeparator(.hidden)
+            .accessibilityAddTraits(.isHeader)
+    }
+}
+
+/// A section label's look, shared by its row and the pinned copy over the list.
+private struct SectionLabelContent: View {
+    let text: String
 
     var body: some View {
         MetaLabel(text)
@@ -298,10 +339,50 @@ private struct SectionLabel: View {
             // In line with the row separators.
             .padding(.leading, Spacing.m + EntriesView.separatorInset)
             .padding(.trailing, Spacing.m)
-            // Edge to edge, so rows passing under a pinned label don't show beside it.
+            // Edge to edge, so rows passing under the pinned label don't show beside it.
             .background(Theme.background)
-            .listRowInsets(EdgeInsets())
-            .accessibilityAddTraits(.isHeader)
+    }
+}
+
+private struct LabelledSection {
+    let id: Date
+    let title: String
+    let entries: [Entry]
+    let dateStyle: EntryRow.DateStyle
+}
+
+/// Where each section's label row sits (its top on screen), as last reported, and the list's top.
+/// Kept in an object the list only holds, so the scroll redraws just the pinned label.
+@Observable
+private final class LabelTops {
+    var tops: [Date: CGFloat] = [:]
+    var listTop: CGFloat = 0
+
+    /// A label's top relative to the list's.
+    func top(of id: Date) -> CGFloat? {
+        tops[id].map { $0 - listTop }
+    }
+}
+
+/// The label of the section at the top of the list, drawn over it. It covers that section's own label
+/// while it's in place, stays at the top once it has scrolled past, and is pushed up by the next
+/// section's label as that one arrives — moving with it, never fading.
+private struct PinnedSectionLabel: View {
+    let sections: [(id: Date, title: String)]
+    let labelTops: LabelTops
+    @State private var height: CGFloat = 0
+
+    var body: some View {
+        // The last section whose label has reached the top.
+        if let index = sections.lastIndex(where: { (labelTops.top(of: $0.id) ?? .infinity) <= 0 }) {
+            let nextTop = sections.indices.contains(index + 1) ? labelTops.top(of: sections[index + 1].id) : nil
+            SectionLabelContent(text: sections[index].title)
+                .onGeometryChange(for: CGFloat.self, of: \.size.height) { height = $0 }
+                .offset(y: min(0, (nextTop ?? .infinity) - height))
+                // Drags go through to the list beneath.
+                .allowsHitTesting(false)
+                .accessibilityHidden(true)
+        }
     }
 }
 
