@@ -1,3 +1,4 @@
+import SwiftData
 import SwiftUI
 
 /// Small uppercase tracked label used for dates, section headers and stat captions.
@@ -86,36 +87,13 @@ enum ThumbnailCache {
 }
 
 extension View {
-    /// A tab's page: its `LargePageTitle` (and optional meta line) stays in place above the page's
-    /// scrolling content, which scrolls beneath it; the bar carries no title of its own.
-    /// `isHidden` lifts the title away (while searching, so results start under the bar).
-    func pageTitle(_ title: String, subtitle: String? = nil, isHidden: Bool = false) -> some View {
-        VStack(spacing: 0) {
-            if !isHidden {
-                LargePageTitle(title, subtitle: subtitle)
-                    .padding(.horizontal, Spacing.m)
-                    .padding(.bottom, Spacing.xs)
-                    .transition(.opacity)
-            }
-            // Content fades out as it scrolls up to the title, rather than being cut off.
-            self.mask {
-                VStack(spacing: 0) {
-                    LinearGradient(colors: [.clear, .black], startPoint: .top, endPoint: .bottom)
-                        .frame(height: isHidden ? 0 : Spacing.m)
-                    Color.black
-                }
-                .ignoresSafeArea()
-            }
-        }
-        .background(Theme.background)
-        .navigationTitle(title)
-        .navigationBarTitleDisplayMode(.inline)
-        .toolbar {
-            ToolbarItem(placement: .principal) {
-                // Keeps the system from drawing the navigation title in the bar.
-                Color.clear.frame(width: 1, height: 1)
-            }
-        }
+    /// A tab's page: the journal's name and year span (`LargePageTitle`) stay in place on a sand
+    /// band, and the page's content scrolls in a card with rounded top corners below it; the bar
+    /// carries no title of its own. `title` replaces the journal name (e.g. "Recently Deleted",
+    /// which has no year span); `isHidden` lifts the title away (while searching, so results start
+    /// under the bar).
+    func pageTitle(_ title: String? = nil, isHidden: Bool = false) -> some View {
+        modifier(PageTitle(title: title, isHidden: isHidden))
     }
 
     /// Liquid Glass on iOS 26, a material before it — for custom controls that sit in the bar.
@@ -129,8 +107,62 @@ extension View {
     }
 }
 
-/// A tab's large serif title (and optional meta line), fixed above its scrolling content (see
-/// `pageTitle`) — every tab puts it in the same place, a little below the toolbar row.
+private struct PageTitle: ViewModifier {
+    let title: String?
+    let isHidden: Bool
+
+    @AppStorage(JournalName.storageKey) private var journalName = JournalName.default
+    @Query(filter: #Predicate<Entry> { $0.deletedAt == nil }, sort: \Entry.createdAt)
+    private var entries: [Entry]
+
+    func body(content: Content) -> some View {
+        let name = title ?? JournalName.display(journalName)
+
+        VStack(spacing: 0) {
+            if !isHidden {
+                LargePageTitle(name, subtitle: title == nil ? yearSpan : nil)
+                    .padding(.horizontal, Spacing.m)
+                    .padding(.bottom, Spacing.m)
+                    .transition(.opacity)
+            }
+            content
+                .background(Theme.background)
+                .clipShape(UnevenRoundedRectangle(
+                    topLeadingRadius: Self.cornerRadius,
+                    topTrailingRadius: Self.cornerRadius,
+                    style: .continuous
+                ))
+                .ignoresSafeArea(edges: .bottom)
+        }
+        .background(Theme.accent)
+        .navigationTitle(name)
+        .navigationBarTitleDisplayMode(.inline)
+        // The bar sits on sand in both modes, so its buttons and the status bar stay dark (ink).
+        .toolbarBackground(Theme.accent, for: .navigationBar)
+        .toolbarBackground(.visible, for: .navigationBar)
+        .toolbarColorScheme(.light, for: .navigationBar)
+        .toolbar {
+            ToolbarItem(placement: .principal) {
+                // Keeps the system from drawing the navigation title in the bar.
+                Color.clear.frame(width: 1, height: 1)
+            }
+        }
+    }
+
+    static let cornerRadius: CGFloat = 28
+
+    /// "2025 – 2026", or a single year, spanning the first and latest entries.
+    private var yearSpan: String? {
+        guard let oldest = entries.first?.createdAt, let newest = entries.last?.createdAt else { return nil }
+        let calendar = Calendar.current
+        let first = calendar.component(.year, from: oldest)
+        let last = calendar.component(.year, from: newest)
+        return first == last ? String(first) : "\(first) – \(last)"
+    }
+}
+
+/// A tab's large serif title (and optional meta line), in ink on the sand band above the page's
+/// content (see `pageTitle`) — every tab puts it in the same place, a little below the toolbar row.
 struct LargePageTitle: View {
     let title: String
     var subtitle: String?
@@ -144,17 +176,20 @@ struct LargePageTitle: View {
         VStack(alignment: .leading, spacing: Spacing.s - 2) {
             Text(title)
                 .font(.system(.largeTitle, design: .serif).weight(.bold))
-                .foregroundStyle(Theme.primaryText)
+                .foregroundStyle(Theme.onAccent)
                 .lineLimit(2)
                 .minimumScaleFactor(0.7)
                 .accessibilityAddTraits(.isHeader)
             if let subtitle {
-                MetaLabel(subtitle)
+                // Ink rather than stone: stone is too faint on sand.
+                Text(subtitle.uppercased())
+                    .font(Typography.meta)
+                    .tracking(Typography.metaTracking)
+                    .foregroundStyle(Theme.onAccent.opacity(0.65))
             }
         }
         .frame(maxWidth: .infinity, alignment: .leading)
         .padding(.top, Spacing.l)
-        .padding(.bottom, Spacing.xs)
     }
 }
 
@@ -180,6 +215,7 @@ struct ExpandingSearchBar: View {
     let onClose: () -> Void
 
     @State private var expanded = false
+    @Environment(\.colorScheme) private var colorScheme
     private let size: CGFloat = 44
 
     var body: some View {
@@ -188,21 +224,23 @@ struct ExpandingSearchBar: View {
                 HStack(spacing: 0) {
                     Image(systemName: "magnifyingglass")
                         .font(.body.weight(.medium))
-                        .foregroundStyle(expanded ? Theme.secondaryText : Theme.primaryText)
+                        .foregroundStyle(expanded ? Theme.onAccent.opacity(0.6) : Theme.onAccent)
                         .frame(width: size, height: size)
                     if expanded {
-                        TextField(prompt, text: $text)
+                        TextField(prompt, text: $text, prompt: Text(prompt).foregroundStyle(Theme.onAccent.opacity(0.5)))
                             .focused(isFocused)
                             .submitLabel(.search)
                             .onSubmit { isFocused.wrappedValue = false }
                             .autocorrectionDisabled()
                             .textInputAutocapitalization(.never)
-                            .foregroundStyle(Theme.primaryText)
+                            .foregroundStyle(Theme.onAccent)
+                            // The keyboard follows the app's appearance, not the light bar.
+                            .environment(\.colorScheme, colorScheme)
                             .transition(.opacity)
                         if !text.isEmpty {
                             Button("Clear", systemImage: "xmark.circle.fill") { text = "" }
                                 .labelStyle(.iconOnly)
-                                .foregroundStyle(Theme.secondaryText)
+                                .foregroundStyle(Theme.onAccent.opacity(0.6))
                                 .buttonStyle(.plain)
                                 .padding(.horizontal, 12)
                         }
@@ -221,7 +259,7 @@ struct ExpandingSearchBar: View {
                     Button("Close Search", systemImage: "xmark", action: close)
                         .labelStyle(.iconOnly)
                         .font(.body.weight(.medium))
-                        .foregroundStyle(Theme.primaryText)
+                        .foregroundStyle(Theme.onAccent)
                         .buttonStyle(.plain)
                         .frame(width: size, height: size)
                         .contentShape(.circle)
@@ -231,6 +269,8 @@ struct ExpandingSearchBar: View {
             }
         }
         .frame(height: size)
+        // It sits on the sand band in both modes, like the bar's own buttons.
+        .environment(\.colorScheme, .light)
         .onAppear {
             withAnimation(.snappy) { expanded = true }
             guard focusOnAppear else { return }

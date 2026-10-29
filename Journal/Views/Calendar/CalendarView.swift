@@ -58,8 +58,7 @@ struct CalendarView: View {
                         Rectangle().fill(Theme.hairline).frame(height: 1)
                     }
             }
-            // The meta line names the year of the month in view (month titles only add it outside this year).
-            .pageTitle("Calendar", subtitle: String(calendar.component(.year, from: month(at: visibleMonth ?? 0))))
+            .pageTitle()
             .toolbar {
                 ToolbarItem(placement: .topBarTrailing) {
                     Button("Today", systemImage: "\(calendar.component(.day, from: .now)).square") {

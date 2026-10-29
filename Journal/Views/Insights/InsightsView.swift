@@ -40,7 +40,7 @@ struct InsightsView: View {
                     .padding(.bottom, Spacing.l)
                 }
             }
-            .pageTitle("Insights")
+            .pageTitle()
             .toolbar {
                 ToolbarItem(placement: .topBarTrailing) {
                     SettingsButton()

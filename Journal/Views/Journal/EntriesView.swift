@@ -10,7 +10,6 @@ struct EntriesView: View {
     @Query(filter: #Predicate<Entry> { $0.deletedAt != nil }, sort: \Entry.deletedAt, order: .reverse)
     private var trashed: [Entry]
 
-    @AppStorage(JournalName.storageKey) private var journalName = JournalName.default
     @State private var searchText = ""
     @State private var searchActive = false
     /// False when search opens with a query already filled in (a tapped tag), so results aren't hidden by the keyboard.
@@ -36,7 +35,7 @@ struct EntriesView: View {
                         }
                     }
             }
-            .pageTitle(pageName, subtitle: filter == .all ? yearSpan : nil, isHidden: searchActive)
+            .pageTitle(filter == .all ? nil : "Recently Deleted", isHidden: searchActive)
             .toolbar { toolbarContent }
             .navigationDestination(for: Entry.self) { entry in
                 EntryEditorView(entry: entry)
@@ -117,19 +116,6 @@ struct EntriesView: View {
                 SettingsButton()
             }
         }
-    }
-
-    private var pageName: String {
-        filter == .all ? JournalName.display(journalName) : "Recently Deleted"
-    }
-
-    /// "2025 – 2026", or a single year, spanning the first and latest entries.
-    private var yearSpan: String? {
-        guard let newest = entries.first?.createdAt, let oldest = entries.last?.createdAt else { return nil }
-        let calendar = Calendar.current
-        let first = calendar.component(.year, from: oldest)
-        let last = calendar.component(.year, from: newest)
-        return first == last ? String(first) : "\(first) – \(last)"
     }
 
     @ViewBuilder
