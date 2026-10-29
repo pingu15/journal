@@ -53,6 +53,7 @@ A premium, minimal, editorial journaling app. Native iOS, Swift + SwiftUI, **iPh
 - Live styling is incremental (`MarkdownStyler.style(_:in:)` restyles only edited paragraphs, tracked via `NSTextStorageDelegate`) — keep every styling rule line-local, and keep `MarkdownDocument` round-tripping (Markdown → editor → Markdown must reproduce stored entries exactly; formatting changes only touch attributes). Format toggles register their own undo (`editAttributes`); edits that insert attachments clear the undo stack. Rendered photos are cached by id (`ImageAttachment.cached`).
 - `SystemPrompts.shared.during { … }` wraps any permission prompt (Face ID, location, notifications) so the privacy shield doesn't flash up while the scene is briefly inactive.
 - Journal name is capped at `JournalName.maxLength` (40).
+- The editor takes the keyboard only once its push transition has finished (`MarkdownTextView.focusWhenReady` waits on the navigation controller's `transitionCoordinator`), so the keyboard rises from the bottom instead of sliding in with the page.
 - Don't push onto a NavigationStack while `.searchable` is dismissing (the push gets dropped); `EntriesView.newEntry` closes search first.
 
 ## Debugging

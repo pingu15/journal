@@ -407,15 +407,39 @@ final class MarkdownTextView: UITextView {
         }
     }
 
-    /// Takes the keyboard once the push transition settles. Retries, because a search field
-    /// that is still resigning (e.g. "New entry" right after closing search) can refuse the hand-off.
+    /// Takes the keyboard once the push transition has finished, so it rises from the bottom rather
+    /// than sliding in with the page. Retries, because a search field that is still resigning (e.g.
+    /// "New entry" right after closing search) can refuse the hand-off.
     func focusWhenReady(attempt: Int = 0) {
-        DispatchQueue.main.asyncAfter(deadline: .now() + (attempt == 0 ? 0.35 : 0.25)) { [weak self] in
-            guard let self, self.window != nil, !self.isFirstResponder, attempt < 6 else { return }
-            if !self.becomeFirstResponder() || !self.isFirstResponder {
-                self.focusWhenReady(attempt: attempt + 1)
-            }
+        DispatchQueue.main.asyncAfter(deadline: .now() + (attempt == 0 ? 0.05 : 0.25)) { [weak self] in
+            self?.focusAfterTransition(attempt: attempt)
         }
+    }
+
+    private func focusAfterTransition(attempt: Int) {
+        guard window != nil, !isFirstResponder, attempt < 8 else { return }
+        if let transition = navigationTransition {
+            transition.animate(alongsideTransition: nil) { [weak self] _ in
+                // On the next turn, once the stack has settled.
+                DispatchQueue.main.async { self?.focusAfterTransition(attempt: attempt + 1) }
+            }
+            return
+        }
+        if !becomeFirstResponder() || !isFirstResponder {
+            focusWhenReady(attempt: attempt + 1)
+        }
+    }
+
+    /// The push or pop under way in the navigation stack showing this view, if any.
+    private var navigationTransition: UIViewControllerTransitionCoordinator? {
+        var responder: UIResponder? = self
+        while let next = responder?.next {
+            if let controller = next as? UIViewController, let coordinator = controller.navigationController?.transitionCoordinator {
+                return coordinator
+            }
+            responder = next
+        }
+        return nil
     }
 
     /// Taps on the header belong to the header's controls, not the text.
