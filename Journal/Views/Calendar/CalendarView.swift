@@ -1,8 +1,9 @@
 import SwiftData
 import SwiftUI
 
-/// Months stacked vertically in one long scroll (ten years back, two forward), each day a rounded
-/// square — sand when written, or its cover photo. Tapping a day opens `DaySheet`.
+/// Months stacked vertically in one endless-feeling scroll (five centuries either way), each day a
+/// rounded square — sand when written, or its cover photo. Only the months near the screen are
+/// built. Tapping a day opens `DaySheet`.
 struct CalendarView: View {
     @Environment(\.modelContext) private var context
     @Environment(AppRouter.self) private var router
@@ -10,14 +11,23 @@ struct CalendarView: View {
     private var entries: [Entry]
 
     @State private var path: [Entry] = []
-    @State private var width: CGFloat = 360
-    /// Months are identified by their offset from this month.
-    @State private var position = ScrollPosition(id: 0, anchor: .top)
+    @State private var width: CGFloat = 0
+    @State private var position = ScrollPosition()
+    /// The months built: those in view and a screen's worth either side (indexes into `weeks`).
+    @State private var shownMonths: ClosedRange<Int>?
+    /// The month at the top of the view. Every month's height follows the width, so when the width
+    /// changes (it's reported more than once on the way in) the scroll is put back on this month.
+    /// Taken from the scroll only while it's moving: before the opening position lands, it reads as
+    /// the very first month.
+    @State private var topMonth: Int?
+    @State private var scrollPhase = ScrollPhase.idle
     @State private var openDay: DaySelection?
     @State private var newEntryCount = 0
+    /// Each month's title row, fixed so a month's height is known before it's built.
+    @ScaledMetric(relativeTo: .caption2) private var titleHeight: CGFloat = 34
 
     private let calendar = Calendar.current
-    private let monthRange = -120...24
+    private static let weeks = MonthWeeks(monthsEachWay: 6000)
     private let gap: CGFloat = 3
     private let inset = Spacing.m + 4
 
@@ -36,29 +46,43 @@ struct CalendarView: View {
                     }
 
                 ScrollView {
-                    LazyVStack(alignment: .leading, spacing: gap) {
-                        ForEach(monthRange, id: \.self) { offset in
+                    let monthLayout = layout(width: width)
+                    let months = shownMonths ?? monthLayout.months(around: Self.weeks.index(of: .now))
+                    ZStack(alignment: .top) {
+                        Color.clear.frame(height: monthLayout.height + Spacing.m)
+                        ForEach(Array(months), id: \.self) { index in
                             MonthSection(
-                                month: month(at: offset),
+                                month: Self.weeks.month(at: index),
                                 days: days,
                                 openDay: openDay?.day,
-                                cellSize: cellSize,
+                                titleHeight: titleHeight,
+                                cellSize: monthLayout.cellSize,
                                 gap: gap,
                                 inset: inset
                             ) { day in
                                 openDay = DaySelection(day: day)
                             }
-                            .id(offset)
+                            .offset(y: monthLayout.top(index))
                         }
                     }
-                    .scrollTargetLayout()
-                    .padding(.bottom, Spacing.m)
-                    .onGeometryChange(for: CGFloat.self, of: { $0.size.width - inset * 2 }) { width = $0 }
                 }
                 .scrollPosition($position)
-                // The starting position stops a month gap short of this month; scrolling to it
-                // again once it's laid out lands it where Today does.
-                .onAppear { position.scrollTo(id: 0, anchor: .top) }
+                .onScrollGeometryChange(for: [Int].self) { geometry in
+                    let visible = geometry.visibleRect
+                    let layout = layout(width: width)
+                    let shown = layout.months(from: visible.minY - visible.height, to: visible.maxY + visible.height)
+                    let top = layout.months(from: visible.minY, to: visible.minY).lowerBound
+                    return [shown.lowerBound, shown.upperBound, top]
+                } action: { _, value in
+                    shownMonths = value[0]...value[1]
+                    if scrollPhase != .idle { topMonth = value[2] }
+                }
+                .onScrollPhaseChange { _, phase in scrollPhase = phase }
+                .onGeometryChange(for: CGFloat.self, of: \.size.width) { newWidth in
+                    guard newWidth > 0, newWidth != width else { return }
+                    width = newWidth
+                    position.scrollTo(y: layout(width: newWidth).top(topMonth ?? Self.weeks.index(of: .now)))
+                }
                 .scrollIndicators(.hidden)
                 // Room for the floating tab bar below the last month.
                 .contentMargins(.bottom, 96, for: .scrollContent)
@@ -105,15 +129,23 @@ struct CalendarView: View {
         HStack(spacing: gap) {
             ForEach(Array(weekdaySymbols.enumerated()), id: \.offset) { _, symbol in
                 MetaLabel(symbol)
-                    .frame(width: cellSize)
+                    .frame(width: layout(width: width).cellSize)
             }
         }
     }
 
-    /// Scrolls to this month, even from elsewhere within it (setting an id the position already
-    /// had wouldn't move it).
+    private func layout(width: CGFloat) -> MonthLayout {
+        MonthLayout(
+            weeks: Self.weeks,
+            titleHeight: titleHeight,
+            cellSize: max(24, (width - inset * 2 - gap * 6) / 7),
+            gap: gap
+        )
+    }
+
     private func showThisMonth() {
-        withAnimation(.snappy) { position.scrollTo(id: 0, anchor: .top) }
+        let top = layout(width: width).top(Self.weeks.index(of: .now))
+        withAnimation(.snappy) { position.scrollTo(y: top) }
     }
 
     /// Opens an entry from the day sheet, once the sheet is out of the way.
@@ -149,14 +181,6 @@ struct CalendarView: View {
         return index
     }
 
-    private var cellSize: CGFloat {
-        max(24, (width - gap * 6) / 7)
-    }
-
-    private func month(at offset: Int) -> Date {
-        calendar.date(byAdding: .month, value: offset, to: calendar.startOfMonth(for: .now)) ?? .now
-    }
-
     private var weekdaySymbols: [String] {
         let symbols = calendar.veryShortStandaloneWeekdaySymbols
         let first = calendar.firstWeekday - 1
@@ -174,11 +198,83 @@ private struct DaySelection: Identifiable {
     var id: Date { day }
 }
 
-/// One month: its title on a faintly tinted band across the page, over its grid of days.
+/// How many week rows each month spans, for every month the calendar shows (`monthsEachWay` either
+/// side of the month it was first opened in), and how many come before each one.
+private struct MonthWeeks {
+    let first: Date
+    /// Rows before each month, plus one entry past the last (the total).
+    let rowsBefore: [Int]
+
+    var count: Int { rowsBefore.count - 1 }
+
+    init(monthsEachWay: Int, calendar: Calendar = .current) {
+        first = calendar.date(byAdding: .month, value: -monthsEachWay, to: calendar.startOfMonth(for: .now)) ?? .now
+        var rowsBefore = [0]
+        rowsBefore.reserveCapacity(monthsEachWay * 2 + 2)
+        for index in 0...(monthsEachWay * 2) {
+            let month = calendar.date(byAdding: .month, value: index, to: first) ?? first
+            let days = calendar.range(of: .day, in: .month, for: month)?.count ?? 30
+            let rows = (calendar.leadingBlanks(inMonthStarting: month) + days + 6) / 7
+            rowsBefore.append(rowsBefore[index] + rows)
+        }
+        self.rowsBefore = rowsBefore
+    }
+
+    func month(at index: Int) -> Date {
+        Calendar.current.date(byAdding: .month, value: index, to: first) ?? first
+    }
+
+    func index(of date: Date) -> Int {
+        let calendar = Calendar.current
+        let months = calendar.dateComponents([.month], from: first, to: calendar.startOfMonth(for: date)).month ?? 0
+        return min(max(months, 0), count - 1)
+    }
+}
+
+/// Where each month sits in the scroll. Worked out from week counts rather than measured, so any
+/// month can be placed without building the ones above it: a lazy stack estimated the heights of the
+/// months it hadn't built, and the scroll jumped whenever those estimates changed.
+private struct MonthLayout {
+    let weeks: MonthWeeks
+    let titleHeight: CGFloat
+    let cellSize: CGFloat
+    let gap: CGFloat
+
+    /// Each month above is its title row, a gap, and its week rows each followed by a gap.
+    func top(_ index: Int) -> CGFloat {
+        CGFloat(index) * (titleHeight + gap) + CGFloat(weeks.rowsBefore[index]) * (cellSize + gap)
+    }
+
+    var height: CGFloat { top(weeks.count) - gap }
+
+    /// The months overlapping `minY...maxY`.
+    func months(from minY: CGFloat, to maxY: CGFloat) -> ClosedRange<Int> {
+        let first = lastMonth(startingAtOrAbove: minY)
+        return first...max(first, lastMonth(startingAtOrAbove: maxY))
+    }
+
+    /// `index` and its neighbors, before the scroll has reported what's in view.
+    func months(around index: Int) -> ClosedRange<Int> {
+        max(index - 1, 0)...min(index + 2, weeks.count - 1)
+    }
+
+    private func lastMonth(startingAtOrAbove y: CGFloat) -> Int {
+        var low = 0
+        var high = weeks.count - 1
+        while low < high {
+            let mid = (low + high + 1) / 2
+            if top(mid) <= y { low = mid } else { high = mid - 1 }
+        }
+        return low
+    }
+}
+
+/// One month: its title over its grid of days.
 private struct MonthSection: View {
     let month: Date
     let days: [Date: DayInfo]
     let openDay: Date?
+    let titleHeight: CGFloat
     let cellSize: CGFloat
     let gap: CGFloat
     let inset: CGFloat
@@ -192,7 +288,7 @@ private struct MonthSection: View {
             MetaLabel(month.formatted(.dateTime.month(.wide).year()))
                 .frame(maxWidth: .infinity, alignment: .leading)
                 .padding(.horizontal, inset)
-                .padding(.vertical, Spacing.s + 2)
+                .frame(height: titleHeight)
 
             let columns = Array(repeating: GridItem(.fixed(cellSize), spacing: gap), count: 7)
             LazyVGrid(columns: columns, spacing: gap) {
@@ -215,8 +311,7 @@ private struct MonthSection: View {
     }
 
     private var leadingBlanks: Int {
-        let weekday = calendar.component(.weekday, from: month)
-        return (weekday - calendar.firstWeekday + 7) % 7
+        calendar.leadingBlanks(inMonthStarting: month)
     }
 
     private var dates: [Date] {
@@ -286,6 +381,11 @@ private struct DayCell: View {
 extension Calendar {
     func startOfMonth(for date: Date) -> Date {
         dateInterval(of: .month, for: date)?.start ?? startOfDay(for: date)
+    }
+
+    /// Empty cells before a month's first day in a week row starting on `firstWeekday`.
+    func leadingBlanks(inMonthStarting month: Date) -> Int {
+        (component(.weekday, from: month) - firstWeekday + 7) % 7
     }
 }
 
