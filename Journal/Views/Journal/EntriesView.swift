@@ -197,21 +197,22 @@ struct EntriesView: View {
 
     /// A plain button rather than a NavigationLink, so rows carry no disclosure chevron.
     private func row(for entry: Entry, dateStyle: EntryRow.DateStyle = .day) -> some View {
-        Button {
+        let inset = Self.separatorInset // Read here: the alignment guides run off the main actor.
+        return Button {
             router.journalPath.append(entry)
         } label: {
             EntryRow(entry: entry, dateStyle: dateStyle)
                 // The text and photo end as far in from the right as the month labels start from
                 // the left.
-                .padding(.trailing, Self.separatorInset)
+                .padding(.trailing, inset)
         }
         .listRowBackground(Theme.background)
         .listRowSeparatorTint(Theme.hairline)
         // Every separator starts at the same point (by default each follows its row's weekday
         // label, so they differed row to row) and ends where the row's content does, and the month
         // labels start where it does.
-        .alignmentGuide(.listRowSeparatorLeading) { _ in Self.separatorInset }
-        .alignmentGuide(.listRowSeparatorTrailing) { d in d.width - Self.separatorInset }
+        .alignmentGuide(.listRowSeparatorLeading) { _ in inset }
+        .alignmentGuide(.listRowSeparatorTrailing) { d in d.width - inset }
         .swipeActions(edge: .trailing) {
             Button("Delete", systemImage: "trash", role: .destructive) {
                 withAnimation { entry.moveToTrash() }
