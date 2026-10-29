@@ -137,32 +137,31 @@ struct EntriesView: View {
                     .listRowSeparator(.hidden)
             }
 
-            // Section labels are ordinary rows rather than headers, so they scroll away instead of
-            // pinning under the bar.
-            let showsOnThisDay = searchText.isEmpty && !onThisDay.isEmpty
-            if showsOnThisDay {
+            // Each section's label is its header, so the current one stays pinned at the top.
+            if searchText.isEmpty && !onThisDay.isEmpty {
                 Section {
-                    SectionLabel("On this day", isFirst: true)
                     ForEach(onThisDay) { entry in
                         row(for: entry, dateStyle: .dayAndYear)
                     }
+                } header: {
+                    SectionLabel("On this day")
                 }
             }
 
             ForEach(sections, id: \.month) { section in
                 Section {
-                    SectionLabel(
-                        section.month.formatted(.dateTime.month(.wide).year()),
-                        isFirst: !showsOnThisDay && section.month == sections.first?.month
-                    )
                     ForEach(section.entries) { entry in
                         row(for: entry)
                     }
+                } header: {
+                    SectionLabel(section.month.formatted(.dateTime.month(.wide).year()))
                 }
             }
         }
         .listStyle(.plain)
+        .listSectionSpacing(0)
         .environment(\.defaultMinListRowHeight, 0)
+        .environment(\.defaultMinListHeaderHeight, 0)
         .scrollContentBackground(.hidden)
         .scrollDismissesKeyboard(.immediately)
         // Room for the floating new-entry button below the last row.
@@ -172,7 +171,7 @@ struct EntriesView: View {
     /// The top of the list, for scrolling back to when search opens.
     private var topMarker: some View {
         Color.clear
-            .frame(height: Spacing.xs)
+            .frame(height: 0)
             .id(Self.topID)
         .listRowInsets(EdgeInsets(top: 0, leading: Spacing.m, bottom: 0, trailing: Spacing.m))
         .listRowBackground(Color.clear)
@@ -203,6 +202,8 @@ struct EntriesView: View {
         }
         .listRowBackground(Theme.background)
         .listRowSeparatorTint(Theme.hairline)
+        // Including under a month's last row, which a list leaves bare above the next header.
+        .listRowSeparator(.visible, edges: .bottom)
         // Every separator starts at the same point (by default each follows its row's weekday
         // label, so they differed row to row) and ends where the row's content does, and the month
         // labels start where it does.
@@ -270,26 +271,26 @@ struct EntriesView: View {
 }
 
 /// A month or "On this day" label, as a row of its own.
+/// A month or "On this day" label, as its section's header (pinned while its rows scroll by). It sits
+/// as far below the card's top edge, or the separator above it, as the label's top padding.
 private struct SectionLabel: View {
     let text: String
-    /// The top label sits as far below the card's edge as the others sit below the separator
-    /// above them (the list's top marker makes up the difference).
-    let isFirst: Bool
 
-    init(_ text: String, isFirst: Bool = false) {
+    init(_ text: String) {
         self.text = text
-        self.isFirst = isFirst
     }
 
     var body: some View {
         MetaLabel(text)
             .frame(maxWidth: .infinity, alignment: .leading)
-            .padding(.top, isFirst ? Spacing.l - Spacing.xs : Spacing.l)
+            .padding(.top, Spacing.l)
             .padding(.bottom, Spacing.xs)
             // In line with the row separators.
-            .listRowInsets(EdgeInsets(top: 0, leading: Spacing.m + EntriesView.separatorInset, bottom: 0, trailing: Spacing.m))
-            .listRowBackground(Color.clear)
-            .listRowSeparator(.hidden)
+            .padding(.leading, Spacing.m + EntriesView.separatorInset)
+            .padding(.trailing, Spacing.m)
+            // Edge to edge, so rows passing under a pinned label don't show beside it.
+            .background(Theme.background)
+            .listRowInsets(EdgeInsets())
             .accessibilityAddTraits(.isHeader)
     }
 }
