@@ -26,14 +26,15 @@ struct CalendarView: View {
 
         NavigationStack(path: $path) {
             ScrollView {
-                LazyVStack(alignment: .leading, spacing: Spacing.l + Spacing.s) {
+                LazyVStack(alignment: .leading, spacing: Spacing.m) {
                     ForEach(monthRange, id: \.self) { offset in
                         MonthSection(
                             month: month(at: offset),
                             days: days,
                             openDay: openDay?.day,
                             cellSize: cellSize,
-                            gap: gap
+                            gap: gap,
+                            inset: inset
                         ) { day in
                             openDay = DaySelection(day: day)
                         }
@@ -41,7 +42,6 @@ struct CalendarView: View {
                     }
                 }
                 .scrollTargetLayout()
-                .padding(.horizontal, inset)
                 .padding(.bottom, Spacing.m)
                 .onGeometryChange(for: CGFloat.self, of: { $0.size.width - inset * 2 }) { width = $0 }
             }
@@ -171,13 +171,14 @@ private struct DaySelection: Identifiable {
     var id: Date { day }
 }
 
-/// One month: a thin title over its grid of days.
+/// One month: its title on a faintly tinted band across the page, over its grid of days.
 private struct MonthSection: View {
     let month: Date
     let days: [Date: DayInfo]
     let openDay: Date?
     let cellSize: CGFloat
     let gap: CGFloat
+    let inset: CGFloat
     let onSelect: (Date) -> Void
 
     private let calendar = Calendar.current
@@ -186,10 +187,12 @@ private struct MonthSection: View {
         VStack(alignment: .leading, spacing: Spacing.m) {
             Text(month.formatted(calendar.isDate(month, equalTo: .now, toGranularity: .year)
                                  ? .dateTime.month(.wide) : .dateTime.month(.wide).year()))
-                .font(.system(.title3, design: .serif).weight(.light))
+                .font(.system(.title3).weight(.light))
                 .foregroundStyle(Theme.primaryText)
-                // Clear of the weekday row when the scroll lands a month at the top.
-                .padding(.top, Spacing.m)
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .padding(.horizontal, inset)
+                .padding(.vertical, Spacing.s + 2)
+                .background(Theme.band)
 
             let columns = Array(repeating: GridItem(.fixed(cellSize), spacing: gap), count: 7)
             LazyVGrid(columns: columns, spacing: gap) {
@@ -207,6 +210,7 @@ private struct MonthSection: View {
                     }
                 }
             }
+            .padding(.horizontal, inset)
         }
     }
 
@@ -252,7 +256,7 @@ private struct DayCell: View {
                 }
 
                 Text(day.formatted(.dateTime.day()))
-                    .font(.system(.callout, design: .serif).weight(info != nil || isToday ? .semibold : .regular))
+                    .font(.system(.callout).weight(info != nil || isToday ? .semibold : .regular))
                     .foregroundStyle(
                         image != nil ? Color.white
                             : info != nil ? Theme.onAccent
