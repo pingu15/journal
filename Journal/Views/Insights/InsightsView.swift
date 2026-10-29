@@ -28,7 +28,7 @@ struct InsightsView: View {
                         }
                     }
                     .padding(.horizontal, Spacing.m + 4)
-                    .padding(.top, Spacing.m)
+                    .padding(.top, Spacing.m + 4)
                     .padding(.bottom, Spacing.l)
                 }
             }
