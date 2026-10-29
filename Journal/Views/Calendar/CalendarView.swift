@@ -11,8 +11,8 @@ struct CalendarView: View {
 
     @State private var path: [Entry] = []
     @State private var width: CGFloat = 360
-    /// The month at the top of the scroll, as an offset from this month.
-    @State private var visibleMonth: Int? = 0
+    /// Months are identified by their offset from this month.
+    @State private var position = ScrollPosition(id: 0, anchor: .top)
     @State private var openDay: DaySelection?
     @State private var newEntryCount = 0
 
@@ -55,7 +55,7 @@ struct CalendarView: View {
                     .padding(.bottom, Spacing.m)
                     .onGeometryChange(for: CGFloat.self, of: { $0.size.width - inset * 2 }) { width = $0 }
                 }
-                .scrollPosition(id: $visibleMonth, anchor: .top)
+                .scrollPosition($position)
                 .scrollIndicators(.hidden)
                 // Room for the floating tab bar below the last month.
                 .contentMargins(.bottom, 96, for: .scrollContent)
@@ -64,7 +64,7 @@ struct CalendarView: View {
             .toolbar {
                 ToolbarItem(placement: .topBarTrailing) {
                     Button("Today", systemImage: "\(calendar.component(.day, from: .now)).square") {
-                        withAnimation(.snappy) { visibleMonth = 0 }
+                        showThisMonth()
                     }
                 }
                 ToolbarItem(placement: .topBarTrailing) {
@@ -90,6 +90,7 @@ struct CalendarView: View {
                 }
             )
         }
+        .onChange(of: router.calendarTabTaps) { showThisMonth() }
         .onChange(of: path) { _, path in
             if path.isEmpty {
                 Entry.deleteBlankEntries(in: context, keeping: router.openEntries)
@@ -104,6 +105,12 @@ struct CalendarView: View {
                     .frame(width: cellSize)
             }
         }
+    }
+
+    /// Scrolls to this month, even from elsewhere within it (setting an id the position already
+    /// had wouldn't move it).
+    private func showThisMonth() {
+        withAnimation(.snappy) { position.scrollTo(id: 0, anchor: .top) }
     }
 
     /// Opens an entry from the day sheet, once the sheet is out of the way.

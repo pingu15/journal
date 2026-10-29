@@ -45,9 +45,11 @@ struct RootView: View {
     }
 
     var body: some View {
-        @Bindable var router = router
-
-        TabView(selection: $router.selectedTab) {
+        // The setter also runs when the open tab is tapped again.
+        TabView(selection: Binding(get: { router.selectedTab }, set: { tab in
+            if tab == .calendar { router.calendarTabTaps += 1 }
+            router.selectedTab = tab
+        })) {
             // Icons only; the names stay as accessibility labels.
             Tab(value: .journal) {
                 EntriesView()

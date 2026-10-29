@@ -64,6 +64,9 @@ final class AppRouter {
     var pendingSearch: String?
     /// Entries with an editor on screen, so blank-entry cleanup never removes one mid-edit.
     var openEntries: Set<PersistentIdentifier> = []
+    /// Bumped whenever the Calendar tab is tapped (even when it's already open), so the calendar
+    /// scrolls back to this month.
+    var calendarTabTaps = 0
 
     func search(for text: String) {
         pendingSearch = text
