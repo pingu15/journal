@@ -193,7 +193,6 @@ private struct MonthSection: View {
                 .frame(maxWidth: .infinity, alignment: .leading)
                 .padding(.horizontal, inset)
                 .padding(.vertical, Spacing.s + 2)
-                .background(Theme.band)
 
             let columns = Array(repeating: GridItem(.fixed(cellSize), spacing: gap), count: 7)
             LazyVGrid(columns: columns, spacing: gap) {

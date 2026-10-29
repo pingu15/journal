@@ -36,8 +36,6 @@ enum Theme {
     static let onAccent = Color.white
     static let hairline = Color(uiColor: UITheme.secondaryText).opacity(0.25)
     static let surface = Color(uiColor: UITheme.surface)
-    /// A shade off the background, for bands that set a row apart (calendar month titles).
-    static let band = primaryText.opacity(0.04)
 
     /// Activity heatmap: a day was written or it wasn't.
     static let activityFilled = primaryText.opacity(0.8)
