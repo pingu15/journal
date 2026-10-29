@@ -190,7 +190,7 @@ struct LargePageTitle: View {
             }
         }
         .frame(maxWidth: .infinity, alignment: .leading)
-        .padding(.top, Spacing.l)
+        .padding(.top, Spacing.s)
     }
 }
 
