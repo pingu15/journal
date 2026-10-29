@@ -21,8 +21,8 @@ struct InsightsView: View {
                     .padding(.top, 120)
                 } else {
                     let stats = JournalStats(entries: entries)
-                    // As far between sections as from each heading to its content.
-                    VStack(alignment: .leading, spacing: Spacing.m) {
+                    // As far above the heading as the journal's month labels sit below a separator.
+                    VStack(alignment: .leading, spacing: Spacing.l) {
                         StatGrid(stats: stats)
                         InsightSection(title: "Writing activity") {
                             ActivityHeatmap(wordsByDay: stats.wordsByDay)
