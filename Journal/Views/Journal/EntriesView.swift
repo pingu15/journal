@@ -23,7 +23,7 @@ struct EntriesView: View {
 
     private static let topID = "top"
     /// Where row separators start, from a row's content edge; month labels start there too.
-    static let separatorInset = Spacing.s
+    static let separatorInset = Spacing.s - 2
 
     var body: some View {
         @Bindable var router = router
