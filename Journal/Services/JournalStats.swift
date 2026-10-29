@@ -9,23 +9,16 @@ struct JournalStats {
     let longestStreak: Int
     /// Words written per calendar day (keyed by start of day).
     let wordsByDay: [Date: Int]
-    let topTags: [(tag: String, count: Int)]
 
     init(entries: [Entry], calendar: Calendar = .current, today: Date = .now) {
         entryCount = entries.count
         wordCount = entries.reduce(0) { $0 + $1.wordCount }
 
         var wordsByDay: [Date: Int] = [:]
-        var tagCounts: [String: Int] = [:]
         for entry in entries {
             wordsByDay[calendar.startOfDay(for: entry.createdAt), default: 0] += entry.wordCount
-            for tag in entry.tags { tagCounts[tag, default: 0] += 1 }
         }
         self.wordsByDay = wordsByDay
-        topTags = tagCounts
-            .sorted { $0.value == $1.value ? $0.key < $1.key : $0.value > $1.value }
-            .prefix(8)
-            .map { (tag: $0.key, count: $0.value) }
 
         let days = Set(wordsByDay.keys)
         daysJournaled = days.count

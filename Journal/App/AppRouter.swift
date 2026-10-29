@@ -60,16 +60,9 @@ final class AppRouter {
     var journalPath: [Entry] = []
     /// Set by `NewEntryIntent`; the journal screen consumes it once it has a model context.
     var pendingNewEntry = false
-    /// Set to open the journal tab searching for this text (e.g. a tag tapped in Insights).
-    var pendingSearch: String?
     /// Entries with an editor on screen, so blank-entry cleanup never removes one mid-edit.
     var openEntries: Set<PersistentIdentifier> = []
     /// Bumped whenever the Calendar tab is tapped (even when it's already open), so the calendar
     /// scrolls back to this month.
     var calendarTabTaps = 0
-
-    func search(for text: String) {
-        pendingSearch = text
-        selectedTab = .journal
-    }
 }

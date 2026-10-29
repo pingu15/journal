@@ -2,7 +2,6 @@ import SwiftData
 import SwiftUI
 
 struct InsightsView: View {
-    @Environment(AppRouter.self) private var router
     @Query(filter: #Predicate<Entry> { $0.deletedAt == nil }, sort: \Entry.createdAt, order: .reverse)
     private var entries: [Entry]
 
@@ -26,13 +25,6 @@ struct InsightsView: View {
                         StatGrid(stats: stats)
                         InsightSection(title: "Writing activity") {
                             ActivityHeatmap(wordsByDay: stats.wordsByDay)
-                        }
-                        if !stats.topTags.isEmpty {
-                            InsightSection(title: "Most used tags") {
-                                TagList(tags: stats.topTags) { tag in
-                                    router.search(for: "#\(tag)")
-                                }
-                            }
                         }
                     }
                     .padding(.horizontal, Spacing.m + 4)
@@ -175,38 +167,6 @@ private struct ActivityHeatmap: View {
         let thisWeek = calendar.dateInterval(of: .weekOfYear, for: .now)?.start ?? calendar.startOfDay(for: .now)
         return (0..<weeks).reversed().compactMap {
             calendar.date(byAdding: .weekOfYear, value: -$0, to: thisWeek)
-        }
-    }
-}
-
-/// Each tag opens the journal searching for it.
-private struct TagList: View {
-    let tags: [(tag: String, count: Int)]
-    let onSelect: (String) -> Void
-
-    var body: some View {
-        VStack(spacing: 0) {
-            ForEach(tags, id: \.tag) { item in
-                Button { onSelect(item.tag) } label: {
-                    HStack {
-                        Text("#\(item.tag)")
-                            .font(Typography.excerpt)
-                            .foregroundStyle(Theme.primaryText)
-                        Spacer()
-                        Text(item.count, format: .number)
-                            .font(.subheadline.monospacedDigit())
-                            .foregroundStyle(Theme.secondaryText)
-                    }
-                    .padding(.vertical, Spacing.s + 2)
-                    .contentShape(.rect)
-                }
-                .buttonStyle(.plain)
-                .accessibilityHint("Shows entries with this tag")
-                if item.tag != tags.last?.tag {
-                    // 1 pt, like the list separators elsewhere (Divider is a single pixel).
-                    Rectangle().fill(Theme.hairline).frame(height: 1)
-                }
-            }
         }
     }
 }

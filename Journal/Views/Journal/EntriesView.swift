@@ -81,15 +81,6 @@ struct EntriesView: View {
             filter = .all
             newEntry()
         }
-        .onChange(of: router.pendingSearch, initial: true) { _, query in
-            guard let query else { return }
-            router.pendingSearch = nil
-            router.journalPath.removeAll()
-            filter = .all
-            searchText = query
-            focusSearchOnOpen = false
-            withAnimation(.snappy) { searchActive = true }
-        }
     }
 
     // MARK: - Content
