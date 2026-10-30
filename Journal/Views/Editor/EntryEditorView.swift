@@ -26,9 +26,12 @@ struct EntryEditorView: View {
     /// Captured before the editor is built, so a fresh page opens with the keyboard up.
     private let startsEmpty: Bool
 
-    init(entry: Entry) {
+    /// `placeIsProvisional`: the entry was started with its place (a long press on the map), so it's
+    /// discarded if nothing else is added, like an automatically added place.
+    init(entry: Entry, placeIsProvisional: Bool = false) {
         self.entry = entry
-        self.startsEmpty = entry.isBlank
+        self.startsEmpty = entry.isBlank || (placeIsProvisional && !entry.hasText && entry.photos.isEmpty)
+        _autoPlaced = State(initialValue: placeIsProvisional)
     }
 
     var body: some View {
@@ -126,7 +129,7 @@ struct EntryEditorView: View {
             if entry.location != nil && entry.weather == nil {
                 Task { await refreshWeather() }
             }
-            if startsEmpty && autoTagLocation {
+            if startsEmpty && autoTagLocation && entry.placeName == nil {
                 autoPlaceTask = Task { await addCurrentPlace() }
             }
         }

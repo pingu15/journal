@@ -4,7 +4,7 @@ import SwiftUI
 import UIKit
 
 enum AppTab: Hashable {
-    case journal, calendar, insights
+    case journal, calendar, map, insights
 }
 
 enum Appearance: String, CaseIterable, Identifiable {

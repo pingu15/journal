@@ -61,6 +61,11 @@ struct RootView: View {
             } label: {
                 TabIcon(name: "Calendar", symbol: "calendar")
             }
+            Tab(value: .map) {
+                MapView()
+            } label: {
+                TabIcon(name: "Map", symbol: "map")
+            }
             Tab(value: .insights) {
                 InsightsView()
             } label: {

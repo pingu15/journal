@@ -7,6 +7,8 @@ struct EntryRow: View {
         case day
         /// Day number over year (On this day).
         case dayAndYear
+        /// Day number over month (a place's entries, which span months).
+        case dayAndMonth
         /// Time only (a single calendar day).
         case time
     }
@@ -54,17 +56,24 @@ struct EntryRow: View {
         .contentShape(.rect)
     }
 
+    /// What goes under the day number.
+    private var dayCaption: String {
+        switch dateStyle {
+        case .dayAndYear: entry.createdAt.formatted(.dateTime.year())
+        case .dayAndMonth: entry.createdAt.formatted(.dateTime.month(.abbreviated))
+        default: entry.createdAt.formatted(.dateTime.weekday(.abbreviated))
+        }
+    }
+
     @ViewBuilder
     private var dateColumn: some View {
         switch dateStyle {
-        case .day, .dayAndYear:
+        case .day, .dayAndYear, .dayAndMonth:
             VStack(spacing: 2) {
                 Text(entry.createdAt.formatted(.dateTime.day()))
                     .font(Typography.dayNumber)
                     .foregroundStyle(Theme.primaryText)
-                MetaLabel(dateStyle == .day
-                          ? entry.createdAt.formatted(.dateTime.weekday(.abbreviated))
-                          : entry.createdAt.formatted(.dateTime.year()))
+                MetaLabel(dayCaption)
             }
             .frame(width: 44)
         case .time:
