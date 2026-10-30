@@ -18,6 +18,8 @@ struct EntriesView: View {
     @State private var filter = JournalFilter.all
     @State private var newEntryCount = 0
     @State private var labelTops = LabelTops()
+    /// The row swiped open to show its delete button, if any.
+    @State private var swipedOpen: PersistentIdentifier?
 
     private static let topID = "top"
     /// Where row separators start, from a row's content edge; month labels start there too.
@@ -163,6 +165,9 @@ struct EntriesView: View {
         .scrollDismissesKeyboard(.immediately)
         // Room for the floating new-entry button below the last row.
         .contentMargins(.bottom, 96, for: .scrollContent)
+        .onScrollPhaseChange { _, phase in
+            if phase == .interacting { swipedOpen = nil }
+        }
         .onGeometryChange(for: CGFloat.self) { $0.frame(in: .global).minY } action: { labelTops.listTop = $0 }
         .overlay {
             // Clipped to the list, so a label pushed up out of it doesn't show above the card.
@@ -218,12 +223,21 @@ struct EntriesView: View {
     private func row(for entry: Entry, dateStyle: EntryRow.DateStyle = .day, isFirst: Bool = false) -> some View {
         let inset = Self.separatorInset // Read here: the alignment guides run off the main actor.
         return Button {
-            router.journalPath.append(entry)
+            // A tap while a row is swiped open just closes it.
+            if swipedOpen != nil {
+                swipedOpen = nil
+            } else {
+                router.journalPath.append(entry)
+            }
         } label: {
             EntryRow(entry: entry, dateStyle: dateStyle)
                 // The text and photo end as far in from the right as the month labels start from
                 // the left.
                 .padding(.trailing, inset)
+        }
+        .swipeToDelete(id: entry.persistentModelID, openRow: $swipedOpen, trailingInset: inset) {
+            withAnimation { entry.moveToTrash() }
+            try? context.save()
         }
         // The list's own insets, but none above a section's first row.
         .listRowInsets(EdgeInsets(top: isFirst ? 0 : Self.rowInset, leading: Spacing.m, bottom: Self.rowInset, trailing: Spacing.m))
@@ -236,13 +250,6 @@ struct EntriesView: View {
         // labels start where it does.
         .alignmentGuide(.listRowSeparatorLeading) { _ in inset }
         .alignmentGuide(.listRowSeparatorTrailing) { d in d.width - inset }
-        .swipeActions(edge: .trailing) {
-            Button("Delete", systemImage: "trash", role: .destructive) {
-                withAnimation { entry.moveToTrash() }
-                try? context.save()
-            }
-            .tint(Theme.destructive)
-        }
         .contextMenu {
             ShareLink(item: entry.shareText)
             Button("Delete", systemImage: "trash", role: .destructive) {
