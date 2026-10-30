@@ -21,6 +21,7 @@ A premium, minimal, editorial journaling app. Native iOS, Swift + SwiftUI, **iPh
 - New entries: round sand `NewEntryButton` floating bottom-right of the Journal tab (writes for today); the Calendar has none — its day sheet's ✎ writes for that day.
 - Appearance is applied by setting `overrideUserInterfaceStyle` on every window (`Appearance.apply`), not `.preferredColorScheme`, so open sheets and the lock window switch together.
 - Empty-state and explanatory notes ("Nothing written on this day.", "Deleted entries stay here…", empty-tab descriptions, "No location set") all use `Typography.note` (footnote sans) in secondary text.
+- The app-wide tint is primary text, so swipe actions set their own: delete swipes use `Theme.destructive` (red), Restore uses sand.
 - Stone on paper is low contrast: use it only for secondary/meta text, never for body copy.
 - Always support Dynamic Type and dark mode.
 

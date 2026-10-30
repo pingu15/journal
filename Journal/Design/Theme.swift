@@ -34,6 +34,9 @@ enum Theme {
     static let secondaryText = Color(uiColor: UITheme.secondaryText)
     static let accent = Color(uiColor: UITheme.accent)
     static let onAccent = Color.white
+    /// Fill for delete swipe actions: the app-wide tint (primary text) would make them near-white in
+    /// dark mode, hiding their white icon.
+    static let destructive = Color.red
     static let hairline = Color(uiColor: UITheme.secondaryText).opacity(0.25)
     static let surface = Color(uiColor: UITheme.surface)
 

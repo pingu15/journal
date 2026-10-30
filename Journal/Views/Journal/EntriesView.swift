@@ -241,6 +241,7 @@ struct EntriesView: View {
                 withAnimation { entry.moveToTrash() }
                 try? context.save()
             }
+            .tint(Theme.destructive)
         }
         .contextMenu {
             ShareLink(item: entry.shareText)
@@ -438,6 +439,7 @@ private struct TrashList<Header: View>: View {
                             withAnimation { context.delete(entry) }
                             try? context.save()
                         }
+                        .tint(Theme.destructive)
                     }
                     .contextMenu {
                         Button("Restore", systemImage: "arrow.uturn.backward") {
