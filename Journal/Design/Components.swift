@@ -96,11 +96,13 @@ enum ThumbnailCache {
 extension View {
     /// A tab's page: the journal's name and year span (`LargePageTitle`) stay in place on a sand
     /// band, and the page's content scrolls in a card with rounded top corners below it; the bar
-    /// carries no title of its own. `title` replaces the journal name (e.g. "Recently Deleted",
-    /// which has no year span); `isHidden` lifts the title away (while searching, so results start
-    /// under the bar).
-    func pageTitle(_ title: String? = nil, isHidden: Bool = false) -> some View {
-        modifier(PageTitle(title: title, isHidden: isHidden))
+    /// carries no title of its own. A grabber at the card's top drags it up to full screen, just
+    /// below the notch, over the title and the bar (or back down); a tap on it does the same.
+    /// `title` replaces the journal name (e.g. "Recently Deleted", which has no year span);
+    /// `isFullScreen` holds the card up there without a grabber (while searching, with the search
+    /// field at the card's top).
+    func pageTitle(_ title: String? = nil, isFullScreen: Bool = false) -> some View {
+        modifier(PageTitle(title: title, isHeldFullScreen: isFullScreen))
     }
 
     /// Content scrolls out at the top edge as is, without iOS 26's soft fade there.
@@ -126,34 +128,63 @@ extension View {
 
 private struct PageTitle: ViewModifier {
     let title: String?
-    let isHidden: Bool
+    let isHeldFullScreen: Bool
 
     @AppStorage(JournalName.storageKey) private var journalName = JournalName.default
     @Query(filter: #Predicate<Entry> { $0.deletedAt == nil }, sort: \Entry.createdAt)
     private var entries: [Entry]
 
+    /// Dragged (or tapped) up to full screen.
+    @State private var isExpanded = false
+    /// The card is up at full screen (the bar is hidden).
+    @State private var isUp = false
+    @State private var isTitleHidden = false
+    /// How far the card's top is moved from where the layout puts it: up over the title (negative)
+    /// when full screen, and following the finger during a drag.
+    @State private var lift: CGFloat = 0
+    /// The title's height with the space below it, and the bar's, measured while they show.
+    @State private var titleHeight: CGFloat = 0
+    @State private var barHeight: CGFloat = 0
+
     func body(content: Content) -> some View {
         let name = title ?? JournalName.display(journalName)
 
         VStack(spacing: 0) {
-            if !isHidden {
-                LargePageTitle(name, subtitle: title == nil ? yearSpan : nil)
-                    .padding(.horizontal, Spacing.m)
-                    .padding(.bottom, Spacing.m)
-                    .transition(.opacity)
-            }
+            // Stays in the layout while the card covers it, so the card can follow a drag over it.
+            LargePageTitle(name, subtitle: title == nil ? yearSpan : nil)
+                .padding(.horizontal, Spacing.m)
+                .padding(.bottom, Spacing.m)
+                .onGeometryChange(for: CGFloat.self, of: \.size.height) { titleHeight = $0 }
+                // Where it sits with the bar, even while the bar is hidden.
+                .offset(y: isUp ? barHeight : 0)
+                .opacity(isTitleHidden ? 0 : 1)
+                .accessibilityHidden(isTitleHidden)
             content
                 // The scroll bar starts below the card's rounded corners.
                 .contentMargins(.top, Self.cornerRadius, for: .scrollIndicators)
                 .background(Theme.background)
+                .overlay(alignment: .top) {
+                    if !isHeldFullScreen {
+                        grabber
+                    }
+                }
                 .clipShape(UnevenRoundedRectangle(
                     topLeadingRadius: Self.cornerRadius,
                     topTrailingRadius: Self.cornerRadius,
                     style: .continuous
                 ))
+                // Negative padding grows the card up over the title.
+                .padding(.top, lift)
                 .ignoresSafeArea(edges: .bottom)
         }
+        .onGeometryChange(for: CGFloat.self) { $0.frame(in: .global).minY } action: { top in
+            if !isUp { barHeight = max(0, top - Self.windowTop) }
+        }
         .background(Theme.accent)
+        // Full screen, the card takes the bar's place too, so it starts just below the notch.
+        .toolbar(isUp ? .hidden : .visible, for: .navigationBar)
+        .onChange(of: isHeldFullScreen) { _, held in move(up: held || isExpanded) }
+        .onChange(of: titleHeight) { if isUp { lift = restingLift } }
         .navigationTitle(name)
         .navigationBarTitleDisplayMode(.inline)
         // The bar sits on sand in both modes, so its buttons are white. The sand is the page's own
@@ -170,6 +201,97 @@ private struct PageTitle: ViewModifier {
     }
 
     static let cornerRadius: CGFloat = 28
+
+    /// The top of the screen's safe area: just below the notch.
+    private static var windowTop: CGFloat {
+        UIApplication.shared.connectedScenes
+            .compactMap { ($0 as? UIWindowScene)?.keyWindow }
+            .first?.safeAreaInsets.top ?? 0
+    }
+
+    /// From the card's resting place up to just below the notch.
+    private var fullScreenDistance: CGFloat { titleHeight + barHeight }
+
+    /// A short bar centered at the card's top, like a sheet's, in a strip as tall as the space above
+    /// the pages' first content; dragging it moves the card, and a tap toggles it.
+    private var grabber: some View {
+        Capsule()
+            // Solid, so it still shows over the Map tab's map.
+            .fill(Theme.secondaryText)
+            .frame(width: 36, height: 5)
+            .padding(.top, Spacing.s)
+            .frame(maxWidth: .infinity, minHeight: Spacing.l, alignment: .top)
+            .contentShape(.rect)
+            .onTapGesture { setExpanded(!isExpanded) }
+            .gesture(
+                // On screen, not on the card, which moves under the finger.
+                DragGesture(minimumDistance: 4, coordinateSpace: .global)
+                    .onChanged { drag in lift = restingLift + followed(drag.translation.height) }
+                    .onEnded { drag in
+                        let travel = drag.predictedEndTranslation.height
+                        let third = fullScreenDistance / 3
+                        setExpanded(isExpanded ? travel < third : travel < -third)
+                    }
+            )
+            .accessibilityElement()
+            .accessibilityLabel(isExpanded ? "Show title" : "Expand to full screen")
+            .accessibilityAddTraits(.isButton)
+            .accessibilityAction { setExpanded(!isExpanded) }
+    }
+
+    /// Where the card rests: up over the title at full screen (the bar's space is already gone).
+    private var restingLift: CGFloat { isUp ? -titleHeight : 0 }
+
+    /// Follows the finger between the two places, with a little give past either.
+    private func followed(_ translation: CGFloat) -> CGFloat {
+        let distance = fullScreenDistance
+        // Down from full screen, or up from resting: the way it can go.
+        let toward = isUp ? translation : -translation
+        let moved = toward < 0 ? toward / 6 : toward <= distance ? toward : distance + (toward - distance) / 6
+        return isUp ? moved : -moved
+    }
+
+    private func setExpanded(_ expanded: Bool) {
+        isExpanded = expanded
+        move(up: expanded || isHeldFullScreen)
+    }
+
+    /// Moves the card up to full screen or back down. Hiding or showing the bar shifts the page by
+    /// its height at once, so the card is shifted back by as much, unanimated, to hold it where it
+    /// is: going up, the bar goes first and the card rises on the next turn; coming down, the card
+    /// settles with the bar still hidden, and the bar returns once the card has cleared its row.
+    private func move(up: Bool) {
+        var still = Transaction()
+        still.disablesAnimations = true
+        if up {
+            if !isUp {
+                withTransaction(still) {
+                    isUp = true
+                    lift += barHeight
+                }
+            }
+            DispatchQueue.main.async {
+                withAnimation(.snappy) {
+                    lift = -titleHeight
+                    isTitleHidden = true
+                }
+            }
+        } else if isUp {
+            withAnimation(.snappy) {
+                lift = barHeight
+                isTitleHidden = false
+            } completion: {
+                // Unless it was sent back up meanwhile.
+                guard !(isExpanded || isHeldFullScreen) else { return }
+                withTransaction(still) {
+                    isUp = false
+                    lift = 0
+                }
+            }
+        } else {
+            withAnimation(.snappy) { lift = 0 }
+        }
+    }
 
     /// "2025 – 2026", or a single year, spanning the first and latest entries.
     private var yearSpan: String? {
@@ -223,9 +345,9 @@ struct SettingsButton: View {
     }
 }
 
-/// A search field that grows sideways out of the bar's search button. Shown over the bar, starting
-/// as a circle exactly where the button sits (the button itself steps aside, with the bar's other
-/// buttons), then widening to fill the row, with a close button at the far end.
+/// A search field that grows sideways from a circle like the bar's search button, at the top of the
+/// full-screen card (the bar steps aside), widening to fill the row, with a close button at the far
+/// end.
 struct ExpandingSearchBar: View {
     @Binding var text: String
     var isFocused: FocusState<Bool>.Binding
@@ -235,7 +357,6 @@ struct ExpandingSearchBar: View {
     let onClose: () -> Void
 
     @State private var expanded = false
-    @Environment(\.colorScheme) private var colorScheme
     private let size: CGFloat = 44
 
     var body: some View {
@@ -244,23 +365,21 @@ struct ExpandingSearchBar: View {
                 HStack(spacing: 0) {
                     Image(systemName: "magnifyingglass")
                         .font(.body.weight(.medium))
-                        .foregroundStyle(expanded ? Theme.onAccent.opacity(0.6) : Theme.onAccent)
+                        .foregroundStyle(expanded ? Theme.secondaryText : Theme.primaryText)
                         .frame(width: size, height: size)
                     if expanded {
-                        TextField(prompt, text: $text, prompt: Text(prompt).foregroundStyle(Theme.onAccent.opacity(0.5)))
+                        TextField(prompt, text: $text, prompt: Text(prompt).foregroundStyle(Theme.secondaryText))
                             .focused(isFocused)
                             .submitLabel(.search)
                             .onSubmit { isFocused.wrappedValue = false }
                             .autocorrectionDisabled()
                             .textInputAutocapitalization(.never)
-                            .foregroundStyle(Theme.onAccent)
-                            // The keyboard follows the app's appearance, not the light bar.
-                            .environment(\.colorScheme, colorScheme)
+                            .foregroundStyle(Theme.primaryText)
                             .transition(.opacity)
                         if !text.isEmpty {
                             Button("Clear", systemImage: "xmark.circle.fill") { text = "" }
                                 .labelStyle(.iconOnly)
-                                .foregroundStyle(Theme.onAccent.opacity(0.6))
+                                .foregroundStyle(Theme.secondaryText)
                                 .buttonStyle(.plain)
                                 .padding(.horizontal, 12)
                         }
@@ -279,7 +398,7 @@ struct ExpandingSearchBar: View {
                     Button("Close Search", systemImage: "xmark", action: close)
                         .labelStyle(.iconOnly)
                         .font(.body.weight(.medium))
-                        .foregroundStyle(Theme.onAccent)
+                        .foregroundStyle(Theme.primaryText)
                         .buttonStyle(.plain)
                         .frame(width: size, height: size)
                         .contentShape(.circle)
@@ -289,8 +408,6 @@ struct ExpandingSearchBar: View {
             }
         }
         .frame(height: size)
-        // It sits on the sand band in both modes, white like the bar's own buttons.
-        .environment(\.colorScheme, .dark)
         .onAppear {
             withAnimation(.snappy) { expanded = true }
             guard focusOnAppear else { return }

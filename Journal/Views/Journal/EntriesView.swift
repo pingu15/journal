@@ -32,14 +32,28 @@ struct EntriesView: View {
 
         NavigationStack(path: $router.journalPath) {
             ScrollViewReader { proxy in
-                content
-                    .onChange(of: searchActive) { _, active in
-                        if active {
-                            withAnimation { proxy.scrollTo(Self.topID, anchor: .top) }
-                        }
+                VStack(spacing: 0) {
+                    // While searching the card is full screen, with the field at its top.
+                    if searchActive {
+                        ExpandingSearchBar(
+                            text: $searchText,
+                            isFocused: $isSearching,
+                            prompt: "Search by text, date, or tag",
+                            focusOnAppear: focusSearchOnOpen,
+                            onClose: closeSearch
+                        )
+                        .padding(.horizontal, Spacing.m)
+                        .padding(.top, Spacing.m)
                     }
+                    content
+                }
+                .onChange(of: searchActive) { _, active in
+                    if active {
+                        withAnimation { proxy.scrollTo(Self.topID, anchor: .top) }
+                    }
+                }
             }
-            .pageTitle(filter == .all ? nil : "Recently Deleted", isHidden: searchActive)
+            .pageTitle(filter == .all ? nil : "Recently Deleted", isFullScreen: searchActive)
             .toolbar { toolbarContent }
             .navigationDestination(for: Entry.self) { entry in
                 EntryEditorView(entry: entry)
@@ -53,22 +67,6 @@ struct EntriesView: View {
                 }
             }
             .animation(.snappy, value: searchActive)
-        }
-        .overlay(alignment: .top) {
-            if searchActive {
-                ExpandingSearchBar(
-                    text: $searchText,
-                    isFocused: $isSearching,
-                    prompt: "Search by text, date, or tag",
-                    focusOnAppear: focusSearchOnOpen,
-                    onClose: closeSearch
-                )
-                .padding(.horizontal, Spacing.m)
-                // Steps aside while an entry opened from the results is on screen.
-                .opacity(router.journalPath.isEmpty ? 1 : 0)
-                .allowsHitTesting(router.journalPath.isEmpty)
-                .animation(.easeOut(duration: 0.15), value: router.journalPath.isEmpty)
-            }
         }
         // Hidden from the stack rather than the editor, so it's back as soon as the editor starts
         // closing (a pushed view's own setting only lifts once its pop animation ends).

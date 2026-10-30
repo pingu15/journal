@@ -40,7 +40,9 @@ struct CalendarView: View {
             VStack(spacing: 0) {
                 weekdayRow
                     .padding(.horizontal, inset)
-                    .padding(.vertical, Spacing.s + 3)
+                    // Below the card's grabber, where every tab's content starts.
+                    .padding(.top, Spacing.l)
+                    .padding(.bottom, Spacing.s + 3)
                     .overlay(alignment: .bottom) {
                         Rectangle().fill(Theme.hairline).frame(height: 1)
                     }
