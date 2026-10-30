@@ -35,13 +35,20 @@ extension ButtonStyle where Self == AccentButtonStyle {
     static var accent: AccentButtonStyle { AccentButtonStyle() }
 }
 
-/// The entry's place, as one quiet line (tags already show in the excerpt).
+/// The entry's time and place, as one quiet line ("3:57 PM · Mission District"; tags already show
+/// in the excerpt).
 struct EntryMetaLine: View {
     let entry: Entry
+    /// Off where the row already shows the time (a calendar day's entries).
+    var showsTime = true
 
     var body: some View {
-        if let place = entry.placeName {
-            Text(place)
+        let parts = [
+            showsTime ? entry.createdAt.formatted(date: .omitted, time: .shortened) : nil,
+            entry.placeName,
+        ].compactMap(\.self)
+        if !parts.isEmpty {
+            Text(parts.joined(separator: " · "))
                 .lineLimit(1)
                 .font(.caption)
                 .foregroundStyle(Theme.secondaryText)

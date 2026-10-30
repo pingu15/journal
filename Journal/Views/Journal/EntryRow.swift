@@ -43,7 +43,7 @@ struct EntryRow: View {
                         .font(Typography.entryExcerpt)
                         .foregroundStyle(Theme.secondaryText)
                 }
-                EntryMetaLine(entry: entry)
+                EntryMetaLine(entry: entry, showsTime: dateStyle != .time)
                     .padding(.top, 2)
             }
             .frame(maxWidth: .infinity, alignment: .leading)
