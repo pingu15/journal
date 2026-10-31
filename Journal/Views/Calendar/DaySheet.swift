@@ -47,7 +47,7 @@ struct DaySheet: View {
             Spacer(minLength: 0)
             VStack(spacing: 2) {
                 Text(day.formatted(.dateTime.month(.wide).day()))
-                    .font(.system(.title2, design: .serif).weight(.semibold))
+                    .font(.title2.weight(.semibold))
                     .foregroundStyle(Theme.primaryText)
                 MetaLabel("\(day.formatted(.dateTime.weekday(.wide))) · \(day.formatted(.dateTime.year()))")
             }

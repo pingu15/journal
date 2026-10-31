@@ -44,7 +44,8 @@ enum Theme {
     static let activityFilled = primaryText.opacity(0.8)
     static let activityEmpty = primaryText.opacity(0.07)
 
-    /// Bar titles (sheets: Settings, Set Location, Entry Date) are sans; tab titles draw their own serif.
+    /// Bar titles (sheets: Settings, Set Location, Entry Date) are sans, like everything but the
+    /// journal's name.
     static func applyNavigationBarAppearance() {
         let bar = UINavigationBar.appearance()
         bar.largeTitleTextAttributes = [
@@ -59,14 +60,12 @@ enum Theme {
 }
 
 enum Typography {
-    /// Entry text (titles and excerpts in lists, and the editor) is sans; page titles stay serif.
+    /// Everything is sans. The one exception is the journal's name (`LargePageTitle`, the lock screen).
     static let entryTitle = Font.system(.title3).weight(.semibold)
     static let entryExcerpt = Font.system(.subheadline)
-    static let body = Font.system(.body, design: .serif)
-    static let excerpt = Font.system(.subheadline, design: .serif)
     /// Empty-state and explanatory notes ("Nothing written on this day.").
     static let note = Font.system(.footnote)
-    static let dayNumber = Font.system(.title2, design: .serif)
+    static let dayNumber = Font.system(.title2)
     /// Small uppercase labels (dates, section headers). Pair with `.tracking(Typography.metaTracking)`.
     static let meta = Font.system(.caption2).weight(.semibold)
     static let metaTracking: CGFloat = 1.2
@@ -106,15 +105,6 @@ extension UIColor {
 }
 
 extension UIFont {
-    static func serif(_ style: UIFont.TextStyle, bold: Bool = false) -> UIFont {
-        var descriptor = UIFontDescriptor.preferredFontDescriptor(withTextStyle: style)
-        descriptor = descriptor.withDesign(.serif) ?? descriptor
-        if bold {
-            descriptor = descriptor.withSymbolicTraits(.traitBold) ?? descriptor
-        }
-        return UIFont(descriptor: descriptor, size: 0)
-    }
-
     static func sans(_ style: UIFont.TextStyle, bold: Bool = false) -> UIFont {
         var descriptor = UIFontDescriptor.preferredFontDescriptor(withTextStyle: style)
         if bold {

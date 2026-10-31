@@ -150,7 +150,7 @@ private struct PageTitle: ViewModifier {
 
         VStack(spacing: 0) {
             // Stays in the layout, and opaque, so the card simply slides over it and off it again.
-            LargePageTitle(name, subtitle: title == nil ? yearSpan : nil)
+            LargePageTitle(name, subtitle: title == nil ? yearSpan : nil, isJournalName: title == nil)
                 .padding(.horizontal, Spacing.m)
                 .padding(.bottom, Spacing.m)
                 .onGeometryChange(for: CGFloat.self, of: \.size.height) { titleHeight = $0 }
@@ -303,21 +303,24 @@ private struct PageTitle: ViewModifier {
     }
 }
 
-/// A tab's large serif title (and optional meta line), in white on the sand band above the page's
+/// A tab's large title (and optional meta line), in white on the sand band above the page's
 /// content (see `pageTitle`) — every tab puts it in the same place, a little below the toolbar row.
 struct LargePageTitle: View {
     let title: String
     var subtitle: String?
+    /// The journal's name is the one thing set in serif.
+    var isJournalName = true
 
-    init(_ title: String, subtitle: String? = nil) {
+    init(_ title: String, subtitle: String? = nil, isJournalName: Bool = true) {
         self.title = title
         self.subtitle = subtitle
+        self.isJournalName = isJournalName
     }
 
     var body: some View {
         VStack(alignment: .leading, spacing: Spacing.s - 2) {
             Text(title)
-                .font(.system(.largeTitle, design: .serif).weight(.bold))
+                .font(.system(.largeTitle, design: isJournalName ? .serif : .default).weight(.bold))
                 .foregroundStyle(Theme.onAccent)
                 .lineLimit(2)
                 .minimumScaleFactor(0.7)

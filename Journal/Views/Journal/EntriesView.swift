@@ -124,7 +124,7 @@ struct EntriesView: View {
             if entries.isEmpty {
                 ContentUnavailableView {
                     Text("A blank page")
-                        .font(.system(.title2, design: .serif).weight(.semibold))
+                        .font(.title2.weight(.semibold))
                         .foregroundStyle(Theme.primaryText)
                 } description: {
                     Text("Write a few lines about today.")

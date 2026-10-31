@@ -11,7 +11,7 @@ struct InsightsView: View {
                 if entries.isEmpty {
                     ContentUnavailableView {
                         Text("Nothing to see yet")
-                            .font(.system(.title2, design: .serif).weight(.semibold))
+                            .font(.title2.weight(.semibold))
                             .foregroundStyle(Theme.primaryText)
                     } description: {
                         Text("Insights appear as you write.")
@@ -80,7 +80,7 @@ private struct StatGrid: View {
     private func tile(_ value: Int, _ label: String, large: Bool = false) -> some View {
         VStack(alignment: .leading, spacing: Spacing.xs) {
             Text(value, format: .number)
-                .font(.system(size: large ? 52 : 40, weight: .regular, design: .serif))
+                .font(.system(size: large ? 52 : 40, weight: .regular))
                 .foregroundStyle(Theme.primaryText)
                 .contentTransition(.numericText())
                 .minimumScaleFactor(0.6)

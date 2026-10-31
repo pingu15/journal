@@ -100,7 +100,7 @@ private struct PlaceEntriesSheet: View {
         ScrollView {
             VStack(alignment: .leading, spacing: Spacing.s) {
                 Text(title)
-                    .font(.system(.title2, design: .serif).weight(.semibold))
+                    .font(.title2.weight(.semibold))
                     .foregroundStyle(Theme.primaryText)
                 MetaLabel(entries.count == 1 ? "1 entry" : "\(entries.count) entries")
                     .padding(.bottom, Spacing.s)
