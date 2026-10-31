@@ -15,7 +15,8 @@ struct EntryPin: Equatable {
 /// The entries' places as sand dots on an `MKMapView`, which groups nearby dots into one with a
 /// count (SwiftUI's `Map` can't cluster). Tapping a dot opens its entry; tapping a group zooms in on
 /// it, or — when its entries are all in the same spot, so zooming can't split it — opens them as a
-/// list. Long-pressing the map asks for a new entry there.
+/// list. Long-pressing the map asks for a new entry there. It opens on the current location, or
+/// fitted to every dot without one.
 struct EntryMap: UIViewRepresentable {
     let pins: [EntryPin]
     let onOpen: ([PersistentIdentifier]) -> Void
@@ -37,6 +38,7 @@ struct EntryMap: UIViewRepresentable {
 
         context.coordinator.update(map, with: pins)
         Self.fit(map.annotations, in: map, animated: false)
+        context.coordinator.showCurrentLocation(in: map)
         return map
     }
 
@@ -81,6 +83,24 @@ struct EntryMap: UIViewRepresentable {
             let added = pins.filter { shown[$0.id] == nil }.map(EntryAnnotation.init)
             added.forEach { shown[$0.pin.id] = $0 }
             map.addAnnotations(added)
+        }
+
+        /// Goes to the last known location at once if there is one, then to the fresh one (asking for
+        /// access the first time).
+        func showCurrentLocation(in map: MKMapView) {
+            if let location = LocationService.shared.lastKnownLocation {
+                map.setRegion(Self.region(around: location), animated: false)
+            }
+            Task { [weak map] in
+                guard let location = try? await LocationService.shared.currentLocation(), let map else { return }
+                map.showsUserLocation = true
+                map.setRegion(Self.region(around: location), animated: true)
+            }
+        }
+
+        /// The neighbourhood around `location`.
+        private static func region(around location: CLLocation) -> MKCoordinateRegion {
+            MKCoordinateRegion(center: location.coordinate, latitudinalMeters: 4000, longitudinalMeters: 4000)
         }
 
         @objc func longPress(_ gesture: UILongPressGestureRecognizer) {
