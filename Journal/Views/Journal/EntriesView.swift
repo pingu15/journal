@@ -475,7 +475,7 @@ private struct TrashList<Header: View>: View {
                 .tint(Theme.accent)
             }
             .swipeActions(edge: .trailing) {
-                Button("Delete Now", systemImage: "trash", role: .destructive) {
+                Button("Delete Permanently", systemImage: "trash", role: .destructive) {
                     withAnimation { context.delete(entry) }
                     try? context.save()
                 }
@@ -486,7 +486,7 @@ private struct TrashList<Header: View>: View {
                     withAnimation { entry.restore() }
                     try? context.save()
                 }
-                Button("Delete Now", systemImage: "trash", role: .destructive) {
+                Button("Delete Permanently", systemImage: "trash", role: .destructive) {
                     withAnimation { context.delete(entry) }
                     try? context.save()
                 }
