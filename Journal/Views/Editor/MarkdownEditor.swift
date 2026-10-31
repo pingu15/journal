@@ -1023,7 +1023,7 @@ struct MarkdownToolbar: View {
                                 .foregroundStyle(Theme.primaryText)
                             Spacer(minLength: 0)
                             Image(systemName: "checkmark")
-                                .font(.body.weight(.semibold))
+                                .font(Typography.action)
                                 .foregroundStyle(Theme.primaryText)
                                 .opacity(controller.textStyle == style ? 1 : 0)
                         }
@@ -1056,7 +1056,7 @@ private struct ToolIcon: View {
 
     var body: some View {
         Image(systemName: symbol)
-            .font(.system(size: 22, weight: isOn ? .semibold : .regular))
+            .font(Typography.icon.weight(isOn ? .semibold : .regular))
             .foregroundStyle(Theme.primaryText)
             .frame(width: 46, height: 40)
             .background {

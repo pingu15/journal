@@ -11,17 +11,17 @@ struct LockView: View {
             VStack(spacing: Spacing.l) {
                 Spacer()
                 Image(systemName: "lock")
-                    .font(.system(size: 28, weight: .light))
+                    .font(Typography.largeIcon.weight(.light))
                     .foregroundStyle(Theme.secondaryText)
                 Text(JournalName.display(journalName))
-                    .font(.system(.largeTitle, design: .serif).weight(.semibold))
+                    .font(Typography.journalName)
                     .foregroundStyle(Theme.primaryText)
                 Spacer()
                 Button {
                     Task { await lock.unlock() }
                 } label: {
                     Text("Unlock with \(lock.biometryName)")
-                        .font(.body.weight(.medium))
+                        .font(Typography.action)
                         .padding(.horizontal, Spacing.l)
                         .padding(.vertical, Spacing.m - 2)
                         .foregroundStyle(Theme.onAccent)

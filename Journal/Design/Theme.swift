@@ -46,7 +46,7 @@ enum Theme {
     static let activityFilled = primaryText.opacity(0.8)
     static let activityEmpty = primaryText.opacity(0.07)
 
-    /// Bar titles (sheets: Settings, Set Location, Entry Date) are sans, like nearly everything else.
+    /// Bar titles (sheets: Settings, Set Location, Entry Date) match the other popups' (`Typography.title`).
     static func applyNavigationBarAppearance() {
         let bar = UINavigationBar.appearance()
         bar.largeTitleTextAttributes = [
@@ -54,24 +54,49 @@ enum Theme {
             .foregroundColor: UITheme.primaryText,
         ]
         bar.titleTextAttributes = [
-            .font: UIFont.sans(.headline, bold: true),
+            .font: UIFont.sans(.title2, bold: true),
             .foregroundColor: UITheme.primaryText,
         ]
     }
 }
 
+/// The app's type scale. Views take their fonts from here, never a size or style of their own, so
+/// the same role reads the same everywhere. All of it follows Dynamic Type.
 enum Typography {
-    /// Everything is sans but the journal's name (`LargePageTitle`, the lock screen), the day numbers
-    /// in entry lists and the Insights tiles' numbers.
+    // Titles. Everything is sans but the journal's name, the day numbers in entry lists and the
+    // Insights tiles' numbers.
+    static let journalName = Font.system(.largeTitle, design: .serif).weight(.bold)
+    static let pageTitle = Font.system(.largeTitle).weight(.bold)
+    /// Popup titles (sheets' bars too, `Theme.applyNavigationBarAppearance`) and empty states.
+    static let title = Font.system(.title2).weight(.bold)
     static let entryTitle = Font.system(.title3).weight(.semibold)
-    static let entryExcerpt = Font.system(.subheadline)
+
+    // Text.
+    static let body = Font.system(.body)
+    /// Buttons, and the small icons in rows and bars.
+    static let action = Font.system(.body).weight(.medium)
+    /// Secondary lines: the editor's date and place, list excerpts.
+    static let detail = Font.system(.subheadline)
+    static let entryExcerpt = detail
+    static let smallAction = Font.system(.subheadline).weight(.medium)
     /// Empty-state and explanatory notes ("Nothing written on this day.").
     static let note = Font.system(.footnote)
-    static let dayNumber = Font.system(.title2, design: .serif)
+    /// An entry's time and place under its text.
+    static let caption = Font.system(.caption)
     /// Small uppercase labels (dates, section headers). Pair with `.tracking(Typography.metaTracking)`.
     static let meta = Font.system(.caption2).weight(.semibold)
     static let metaTracking: CGFloat = 1.2
     static let bodyLineSpacing: CGFloat = 6
+
+    // Icons standing on their own.
+    static let icon = Font.system(.title2)
+    static let largeIcon = Font.system(.title)
+
+    // Numbers.
+    static let dayNumber = Font.system(.title2, design: .serif)
+    static let calendarDay = Font.system(.callout).weight(.semibold)
+    static let statNumber = Font.system(size: 40, weight: .regular, design: .serif)
+    static let largeStatNumber = Font.system(size: 52, weight: .regular, design: .serif)
 }
 
 enum Spacing {

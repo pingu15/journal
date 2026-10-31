@@ -124,7 +124,7 @@ struct EntriesView: View {
             if entries.isEmpty {
                 ContentUnavailableView {
                     Text("A blank page")
-                        .font(.title2.weight(.semibold))
+                        .font(Typography.title)
                         .foregroundStyle(Theme.primaryText)
                 } description: {
                     Text("Write a few lines about today.")
@@ -421,7 +421,7 @@ private struct TrashList<Header: View>: View {
                         }
                         .padding(.leading, Spacing.m)
                     }
-                    .font(.subheadline.weight(.medium))
+                    .font(Typography.smallAction)
                     .buttonStyle(.borderless)
                     .listRowBackground(Color.clear)
                     .listRowSeparator(.hidden)
@@ -471,7 +471,7 @@ private struct TrashList<Header: View>: View {
             if entries.isEmpty {
                 VStack(spacing: Spacing.m) {
                     Image(systemName: "trash")
-                        .font(.title2)
+                        .font(Typography.icon)
                     Text("Deleted entries stay here for \(Entry.trashRetentionDays) days.")
                         .font(Typography.note)
                         .multilineTextAlignment(.center)

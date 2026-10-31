@@ -89,7 +89,7 @@ struct LocationPicker: View {
                 .overlay {
                     VStack(spacing: Spacing.s) {
                         Image(systemName: "map")
-                            .font(.title2.weight(.light))
+                            .font(Typography.icon.weight(.light))
                         Text("No location set")
                             .font(Typography.note)
                     }
@@ -166,7 +166,7 @@ struct LocationPicker: View {
             // Hide suggestions that just echo the place already set.
             let suggestions = search.suggestions.filter { !(search.query == entry.placeName && $0.title == entry.placeName) }
             if !suggestions.isEmpty {
-                Section("Places") {
+                Section {
                     ForEach(suggestions) { suggestion in
                         Button {
                             Task { await select(suggestion) }
@@ -177,7 +177,7 @@ struct LocationPicker: View {
                                     .foregroundStyle(Theme.primaryText)
                                 if !suggestion.subtitle.isEmpty {
                                     Text(suggestion.subtitle)
-                                        .font(.footnote)
+                                        .font(Typography.note)
                                         .foregroundStyle(Theme.secondaryText)
                                 }
                             }
@@ -187,6 +187,8 @@ struct LocationPicker: View {
                         }
                         .disabled(resolvingID != nil)
                     }
+                } header: {
+                    MetaLabel("Places")
                 }
             }
         }

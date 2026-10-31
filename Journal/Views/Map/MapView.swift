@@ -101,7 +101,7 @@ private struct PlaceEntriesSheet: View {
             VStack(alignment: .leading, spacing: Spacing.s) {
                 VStack(spacing: Spacing.s) {
                     Text(title)
-                        .font(.title2.weight(.semibold))
+                        .font(Typography.title)
                         .foregroundStyle(Theme.primaryText)
                         .multilineTextAlignment(.center)
                     MetaLabel(entries.count == 1 ? "1 entry" : "\(entries.count) entries")

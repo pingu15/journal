@@ -49,9 +49,9 @@ private struct SwipeToDelete<ID: Hashable>: ViewModifier {
         let revealed = max(0, -offset - Self.gap)
         return VStack(spacing: Spacing.xs) {
             Image(systemName: "trash")
-                .font(.title3.weight(.medium))
+                .font(Typography.icon)
             Text("Delete")
-                .font(.footnote.weight(.medium))
+                .font(Typography.note)
         }
         .foregroundStyle(Theme.onAccent)
         .fixedSize()

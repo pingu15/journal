@@ -21,7 +21,7 @@ struct MetaLabel: View {
 struct AccentButtonStyle: ButtonStyle {
     func makeBody(configuration: Configuration) -> some View {
         configuration.label
-            .font(.body.weight(.medium))
+            .font(Typography.action)
             .padding(.horizontal, Spacing.l)
             .padding(.vertical, Spacing.m - 2)
             .foregroundStyle(Theme.onAccent)
@@ -50,7 +50,7 @@ struct EntryMetaLine: View {
         if !parts.isEmpty {
             Text(parts.joined(separator: " · "))
                 .lineLimit(1)
-                .font(.caption)
+                .font(Typography.caption)
                 .foregroundStyle(Theme.secondaryText)
         }
     }
@@ -340,7 +340,7 @@ struct LargePageTitle: View {
     var body: some View {
         VStack(alignment: .leading, spacing: Spacing.s - 2) {
             Text(title)
-                .font(.system(.largeTitle, design: isJournalName ? .serif : .default).weight(.bold))
+                .font(isJournalName ? Typography.journalName : Typography.pageTitle)
                 .foregroundStyle(Theme.onAccent)
                 .lineLimit(2)
                 .minimumScaleFactor(0.7)
@@ -387,7 +387,7 @@ struct ExpandingSearchBar: View {
             HStack(spacing: Spacing.s) {
                 HStack(spacing: 0) {
                     Image(systemName: "magnifyingglass")
-                        .font(.body.weight(.medium))
+                        .font(Typography.action)
                         .foregroundStyle(expanded ? Theme.secondaryText : Theme.primaryText)
                         .frame(width: size, height: size)
                     if expanded {
@@ -420,7 +420,7 @@ struct ExpandingSearchBar: View {
                 if expanded {
                     Button("Close Search", systemImage: "xmark", action: close)
                         .labelStyle(.iconOnly)
-                        .font(.body.weight(.medium))
+                        .font(Typography.action)
                         .foregroundStyle(Theme.primaryText)
                         .buttonStyle(.plain)
                         .frame(width: size, height: size)
@@ -457,7 +457,7 @@ struct NewEntryButton: View {
     var body: some View {
         Button(action: action) {
             Image(systemName: "square.and.pencil")
-                .font(.system(size: 22, weight: .medium))
+                .font(Typography.icon.weight(.medium))
                 .foregroundStyle(Theme.onAccent)
                 .frame(width: 60, height: 60)
                 .background(Theme.accent, in: .circle)

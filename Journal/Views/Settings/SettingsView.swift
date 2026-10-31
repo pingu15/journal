@@ -20,7 +20,7 @@ struct SettingsView: View {
             Form {
                 Section {
                     TextField(JournalName.default, text: $journalName)
-                        .font(.body)
+                        .font(Typography.body)
                         .submitLabel(.done)
                         .onSubmit {
                             journalName = JournalName.display(journalName)
@@ -31,12 +31,12 @@ struct SettingsView: View {
                             }
                         }
                 } header: {
-                    Text("Journal name")
+                    MetaLabel("Journal name")
                 } footer: {
                     Text("Shown at the top of your journal.")
                 }
 
-                Section("Appearance") {
+                Section {
                     Picker("Theme", selection: $appearance) {
                         ForEach(Appearance.allCases) { option in
                             Text(option.label).tag(option)
@@ -47,6 +47,8 @@ struct SettingsView: View {
                     .onAppear(perform: SegmentedFont.matchBody)
                     .listRowBackground(Color.clear)
                     .listRowInsets(EdgeInsets())
+                } header: {
+                    MetaLabel("Appearance")
                 }
 
                 Section {
@@ -56,7 +58,7 @@ struct SettingsView: View {
                         DatePicker("Time", selection: reminderTime, displayedComponents: .hourAndMinute)
                     }
                 } header: {
-                    Text("Reminders")
+                    MetaLabel("Reminders")
                 } footer: {
                     if notificationsDenied {
                         Button {
@@ -76,7 +78,7 @@ struct SettingsView: View {
                     Toggle("Add current location", isOn: autoTagBinding)
                         .tint(Theme.secondaryText)
                 } header: {
-                    Text("Location")
+                    MetaLabel("Location")
                 } footer: {
                     if locationDenied {
                         Button {
@@ -99,7 +101,7 @@ struct SettingsView: View {
                         .tint(Theme.secondaryText)
                         .disabled(!lock.isAvailable && !lockEnabled)
                 } header: {
-                    Text("Privacy")
+                    MetaLabel("Privacy")
                 } footer: {
                     Text(lock.isAvailable
                          ? "Your journal is hidden whenever you leave the app."
@@ -109,7 +111,7 @@ struct SettingsView: View {
                 Section {
                     ExportRow(journalName: JournalName.display(journalName))
                 } header: {
-                    Text("Export")
+                    MetaLabel("Export")
                 } footer: {
                     Text("Entries are stored only on this device. Exports include text, dates, places and weather; the PDF includes photos too.")
                 }

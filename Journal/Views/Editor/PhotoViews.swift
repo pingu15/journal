@@ -115,7 +115,7 @@ private struct GlassIcon: View {
 
     var body: some View {
         Image(systemName: symbol)
-            .font(.body.weight(.semibold))
+            .font(Typography.action)
             .frame(width: 44, height: 44)
             .glassBackground(in: .circle)
             .contentShape(.circle)

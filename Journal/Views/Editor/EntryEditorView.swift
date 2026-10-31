@@ -268,7 +268,7 @@ struct EntryHeader: View {
                         .accessibilityLabel("Weather: \(weather.formattedTemperature), \(weather.condition)")
                 }
             }
-            .font(.subheadline)
+            .font(Typography.detail)
             .foregroundStyle(Theme.secondaryText)
         }
     }

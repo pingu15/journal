@@ -47,7 +47,7 @@ struct DaySheet: View {
             Spacer(minLength: 0)
             VStack(spacing: 2) {
                 Text(day.formatted(.dateTime.month(.wide).day()))
-                    .font(.title2.weight(.semibold))
+                    .font(Typography.title)
                     .foregroundStyle(Theme.primaryText)
                 MetaLabel("\(day.formatted(.dateTime.weekday(.wide))) · \(day.formatted(.dateTime.year()))")
             }
@@ -58,7 +58,7 @@ struct DaySheet: View {
                 .contentShape(.rect)
         }
         .labelStyle(.iconOnly)
-        .font(.body.weight(.medium))
+        .font(Typography.action)
         .foregroundStyle(Theme.primaryText)
         .buttonStyle(.plain)
     }
@@ -75,7 +75,7 @@ struct DaySheet: View {
                 if day <= .now {
                     Button("New Entry", systemImage: "square.and.pencil") { onNewEntry(day) }
                         .labelStyle(.iconOnly)
-                        .font(.body.weight(.medium))
+                        .font(Typography.action)
                         .foregroundStyle(Theme.primaryText)
                         .buttonStyle(.plain)
                 }
@@ -130,7 +130,7 @@ private struct DayPhotos: View {
                     }
                 } label: {
                     Label("Show Photos From Your Library", systemImage: "photo.on.rectangle")
-                        .font(.body.weight(.medium))
+                        .font(Typography.action)
                         .foregroundStyle(Theme.onAccent)
                         .padding(.horizontal, Spacing.m)
                         .padding(.vertical, Spacing.s + 2)
