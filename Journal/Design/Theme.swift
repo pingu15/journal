@@ -59,13 +59,13 @@ enum Theme {
 }
 
 enum Typography {
-    /// Everything is sans but the journal's name (`LargePageTitle`, the lock screen) and the Insights
-    /// tiles' numbers.
+    /// Everything is sans but the journal's name (`LargePageTitle`, the lock screen), the day numbers
+    /// in entry lists and the Insights tiles' numbers.
     static let entryTitle = Font.system(.title3).weight(.semibold)
     static let entryExcerpt = Font.system(.subheadline)
     /// Empty-state and explanatory notes ("Nothing written on this day.").
     static let note = Font.system(.footnote)
-    static let dayNumber = Font.system(.title2)
+    static let dayNumber = Font.system(.title2, design: .serif)
     /// Small uppercase labels (dates, section headers). Pair with `.tracking(Typography.metaTracking)`.
     static let meta = Font.system(.caption2).weight(.semibold)
     static let metaTracking: CGFloat = 1.2
