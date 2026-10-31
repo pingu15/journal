@@ -27,6 +27,8 @@ struct EntryMap: UIViewRepresentable {
         map.delegate = context.coordinator
         map.pointOfInterestFilter = .excludingAll
         map.showsCompass = false
+        // The location dot takes the map's tint, which would otherwise be the app's.
+        map.tintColor = UITheme.userLocation
         map.register(EntryDotView.self, forAnnotationViewWithReuseIdentifier: EntryDotView.reuseID)
 
         let press = UILongPressGestureRecognizer(target: context.coordinator, action: #selector(Coordinator.longPress(_:)))

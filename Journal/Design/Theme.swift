@@ -14,6 +14,8 @@ nonisolated enum Palette {
 
 /// Semantic colors for UIKit (the Markdown text view, navigation bar, lock window).
 enum UITheme {
+    /// The map's current-location dot: Apple Maps' blue, outside the palette so it reads as the system's.
+    static let userLocation = UIColor.systemBlue
     static let background = UIColor(light: Palette.paper, dark: Palette.night)
     static let primaryText = UIColor(light: Palette.ink, dark: Palette.paper)
     static let secondaryText = UIColor(hex: Palette.stone)
