@@ -47,7 +47,7 @@ struct RootView: View {
     var body: some View {
         // The setter also runs when the open tab is tapped again.
         TabView(selection: Binding(get: { router.selectedTab }, set: { tab in
-            if tab == .calendar { router.calendarTabTaps += 1 }
+            if tab == .calendar && router.selectedTab == .calendar { router.calendarTabRetaps += 1 }
             router.selectedTab = tab
         })) {
             // Icons only; the names stay as accessibility labels.
