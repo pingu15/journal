@@ -33,6 +33,10 @@ struct EntryMap: UIViewRepresentable {
         press.minimumPressDuration = 0.5
         map.addGestureRecognizer(press)
 
+        let tap = UITapGestureRecognizer(target: context.coordinator, action: #selector(Coordinator.tap(_:)))
+        tap.delegate = context.coordinator
+        map.addGestureRecognizer(tap)
+
         context.coordinator.update(map, with: pins)
         Self.fit(map.annotations, in: map)
         context.coordinator.showCurrentLocation(in: map)
@@ -59,7 +63,7 @@ struct EntryMap: UIViewRepresentable {
         map.setVisibleMapRect(shown, edgePadding: UIEdgeInsets(top: 60, left: 50, bottom: 140, right: 50), animated: false)
     }
 
-    final class Coordinator: NSObject, MKMapViewDelegate {
+    final class Coordinator: NSObject, MKMapViewDelegate, UIGestureRecognizerDelegate {
         var parent: EntryMap
         private var shown: [PersistentIdentifier: EntryAnnotation] = [:]
 
@@ -109,17 +113,44 @@ struct EntryMap: UIViewRepresentable {
             parent.onLongPress(coordinate)
         }
 
-        func mapView(_ map: MKMapView, viewFor annotation: MKAnnotation) -> MKAnnotationView? {
-            switch annotation {
-            case is MKClusterAnnotation, is EntryAnnotation:
-                map.dequeueReusableAnnotationView(withIdentifier: EntryDotView.reuseID, for: annotation)
-            default:
-                nil
+        /// Taps on dots are caught here, not through MapKit's selection, which holds a tap for half a
+        /// second to rule out a double tap.
+        @objc func tap(_ gesture: UITapGestureRecognizer) {
+            guard let map = gesture.view as? MKMapView else { return }
+            var view = map.hitTest(gesture.location(in: map), with: nil)
+            while let current = view, !(current is EntryDotView) {
+                view = current.superview
+            }
+            if let annotation = (view as? EntryDotView)?.annotation {
+                open(annotation)
             }
         }
 
-        func mapView(_ map: MKMapView, didSelect annotation: MKAnnotation) {
-            map.deselectAnnotation(annotation, animated: false)
+        /// The map's own gestures carry on alongside the tap.
+        func gestureRecognizer(
+            _ gesture: UIGestureRecognizer,
+            shouldRecognizeSimultaneouslyWith other: UIGestureRecognizer
+        ) -> Bool {
+            true
+        }
+
+        func mapView(_ map: MKMapView, viewFor annotation: MKAnnotation) -> MKAnnotationView? {
+            switch annotation {
+            case is MKClusterAnnotation, is EntryAnnotation:
+                let view = map.dequeueReusableAnnotationView(withIdentifier: EntryDotView.reuseID, for: annotation)
+                (view as? EntryDotView)?.onActivate = { [weak self] in self?.open(annotation) }
+                return view
+            default:
+                return nil
+            }
+        }
+
+        /// The location dot does nothing either: it sits under the dots, and it would take their taps.
+        func mapView(_ map: MKMapView, didAdd views: [MKAnnotationView]) {
+            views.first { $0.annotation is MKUserLocation }?.isEnabled = false
+        }
+
+        private func open(_ annotation: MKAnnotation) {
             if let entry = annotation as? EntryAnnotation {
                 parent.onOpen([entry.pin.id])
             } else if let cluster = annotation as? MKClusterAnnotation {
@@ -144,6 +175,8 @@ private final class EntryDotView: MKAnnotationView {
     static let reuseID = "entry"
     private static let size: CGFloat = 36
     private let label = UILabel()
+    /// VoiceOver's activation, as MapKit's selection is off.
+    var onActivate: (() -> Void)?
 
     // Set with the annotation: MapKit decides what to group as soon as it has the view, and views
     // are reused between entries and groups.
@@ -158,6 +191,8 @@ private final class EntryDotView: MKAnnotationView {
     override init(annotation: MKAnnotation?, reuseIdentifier: String?) {
         super.init(annotation: annotation, reuseIdentifier: reuseIdentifier)
         updateClustering()
+        // Tapped through `Coordinator.tap(_:)`.
+        isEnabled = false
         collisionMode = .circle
         frame = CGRect(x: 0, y: 0, width: Self.size, height: Self.size)
         backgroundColor = UITheme.accent
@@ -180,6 +215,11 @@ private final class EntryDotView: MKAnnotationView {
     }
 
     required init?(coder: NSCoder) { fatalError("init(coder:) has not been implemented") }
+
+    override func accessibilityActivate() -> Bool {
+        onActivate?()
+        return true
+    }
 
     override func prepareForDisplay() {
         super.prepareForDisplay()
