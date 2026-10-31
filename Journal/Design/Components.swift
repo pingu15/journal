@@ -312,6 +312,69 @@ private struct PageTitle: ViewModifier {
     }
 }
 
+/// A popup listing entries (a calendar day, a group on the map): a scrolling page under a
+/// `SheetHeader`, so they're all the same width, spacing and height.
+struct SheetPage<Header: View, Content: View>: View {
+    @ViewBuilder let header: Header
+    @ViewBuilder let content: Content
+
+    var body: some View {
+        ScrollView {
+            VStack(alignment: .leading, spacing: Spacing.l) {
+                header
+                content
+            }
+            .padding(.horizontal, Spacing.m + 4)
+            .padding(.vertical, Spacing.l)
+        }
+        .scrollIndicators(.hidden)
+        .background(Theme.background)
+        .presentationDetents([.medium, .large])
+        .sheetGrabber()
+    }
+}
+
+/// A popup's bold, centered title with a small label under it.
+struct SheetHeader: View {
+    let title: String
+    let label: String
+
+    var body: some View {
+        VStack(spacing: Spacing.xs) {
+            Text(title)
+                .font(Typography.title)
+                .foregroundStyle(Theme.primaryText)
+                .multilineTextAlignment(.center)
+            MetaLabel(label)
+        }
+        .frame(maxWidth: .infinity)
+        // Clear of the day sheet's arrows, in every popup so titles wrap alike.
+        .padding(.horizontal, 44)
+    }
+}
+
+/// Entries in a popup, as tappable rows with a hairline between them.
+struct SheetEntryRows: View {
+    let entries: [Entry]
+    let dateStyle: EntryRow.DateStyle
+    let onOpen: (Entry) -> Void
+
+    var body: some View {
+        ForEach(entries) { entry in
+            Button {
+                onOpen(entry)
+            } label: {
+                EntryRow(entry: entry, dateStyle: dateStyle)
+                    .padding(.vertical, 6)
+            }
+            .buttonStyle(.plain)
+            if entry.id != entries.last?.id {
+                Rectangle().fill(Theme.hairline).frame(height: 1)
+            }
+        }
+    }
+}
+
 /// The short bar at the top of the page's card and of every sheet, showing that it drags.
 struct Grabber: View {
     var body: some View {

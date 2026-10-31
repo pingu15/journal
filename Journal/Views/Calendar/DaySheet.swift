@@ -17,48 +17,40 @@ struct DaySheet: View {
     }
 
     var body: some View {
-        ScrollView {
-            VStack(alignment: .leading, spacing: Spacing.l) {
-                header
-                entriesSection
-                VStack(alignment: .leading, spacing: Spacing.s) {
-                    MetaLabel("Photos")
-                    DayPhotos(day: day)
-                }
+        SheetPage {
+            header
+        } content: {
+            entriesSection
+            VStack(alignment: .leading, spacing: Spacing.s) {
+                MetaLabel("Photos")
+                DayPhotos(day: day)
             }
-            .padding(.horizontal, Spacing.m + 4)
-            .padding(.top, Spacing.l)
-            .padding(.bottom, Spacing.l)
         }
-        .scrollIndicators(.hidden)
-        .background(Theme.background)
-        .presentationDetents([.medium, .large])
-        .sheetGrabber()
         .sensoryFeedback(.selection, trigger: day)
     }
 
     private var header: some View {
-        HStack {
-            Button("Previous Day", systemImage: "chevron.left") { shift(by: -1) }
-                .frame(width: 44, height: 44)
-                .contentShape(.rect)
-            Spacer(minLength: 0)
-            VStack(spacing: 2) {
-                Text(day.formatted(.dateTime.month(.wide).day()))
-                    .font(Typography.title)
-                    .foregroundStyle(Theme.primaryText)
-                MetaLabel("\(day.formatted(.dateTime.weekday(.wide))) · \(day.formatted(.dateTime.year()))")
-            }
-            .contentTransition(.numericText())
-            Spacer(minLength: 0)
-            Button("Next Day", systemImage: "chevron.right") { shift(by: 1) }
-                .frame(width: 44, height: 44)
-                .contentShape(.rect)
+        SheetHeader(
+            title: day.formatted(.dateTime.month(.wide).day().year()),
+            label: day.formatted(.dateTime.weekday(.wide))
+        )
+        .contentTransition(.numericText())
+        .overlay(alignment: .leading) {
+            arrow("Previous Day", "chevron.left", by: -1)
         }
-        .labelStyle(.iconOnly)
-        .font(Typography.action)
-        .foregroundStyle(Theme.primaryText)
-        .buttonStyle(.plain)
+        .overlay(alignment: .trailing) {
+            arrow("Next Day", "chevron.right", by: 1)
+        }
+    }
+
+    private func arrow(_ label: String, _ symbol: String, by days: Int) -> some View {
+        Button(label, systemImage: symbol) { shift(by: days) }
+            .labelStyle(.iconOnly)
+            .font(Typography.action)
+            .foregroundStyle(Theme.primaryText)
+            .buttonStyle(.plain)
+            .frame(width: 44, height: 44)
+            .contentShape(.rect)
     }
 
     @ViewBuilder
@@ -74,16 +66,7 @@ struct DaySheet: View {
                     .foregroundStyle(Theme.secondaryText)
                     .padding(.vertical, Spacing.xs)
             } else {
-                ForEach(dayEntries) { entry in
-                    Button {
-                        onOpen(entry)
-                    } label: {
-                        EntryRow(entry: entry, dateStyle: .time)
-                            .padding(.vertical, 6)
-                    }
-                    .buttonStyle(.plain)
-                    Rectangle().fill(Theme.hairline).frame(height: 1)
-                }
+                SheetEntryRows(entries: dayEntries, dateStyle: .time, onOpen: onOpen)
             }
         }
     }

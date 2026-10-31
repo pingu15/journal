@@ -97,34 +97,12 @@ private struct PlaceEntriesSheet: View {
     }
 
     var body: some View {
-        ScrollView {
+        SheetPage {
+            SheetHeader(title: title, label: entries.count == 1 ? "1 entry" : "\(entries.count) entries")
+        } content: {
             VStack(alignment: .leading, spacing: Spacing.s) {
-                VStack(spacing: Spacing.s) {
-                    Text(title)
-                        .font(Typography.title)
-                        .foregroundStyle(Theme.primaryText)
-                        .multilineTextAlignment(.center)
-                    MetaLabel(entries.count == 1 ? "1 entry" : "\(entries.count) entries")
-                }
-                .frame(maxWidth: .infinity)
-                .padding(.bottom, Spacing.s)
-                ForEach(entries) { entry in
-                    Button {
-                        onOpen(entry)
-                    } label: {
-                        EntryRow(entry: entry, dateStyle: .dayAndMonth)
-                            .padding(.vertical, 6)
-                    }
-                    .buttonStyle(.plain)
-                    Rectangle().fill(Theme.hairline).frame(height: 1)
-                }
+                SheetEntryRows(entries: entries, dateStyle: .dayAndMonth, onOpen: onOpen)
             }
-            .padding(.horizontal, Spacing.m + 4)
-            .padding(.vertical, Spacing.l)
         }
-        .scrollIndicators(.hidden)
-        .background(Theme.background)
-        .presentationDetents([.medium, .large])
-        .sheetGrabber()
     }
 }
