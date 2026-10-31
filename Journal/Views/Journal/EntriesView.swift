@@ -460,38 +460,34 @@ private struct TrashList<Header: View>: View {
     }
 
     private func row(for entry: Entry) -> some View {
-        VStack(alignment: .leading, spacing: Spacing.xs) {
-            EntryRow(entry: entry)
-            MetaLabel(entry.daysUntilPurge == 1 ? "1 day left" : "\(entry.daysUntilPurge) days left")
-                .padding(.leading, 44 + Spacing.m)
-        }
-        // The text and photo end as far in from the right as the month labels start from the left.
-        .padding(.trailing, EntriesView.separatorInset)
-        .entryListRow()
-        .swipeActions(edge: .leading) {
-            Button("Restore", systemImage: "arrow.uturn.backward") {
-                withAnimation { entry.restore() }
-                try? context.save()
+        EntryRow(entry: entry, warning: entry.daysUntilPurge == 1 ? "1 day left" : "\(entry.daysUntilPurge) days left")
+            // The text and photo end as far in from the right as the month labels start from the left.
+            .padding(.trailing, EntriesView.separatorInset)
+            .entryListRow()
+            .swipeActions(edge: .leading) {
+                Button("Restore", systemImage: "arrow.uturn.backward") {
+                    withAnimation { entry.restore() }
+                    try? context.save()
+                }
+                .tint(Theme.accent)
             }
-            .tint(Theme.accent)
-        }
-        .swipeActions(edge: .trailing) {
-            Button("Delete Now", systemImage: "trash", role: .destructive) {
-                withAnimation { context.delete(entry) }
-                try? context.save()
+            .swipeActions(edge: .trailing) {
+                Button("Delete Now", systemImage: "trash", role: .destructive) {
+                    withAnimation { context.delete(entry) }
+                    try? context.save()
+                }
+                .tint(Theme.destructive)
             }
-            .tint(Theme.destructive)
-        }
-        .contextMenu {
-            Button("Restore", systemImage: "arrow.uturn.backward") {
-                withAnimation { entry.restore() }
-                try? context.save()
+            .contextMenu {
+                Button("Restore", systemImage: "arrow.uturn.backward") {
+                    withAnimation { entry.restore() }
+                    try? context.save()
+                }
+                Button("Delete Now", systemImage: "trash", role: .destructive) {
+                    withAnimation { context.delete(entry) }
+                    try? context.save()
+                }
             }
-            Button("Delete Now", systemImage: "trash", role: .destructive) {
-                withAnimation { context.delete(entry) }
-                try? context.save()
-            }
-        }
     }
 }
 

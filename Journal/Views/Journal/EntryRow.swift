@@ -15,6 +15,8 @@ struct EntryRow: View {
 
     let entry: Entry
     var dateStyle: DateStyle = .day
+    /// A red line under the rest, as part of the row's text (the days a deleted entry has left).
+    var warning: String?
 
     var body: some View {
         let title = entry.title
@@ -45,6 +47,10 @@ struct EntryRow: View {
                 }
                 EntryMetaLine(entry: entry)
                     .padding(.top, 2)
+                if let warning {
+                    MetaLabel(warning, color: Theme.destructive)
+                        .padding(.top, 2)
+                }
             }
             .frame(maxWidth: .infinity, alignment: .leading)
 

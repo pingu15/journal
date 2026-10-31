@@ -4,16 +4,18 @@ import SwiftUI
 /// Small uppercase tracked label used for dates, section headers and stat captions.
 struct MetaLabel: View {
     let text: String
+    var color = Theme.secondaryText
 
-    init(_ text: String) {
+    init(_ text: String, color: Color = Theme.secondaryText) {
         self.text = text
+        self.color = color
     }
 
     var body: some View {
         Text(text.uppercased())
             .font(Typography.meta)
             .tracking(Typography.metaTracking)
-            .foregroundStyle(Theme.secondaryText)
+            .foregroundStyle(color)
     }
 }
 
