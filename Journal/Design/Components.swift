@@ -97,7 +97,7 @@ extension View {
     /// A tab's page: the journal's name and year span (`LargePageTitle`) stay in place on a sand
     /// band, and the page's content scrolls in a card with rounded top corners below it; the bar
     /// carries no title of its own. A grabber at the card's top drags it up to full screen, just
-    /// below the notch, over the title and the bar (or back down); a tap on it does the same.
+    /// below the notch, over the title and the bar, or back down.
     /// `title` replaces the journal name (e.g. "Recently Deleted", which has no year span);
     /// `isFullScreen` holds the card up there without a grabber (while searching, with the search
     /// field at the card's top).
@@ -134,11 +134,10 @@ private struct PageTitle: ViewModifier {
     @Query(filter: #Predicate<Entry> { $0.deletedAt == nil }, sort: \Entry.createdAt)
     private var entries: [Entry]
 
-    /// Dragged (or tapped) up to full screen.
+    /// Dragged up to full screen.
     @State private var isExpanded = false
-    /// The card is up at full screen (the bar is hidden).
+    /// The card is off its resting place, on its way up or at full screen (the bar is hidden).
     @State private var isUp = false
-    @State private var isTitleHidden = false
     /// How far the card's top is moved from where the layout puts it: up over the title (negative)
     /// when full screen, and following the finger during a drag.
     @State private var lift: CGFloat = 0
@@ -150,15 +149,14 @@ private struct PageTitle: ViewModifier {
         let name = title ?? JournalName.display(journalName)
 
         VStack(spacing: 0) {
-            // Stays in the layout while the card covers it, so the card can follow a drag over it.
+            // Stays in the layout, and opaque, so the card simply slides over it and off it again.
             LargePageTitle(name, subtitle: title == nil ? yearSpan : nil)
                 .padding(.horizontal, Spacing.m)
                 .padding(.bottom, Spacing.m)
                 .onGeometryChange(for: CGFloat.self, of: \.size.height) { titleHeight = $0 }
                 // Where it sits with the bar, even while the bar is hidden.
                 .offset(y: isUp ? barHeight : 0)
-                .opacity(isTitleHidden ? 0 : 1)
-                .accessibilityHidden(isTitleHidden)
+                .accessibilityHidden(isExpanded || isHeldFullScreen)
             content
                 // The scroll bar starts below the card's rounded corners.
                 .contentMargins(.top, Self.cornerRadius, for: .scrollIndicators)
@@ -178,13 +176,13 @@ private struct PageTitle: ViewModifier {
                 .ignoresSafeArea(edges: .bottom)
         }
         .onGeometryChange(for: CGFloat.self) { $0.frame(in: .global).minY } action: { top in
-            if !isUp { barHeight = max(0, top - Self.windowTop) }
+            if !isUp && top > Self.windowTop { barHeight = top - Self.windowTop }
         }
         .background(Theme.accent)
         // Full screen, the card takes the bar's place too, so it starts just below the notch.
         .toolbar(isUp ? .hidden : .visible, for: .navigationBar)
         .onChange(of: isHeldFullScreen) { _, held in move(up: held || isExpanded) }
-        .onChange(of: titleHeight) { if isUp { lift = restingLift } }
+        .onChange(of: titleHeight) { if isUp { lift = -titleHeight } }
         .navigationTitle(name)
         .navigationBarTitleDisplayMode(.inline)
         // The bar sits on sand in both modes, so its buttons are white. The sand is the page's own
@@ -213,20 +211,19 @@ private struct PageTitle: ViewModifier {
     private var fullScreenDistance: CGFloat { titleHeight + barHeight }
 
     /// A short bar centered at the card's top, like a sheet's, in a strip as tall as the space above
-    /// the pages' first content; dragging it moves the card, and a tap toggles it.
+    /// the pages' first content; dragging it moves the card (VoiceOver gets an action instead).
     private var grabber: some View {
         Capsule()
             // Solid, so it still shows over the Map tab's map.
             .fill(Theme.secondaryText)
-            .frame(width: 36, height: 5)
+            .frame(width: 44, height: 3)
             .padding(.top, Spacing.s)
             .frame(maxWidth: .infinity, minHeight: Spacing.l, alignment: .top)
             .contentShape(.rect)
-            .onTapGesture { setExpanded(!isExpanded) }
             .gesture(
                 // On screen, not on the card, which moves under the finger.
                 DragGesture(minimumDistance: 4, coordinateSpace: .global)
-                    .onChanged { drag in lift = restingLift + followed(drag.translation.height) }
+                    .onChanged { drag in follow(drag.translation.height) }
                     .onEnded { drag in
                         let travel = drag.predictedEndTranslation.height
                         let third = fullScreenDistance / 3
@@ -239,16 +236,17 @@ private struct PageTitle: ViewModifier {
             .accessibilityAction { setExpanded(!isExpanded) }
     }
 
-    /// Where the card rests: up over the title at full screen (the bar's space is already gone).
-    private var restingLift: CGFloat { isUp ? -titleHeight : 0 }
-
-    /// Follows the finger between the two places, with a little give past either.
-    private func followed(_ translation: CGFloat) -> CGFloat {
+    /// Moves the card with the finger between its two places, with a little give past either. The
+    /// bar is hidden whenever the card is off its resting place, so its buttons go as soon as the
+    /// card leaves and return as soon as it's back, while the finger is still down.
+    private func follow(_ translation: CGFloat) {
         let distance = fullScreenDistance
-        // Down from full screen, or up from resting: the way it can go.
-        let toward = isUp ? translation : -translation
-        let moved = toward < 0 ? toward / 6 : toward <= distance ? toward : distance + (toward - distance) / 6
-        return isUp ? moved : -moved
+        let travel = (isExpanded ? distance : 0) - translation
+        let moved = travel < 0 ? travel / 6 : travel <= distance ? travel : distance + (travel - distance) / 6
+        withTransaction(Self.still) {
+            isUp = travel > 0
+            lift = (isUp ? barHeight : 0) - moved
+        }
     }
 
     private func setExpanded(_ expanded: Bool) {
@@ -256,34 +254,36 @@ private struct PageTitle: ViewModifier {
         move(up: expanded || isHeldFullScreen)
     }
 
+    /// Applies a change at once, inside whatever animation is running.
+    private static var still: Transaction {
+        var transaction = Transaction()
+        transaction.disablesAnimations = true
+        return transaction
+    }
+
     /// Moves the card up to full screen or back down. Hiding or showing the bar shifts the page by
     /// its height at once, so the card is shifted back by as much, unanimated, to hold it where it
     /// is: going up, the bar goes first and the card rises on the next turn; coming down, the card
-    /// settles with the bar still hidden, and the bar returns once the card has cleared its row.
+    /// settles with the bar still hidden, and the bar returns the moment it's there.
     private func move(up: Bool) {
-        var still = Transaction()
-        still.disablesAnimations = true
         if up {
             if !isUp {
-                withTransaction(still) {
+                withTransaction(Self.still) {
                     isUp = true
                     lift += barHeight
                 }
             }
             DispatchQueue.main.async {
-                withAnimation(.snappy) {
-                    lift = -titleHeight
-                    isTitleHidden = true
-                }
+                withAnimation(.snappy) { lift = -titleHeight }
             }
         } else if isUp {
-            withAnimation(.snappy) {
+            // Short and without a bounce, so there's no settling for the bar to wait out.
+            withAnimation(.smooth(duration: 0.25)) {
                 lift = barHeight
-                isTitleHidden = false
             } completion: {
-                // Unless it was sent back up meanwhile.
-                guard !(isExpanded || isHeldFullScreen) else { return }
-                withTransaction(still) {
+                // Unless it was sent back up or picked up again meanwhile.
+                guard lift == barHeight else { return }
+                withTransaction(Self.still) {
                     isUp = false
                     lift = 0
                 }
