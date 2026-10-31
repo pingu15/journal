@@ -406,13 +406,13 @@ struct LargePageTitle: View {
                 .lineLimit(2)
                 .minimumScaleFactor(0.7)
                 .accessibilityAddTraits(.isHeader)
-            if let subtitle {
-                // White rather than stone: stone is too faint on sand.
-                Text(subtitle.uppercased())
-                    .font(Typography.meta)
-                    .tracking(Typography.metaTracking)
-                    .foregroundStyle(Theme.onAccent.opacity(0.85))
-            }
+            // White rather than stone: stone is too faint on sand. Always there, if only as a blank
+            // line, so the card below rests at the same height on every page.
+            Text(subtitle?.uppercased() ?? " ")
+                .font(Typography.meta)
+                .tracking(Typography.metaTracking)
+                .foregroundStyle(Theme.onAccent.opacity(0.85))
+                .accessibilityHidden(subtitle == nil)
         }
         .frame(maxWidth: .infinity, alignment: .leading)
         .padding(.top, Spacing.s)
