@@ -57,7 +57,7 @@ struct MapView: View {
         }
     }
 
-    /// One entry opens; several (in the same spot) are listed first.
+    /// One entry opens; several are listed first.
     private func open(_ ids: [PersistentIdentifier]) {
         let chosen = entries.filter { ids.contains($0.persistentModelID) }
         if chosen.count == 1, let entry = chosen.first {
@@ -85,15 +85,21 @@ private struct ListedEntries: Identifiable {
     let entries: [Entry]
 }
 
-/// The entries written in one spot, newest first, in a sheet that swipes down to close.
+/// The entries in one of the map's groups, newest first, in a sheet that swipes down to close.
 private struct PlaceEntriesSheet: View {
     let entries: [Entry]
     let onOpen: (Entry) -> Void
 
+    /// Their place, when they share one: a group can span several.
+    private var title: String {
+        let places = Set(entries.compactMap(\.placeName))
+        return places.count == 1 ? places.first ?? "Entries" : "Entries"
+    }
+
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: Spacing.s) {
-                Text(entries.first?.placeName ?? "Entries")
+                Text(title)
                     .font(.system(.title2, design: .serif).weight(.semibold))
                     .foregroundStyle(Theme.primaryText)
                 MetaLabel(entries.count == 1 ? "1 entry" : "\(entries.count) entries")

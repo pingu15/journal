@@ -13,9 +13,7 @@ struct EntryPin: Equatable {
 }
 
 /// The entries' places as numbered sand dots on an `MKMapView`, which groups nearby entries into one
-/// dot (SwiftUI's `Map` can't cluster). Tapping a dot opens its entry; tapping a group zooms in on
-/// it, or — when its entries are all in the same spot, so zooming can't split it — opens them as a
-/// list. Long-pressing the map asks for a new entry there. It opens on the current location, or
+/// dot (SwiftUI's `Map` can't cluster). Tapping a dot opens its entry, or lists a group's. Long-pressing the map asks for a new entry there. It opens on the current location, or
 /// fitted to every dot without one.
 struct EntryMap: UIViewRepresentable {
     let pins: [EntryPin]
@@ -36,7 +34,7 @@ struct EntryMap: UIViewRepresentable {
         map.addGestureRecognizer(press)
 
         context.coordinator.update(map, with: pins)
-        Self.fit(map.annotations, in: map, animated: false)
+        Self.fit(map.annotations, in: map)
         context.coordinator.showCurrentLocation(in: map)
         return map
     }
@@ -47,7 +45,7 @@ struct EntryMap: UIViewRepresentable {
     }
 
     /// Shows all of `annotations`, clear of the screen's edges and the floating tab bar.
-    static func fit(_ annotations: [MKAnnotation], in map: MKMapView, animated: Bool) {
+    static func fit(_ annotations: [MKAnnotation], in map: MKMapView) {
         guard !annotations.isEmpty else { return }
         let rect = annotations.reduce(MKMapRect.null) { rect, annotation in
             let point = MKMapPoint(annotation.coordinate)
@@ -58,7 +56,7 @@ struct EntryMap: UIViewRepresentable {
         let shown = rect.size.width < minimum.size.width && rect.size.height < minimum.size.height
             ? minimum.offsetBy(dx: -2000 + rect.size.width / 2, dy: -2000 + rect.size.height / 2)
             : rect
-        map.setVisibleMapRect(shown, edgePadding: UIEdgeInsets(top: 60, left: 50, bottom: 140, right: 50), animated: animated)
+        map.setVisibleMapRect(shown, edgePadding: UIEdgeInsets(top: 60, left: 50, bottom: 140, right: 50), animated: false)
     }
 
     final class Coordinator: NSObject, MKMapViewDelegate {
@@ -125,22 +123,8 @@ struct EntryMap: UIViewRepresentable {
             if let entry = annotation as? EntryAnnotation {
                 parent.onOpen([entry.pin.id])
             } else if let cluster = annotation as? MKClusterAnnotation {
-                let members = cluster.memberAnnotations.compactMap { $0 as? EntryAnnotation }
-                if Self.spread(of: members) < 50 {
-                    parent.onOpen(members.map(\.pin.id))
-                } else {
-                    EntryMap.fit(members, in: map, animated: true)
-                }
+                parent.onOpen(cluster.memberAnnotations.compactMap { ($0 as? EntryAnnotation)?.pin.id })
             }
-        }
-
-        /// How far apart (in meters) the farthest two of `annotations` are, roughly.
-        private static func spread(of annotations: [EntryAnnotation]) -> CLLocationDistance {
-            guard let first = annotations.first else { return 0 }
-            let origin = CLLocation(latitude: first.coordinate.latitude, longitude: first.coordinate.longitude)
-            return annotations.map {
-                origin.distance(from: CLLocation(latitude: $0.coordinate.latitude, longitude: $0.coordinate.longitude))
-            }.max() ?? 0
         }
     }
 }
