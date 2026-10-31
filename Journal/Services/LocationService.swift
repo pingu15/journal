@@ -35,6 +35,11 @@ final class LocationService: NSObject, CLLocationManagerDelegate {
         isAuthorized ? manager.location : nil
     }
 
+    /// Brings `lastKnownLocation` up to date ahead of time, if that's allowed; it never asks.
+    func refreshLastKnownLocation() {
+        if isAuthorized { manager.requestLocation() }
+    }
+
     /// Asks for permission if it hasn't been asked yet; true when location is allowed.
     func requestAuthorization() async -> Bool {
         if manager.authorizationStatus == .notDetermined {

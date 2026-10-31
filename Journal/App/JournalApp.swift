@@ -77,6 +77,8 @@ struct RootView: View {
             #endif
             Entry.purgeExpiredTrash(in: context)
             Entry.deleteBlankEntries(in: context, keeping: [])
+            // So the map can open on it at once.
+            LocationService.shared.refreshLastKnownLocation()
         }
         .onChange(of: appearance, initial: true) { old, new in
             new.apply(animated: old != new)

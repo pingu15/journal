@@ -84,15 +84,18 @@ struct EntryMap: UIViewRepresentable {
             map.addAnnotations(added)
         }
 
-        /// Goes to the last known location at once if there is one, then to the fresh one (asking for
-        /// access the first time).
+        /// Goes to the last known location at once if there is one (the app refreshes it on launch),
+        /// and to the fresh one (asking for access the first time) only if that's somewhere else.
         func showCurrentLocation(in map: MKMapView) {
-            if let location = LocationService.shared.lastKnownLocation {
-                map.setRegion(Self.region(around: location), animated: false)
+            let known = LocationService.shared.lastKnownLocation
+            if let known {
+                map.showsUserLocation = true
+                map.setRegion(Self.region(around: known), animated: false)
             }
             Task { [weak map] in
                 guard let location = try? await LocationService.shared.currentLocation(), let map else { return }
                 map.showsUserLocation = true
+                if let known, location.distance(from: known) < 500 { return }
                 map.setRegion(Self.region(around: location), animated: true)
             }
         }
