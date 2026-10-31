@@ -332,22 +332,17 @@ private struct EntryMonth {
 }
 
 private extension View {
-    /// A plain list of `entryListRow`s on the card.
-    func entryList() -> some View {
+    /// A list of sections led by `SectionLabel`s, with the top section's label pinned over it.
+    func pinnedSectionLabels(_ sections: [(id: Date, title: String)], tops: LabelTops) -> some View {
         listStyle(.plain)
+            // Rows pass under the pinned label with a clean edge, not iOS 26's soft fade.
+            .hidesTopScrollEdgeEffect()
+            .listSectionSpacing(0)
             .environment(\.defaultMinListRowHeight, 0)
             .scrollContentBackground(.hidden)
             .scrollDismissesKeyboard(.immediately)
             // Room for the floating tab bar and new-entry button below the last row.
             .contentMargins(.bottom, 96, for: .scrollContent)
-    }
-
-    /// An `entryList` of sections led by `SectionLabel`s, with the top section's label pinned over it.
-    func pinnedSectionLabels(_ sections: [(id: Date, title: String)], tops: LabelTops) -> some View {
-        entryList()
-            // Rows pass under the pinned label with a clean edge, not iOS 26's soft fade.
-            .hidesTopScrollEdgeEffect()
-            .listSectionSpacing(0)
             .onGeometryChange(for: CGFloat.self) { $0.frame(in: .global).minY } action: { tops.listTop = $0 }
             .overlay {
                 // Clipped to the list, so a label pushed up out of it doesn't show above the card.
@@ -428,18 +423,28 @@ private struct TrashList<Header: View>: View {
     @ViewBuilder let header: Header
 
     @Environment(\.modelContext) private var context
+    @State private var labelTops = LabelTops()
+
+    /// The one pinned label's key: labels are keyed by date, for the journal's months.
+    private static var labelID: Date { .distantPast }
+    private var count: String { entries.count == 1 ? "1 entry" : "\(entries.count) entries" }
 
     var body: some View {
         List {
             header
 
-            ForEach(entries) { entry in
-                row(for: entry)
+            if !entries.isEmpty {
+                Section {
+                    SectionLabel(count) { top in
+                        labelTops.report(top, for: Self.labelID)
+                    }
+                    ForEach(entries) { entry in
+                        row(for: entry)
+                    }
+                }
             }
         }
-        .entryList()
-        // With the first row's own inset, content starts where every tab's does.
-        .contentMargins(.top, Spacing.l - EntriesView.rowInset, for: .scrollContent)
+        .pinnedSectionLabels(entries.isEmpty ? [] : [(Self.labelID, count)], tops: labelTops)
         .overlay {
             // Centered on the screen rather than placed in the list.
             if entries.isEmpty {
