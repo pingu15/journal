@@ -90,20 +90,24 @@ private struct PlaceEntriesSheet: View {
     let entries: [Entry]
     let onOpen: (Entry) -> Void
 
-    /// Their place, when they share one: a group can span several.
+    /// Their place, or the most common one: a group can span several.
     private var title: String {
-        let places = Set(entries.compactMap(\.placeName))
-        return places.count == 1 ? places.first ?? "Entries" : "Entries"
+        let places = Dictionary(grouping: entries.compactMap(\.placeName)) { $0 }
+        return places.max { ($0.value.count, $1.key) < ($1.value.count, $0.key) }?.key ?? "Entries"
     }
 
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: Spacing.s) {
-                Text(title)
-                    .font(.title2.weight(.semibold))
-                    .foregroundStyle(Theme.primaryText)
-                MetaLabel(entries.count == 1 ? "1 entry" : "\(entries.count) entries")
-                    .padding(.bottom, Spacing.s)
+                VStack(spacing: Spacing.s) {
+                    Text(title)
+                        .font(.title2.weight(.semibold))
+                        .foregroundStyle(Theme.primaryText)
+                        .multilineTextAlignment(.center)
+                    MetaLabel(entries.count == 1 ? "1 entry" : "\(entries.count) entries")
+                }
+                .frame(maxWidth: .infinity)
+                .padding(.bottom, Spacing.s)
                 ForEach(entries) { entry in
                     Button {
                         onOpen(entry)
