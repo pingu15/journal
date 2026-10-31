@@ -80,7 +80,7 @@ private struct StatGrid: View {
     private func tile(_ value: Int, _ label: String, large: Bool = false) -> some View {
         VStack(alignment: .leading, spacing: Spacing.xs) {
             Text(value, format: .number)
-                .font(.system(size: large ? 52 : 40, weight: .regular))
+                .font(.system(size: large ? 52 : 40, weight: .regular, design: .serif))
                 .foregroundStyle(Theme.primaryText)
                 .contentTransition(.numericText())
                 .minimumScaleFactor(0.6)

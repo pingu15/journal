@@ -3,7 +3,7 @@
 A premium, minimal, editorial journaling app. Native iOS, Swift + SwiftUI, **iPhone only**.
 
 ## Design direction
-- **Style:** minimal / editorial. Lots of whitespace, restrained color, no ornament. Type: **serif only for the journal's name** (New York via `design: .serif`: `LargePageTitle`, the lock screen). **Everything else in the app is sans (SF)**: other titles, sheet and popup titles, numbers (`Typography.dayNumber`, Insights), entry text. Never add serif anywhere else. The exported PDF (`JournalPDF`) is the one holdout, still typeset in serif.
+- **Style:** minimal / editorial. Lots of whitespace, restrained color, no ornament. Type: **serif in exactly two places** (New York via `design: .serif`): the journal's name (`LargePageTitle`, the lock screen) and the Insights tiles' numbers. **Everything else in the app is sans (SF)**: other titles, sheet and popup titles, day numbers (`Typography.dayNumber`), entry text. Never add serif anywhere else. The exported PDF (`JournalPDF`) is the one holdout, still typeset in serif.
 - **Palette:** https://colorhunt.co/palette/3434348e8b82e9dcbef3f3f3
   | Token | Hex | Role |
   |---|---|---|

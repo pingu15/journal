@@ -308,7 +308,7 @@ private struct PageTitle: ViewModifier {
 struct LargePageTitle: View {
     let title: String
     var subtitle: String?
-    /// The journal's name is the one thing set in serif.
+    /// The journal's name is set in serif; other titles aren't.
     var isJournalName = true
 
     init(_ title: String, subtitle: String? = nil, isJournalName: Bool = true) {

@@ -44,8 +44,7 @@ enum Theme {
     static let activityFilled = primaryText.opacity(0.8)
     static let activityEmpty = primaryText.opacity(0.07)
 
-    /// Bar titles (sheets: Settings, Set Location, Entry Date) are sans, like everything but the
-    /// journal's name.
+    /// Bar titles (sheets: Settings, Set Location, Entry Date) are sans, like nearly everything else.
     static func applyNavigationBarAppearance() {
         let bar = UINavigationBar.appearance()
         bar.largeTitleTextAttributes = [
@@ -60,7 +59,8 @@ enum Theme {
 }
 
 enum Typography {
-    /// Everything is sans. The one exception is the journal's name (`LargePageTitle`, the lock screen).
+    /// Everything is sans but the journal's name (`LargePageTitle`, the lock screen) and the Insights
+    /// tiles' numbers.
     static let entryTitle = Font.system(.title3).weight(.semibold)
     static let entryExcerpt = Font.system(.subheadline)
     /// Empty-state and explanatory notes ("Nothing written on this day.").
