@@ -72,19 +72,23 @@ struct DaySheet: View {
     private var entriesSection: some View {
         let dayEntries = entries.filter { calendar.isDate($0.createdAt, inSameDayAs: day) }
 
-        VStack(alignment: .leading, spacing: Spacing.s) {
-            MetaLabel("Entries")
-
-            if dayEntries.isEmpty {
-                Text(day > .now ? "This day hasn't happened yet." : "Nothing written on this day.")
-                    .font(Typography.note)
-                    .foregroundStyle(Theme.secondaryText)
-                    .padding(.vertical, Spacing.xs)
-            } else {
-                SheetEntryRows(entries: dayEntries, dateStyle: .time, onOpen: onOpen)
+        if dayEntries.isEmpty {
+            Text(day > .now ? "This day hasn't happened yet." : "Nothing written on this day.")
+                .font(Typography.note)
+                .foregroundStyle(Theme.secondaryText)
+                .surfaceCard()
+        } else {
+            ForEach(dayEntries) { entry in
+                Button {
+                    onOpen(entry)
+                } label: {
+                    EntryRow(entry: entry, dateStyle: .none)
+                        .surfaceCard()
+                        .contentShape(.rect)
+                }
+                .buttonStyle(.plain)
             }
         }
-        .surfaceCard()
     }
 
     private func shift(by days: Int) {

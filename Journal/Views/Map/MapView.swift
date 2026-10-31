@@ -101,7 +101,7 @@ private struct PlaceEntriesSheet: View {
             SheetHeader(title: title, label: entries.count == 1 ? "1 entry" : "\(entries.count) entries")
         } content: {
             VStack(alignment: .leading, spacing: Spacing.s) {
-                SheetEntryRows(entries: entries, dateStyle: .dayAndMonth, onOpen: onOpen)
+                SheetEntryRows(entries: entries, onOpen: onOpen)
             }
         }
     }

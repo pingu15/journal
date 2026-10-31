@@ -39,20 +39,13 @@ extension ButtonStyle where Self == AccentButtonStyle {
 /// in the excerpt).
 struct EntryMetaLine: View {
     let entry: Entry
-    /// Off where the row already shows the time (a calendar day's entries).
-    var showsTime = true
 
     var body: some View {
-        let parts = [
-            showsTime ? entry.createdAt.formatted(date: .omitted, time: .shortened) : nil,
-            entry.placeName,
-        ].compactMap(\.self)
-        if !parts.isEmpty {
-            Text(parts.joined(separator: " · "))
-                .lineLimit(1)
-                .font(Typography.caption)
-                .foregroundStyle(Theme.secondaryText)
-        }
+        let parts = [entry.createdAt.formatted(date: .omitted, time: .shortened), entry.placeName]
+        Text(parts.compactMap(\.self).joined(separator: " · "))
+            .lineLimit(1)
+            .font(Typography.caption)
+            .foregroundStyle(Theme.secondaryText)
     }
 }
 
@@ -360,10 +353,9 @@ struct SheetHeader: View {
     }
 }
 
-/// Entries in a popup, as tappable rows with a hairline between them.
+/// A map group's entries, as tappable rows with a hairline between them.
 struct SheetEntryRows: View {
     let entries: [Entry]
-    let dateStyle: EntryRow.DateStyle
     let onOpen: (Entry) -> Void
 
     var body: some View {
@@ -371,7 +363,7 @@ struct SheetEntryRows: View {
             Button {
                 onOpen(entry)
             } label: {
-                EntryRow(entry: entry, dateStyle: dateStyle)
+                EntryRow(entry: entry, dateStyle: .dayAndMonth)
                     .padding(.vertical, 6)
             }
             .buttonStyle(.plain)

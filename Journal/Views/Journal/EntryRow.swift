@@ -1,6 +1,6 @@
 import SwiftUI
 
-/// One entry in a list. `dateStyle` picks between a day column (timeline) and a time (calendar day).
+/// One entry in a list, with a day column beside it unless `dateStyle` is `.none`.
 struct EntryRow: View {
     enum DateStyle {
         /// Day number over weekday (timeline).
@@ -9,8 +9,8 @@ struct EntryRow: View {
         case dayAndYear
         /// Day number over month (a place's entries, which span months).
         case dayAndMonth
-        /// Time only (a single calendar day).
-        case time
+        /// No day column (a single calendar day: the meta line has the time).
+        case none
     }
 
     let entry: Entry
@@ -21,7 +21,7 @@ struct EntryRow: View {
         let excerpt = entry.excerpt
         let photo = entry.coverPhoto
 
-        EntryRowLayout(hasPhoto: photo != nil) {
+        EntryRowLayout(hasDate: dateStyle != .none, hasPhoto: photo != nil) {
             dateColumn
 
             VStack(alignment: .leading, spacing: Spacing.xs) {
@@ -43,7 +43,7 @@ struct EntryRow: View {
                         .font(Typography.entryExcerpt)
                         .foregroundStyle(Theme.secondaryText)
                 }
-                EntryMetaLine(entry: entry, showsTime: dateStyle != .time)
+                EntryMetaLine(entry: entry)
                     .padding(.top, 2)
             }
             .frame(maxWidth: .infinity, alignment: .leading)
@@ -76,9 +76,9 @@ struct EntryRow: View {
                 MetaLabel(dayCaption)
             }
             .frame(width: 44)
-        case .time:
-            MetaLabel(entry.createdAt.formatted(date: .omitted, time: .shortened))
-                .frame(width: 64, alignment: .leading)
+        case .none:
+            // Still a subview: the layout places the column by position.
+            Color.clear.frame(width: 0, height: 0)
         }
     }
 }
@@ -86,9 +86,10 @@ struct EntryRow: View {
 /// Date, text and cover photo side by side: the date centered vertically in the row, and the
 /// photo spanning the row's full height.
 private struct EntryRowLayout: Layout {
+    let hasDate: Bool
     let hasPhoto: Bool
 
-    private let dateSpacing: CGFloat = 16 // Spacing.m
+    private var dateSpacing: CGFloat { hasDate ? 16 : 0 } // Spacing.m
     private let photoSpacing: CGFloat = 8 // Spacing.s
     private let photoWidth: CGFloat = 72
     private let minPhotoHeight: CGFloat = 56
