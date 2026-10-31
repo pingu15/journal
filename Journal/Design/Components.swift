@@ -162,7 +162,7 @@ private struct PageTitle: ViewModifier {
 
         VStack(spacing: 0) {
             // Stays in the layout, and opaque, so the card simply slides over it and off it again.
-            LargePageTitle(name, subtitle: title == nil ? yearSpan : nil, isJournalName: title == nil)
+            LargePageTitle(name, subtitle: title == nil ? yearSpan : nil)
                 .padding(.horizontal, Spacing.m)
                 .padding(.bottom, Spacing.m)
                 .onGeometryChange(for: CGFloat.self, of: \.size.height) { titleHeight = $0 }
@@ -390,19 +390,16 @@ struct Grabber: View {
 struct LargePageTitle: View {
     let title: String
     var subtitle: String?
-    /// The journal's name is set in serif; other titles aren't.
-    var isJournalName = true
 
-    init(_ title: String, subtitle: String? = nil, isJournalName: Bool = true) {
+    init(_ title: String, subtitle: String? = nil) {
         self.title = title
         self.subtitle = subtitle
-        self.isJournalName = isJournalName
     }
 
     var body: some View {
         VStack(alignment: .leading, spacing: Spacing.s - 2) {
             Text(title)
-                .font(isJournalName ? Typography.journalName : Typography.pageTitle)
+                .font(Typography.pageTitle)
                 .foregroundStyle(Theme.onAccent)
                 .lineLimit(2)
                 .minimumScaleFactor(0.7)

@@ -14,7 +14,7 @@ struct LockView: View {
                     .font(Typography.largeIcon.weight(.light))
                     .foregroundStyle(Theme.secondaryText)
                 Text(JournalName.display(journalName))
-                    .font(Typography.journalName)
+                    .font(Typography.pageTitle)
                     .foregroundStyle(Theme.primaryText)
                 Spacer()
                 Button {

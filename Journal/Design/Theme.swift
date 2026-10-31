@@ -64,10 +64,9 @@ enum Theme {
 /// the same role reads the same everywhere. All of it follows Dynamic Type but the Insights numbers,
 /// which are fixed and shrink to fit their tiles.
 enum Typography {
-    // Titles. Everything is sans but the journal's name, the day numbers in entry lists and the
-    // Insights tiles' numbers.
-    static let journalName = Font.system(.largeTitle, design: .serif).weight(.bold)
-    static let pageTitle = Font.system(.largeTitle).weight(.bold)
+    // Titles. Everything is sans but the page titles, the day numbers in entry lists and the Insights
+    // tiles' numbers.
+    static let pageTitle = Font.system(.largeTitle, design: .serif).weight(.bold)
     /// Popup titles (sheets' bars too, `Theme.applyNavigationBarAppearance`) and empty states.
     static let title = Font.system(.title2).weight(.bold)
     static let entryTitle = Font.system(.title3).weight(.semibold)
