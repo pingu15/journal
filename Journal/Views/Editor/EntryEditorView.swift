@@ -97,12 +97,14 @@ struct EntryEditorView: View {
         }
         .sheet(isPresented: $editingDate, onDismiss: { Task { await refreshWeather() } }) {
             DateEditSheet(date: $entry.createdAt)
+                .sheetGrabber()
         }
         .sheet(isPresented: $editingLocation) {
             LocationPicker(entry: entry) {
                 autoPlaced = false
                 Task { await refreshWeather() }
             }
+            .sheetGrabber()
         }
         .fullScreenCover(item: $viewingPhoto) { selection in
             PhotoViewer(

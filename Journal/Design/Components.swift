@@ -105,6 +105,18 @@ extension View {
         modifier(PageTitle(title: title, isHeldFullScreen: isFullScreen))
     }
 
+    /// A sheet's content, with the same `Grabber` as the page's card in place of the system's indicator.
+    func sheetGrabber() -> some View {
+        presentationDragIndicator(.hidden)
+            .overlay(alignment: .top) {
+                // The sheet drags itself; this only shows that it does.
+                Grabber()
+                    .ignoresSafeArea(edges: .top)
+                    .allowsHitTesting(false)
+                    .accessibilityHidden(true)
+            }
+    }
+
     /// Content scrolls out at the top edge as is, without iOS 26's soft fade there.
     @ViewBuilder
     func hidesTopScrollEdgeEffect() -> some View {
@@ -213,11 +225,7 @@ private struct PageTitle: ViewModifier {
     /// A short bar centered at the card's top, like a sheet's, in a strip as tall as the space above
     /// the pages' first content; dragging it moves the card (VoiceOver gets an action instead).
     private var grabber: some View {
-        Capsule()
-            // Solid, so it still shows over the Map tab's map.
-            .fill(Theme.secondaryText)
-            .frame(width: 44, height: 3)
-            .padding(.top, Spacing.s)
+        Grabber()
             .frame(maxWidth: .infinity, minHeight: Spacing.l, alignment: .top)
             .contentShape(.rect)
             .gesture(
@@ -303,6 +311,17 @@ private struct PageTitle: ViewModifier {
     }
 }
 
+/// The short bar at the top of the page's card and of every sheet, showing that it drags.
+struct Grabber: View {
+    var body: some View {
+        Capsule()
+            // Solid, so it still shows over the Map tab's map.
+            .fill(Theme.secondaryText)
+            .frame(width: 44, height: 3)
+            .padding(.top, Spacing.s)
+    }
+}
+
 /// A tab's large title (and optional meta line), in white on the sand band above the page's
 /// content (see `pageTitle`) — every tab puts it in the same place, a little below the toolbar row.
 struct LargePageTitle: View {
@@ -344,7 +363,7 @@ struct SettingsButton: View {
 
     var body: some View {
         Button("Settings", systemImage: "gearshape") { showing = true }
-            .sheet(isPresented: $showing) { SettingsView() }
+            .sheet(isPresented: $showing) { SettingsView().sheetGrabber() }
     }
 }
 

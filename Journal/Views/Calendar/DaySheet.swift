@@ -35,7 +35,7 @@ struct DaySheet: View {
         .scrollIndicators(.hidden)
         .background(Theme.background)
         .presentationDetents([.medium, .large])
-        .presentationDragIndicator(.visible)
+        .sheetGrabber()
         .sensoryFeedback(.selection, trigger: day)
     }
 
