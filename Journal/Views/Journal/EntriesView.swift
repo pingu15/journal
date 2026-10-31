@@ -7,7 +7,8 @@ struct EntriesView: View {
     @Environment(AppRouter.self) private var router
     @Query(filter: #Predicate<Entry> { $0.deletedAt == nil }, sort: \Entry.createdAt, order: .reverse)
     private var entries: [Entry]
-    @Query(filter: #Predicate<Entry> { $0.deletedAt != nil }, sort: \Entry.deletedAt, order: .reverse)
+    /// Oldest deletion first: fewest days left at the top.
+    @Query(filter: #Predicate<Entry> { $0.deletedAt != nil }, sort: \Entry.deletedAt)
     private var trashed: [Entry]
 
     @State private var searchText = ""
@@ -326,22 +327,27 @@ private struct EntryMonth {
         }
         return groups
             .sorted { $0.key > $1.key }
-            .map { EntryMonth(month: $0.key, entries: $0.value.sorted { $0.createdAt > $1.createdAt }) }
+            .map { EntryMonth(month: $0.key, entries: $0.value) }
     }
 }
 
 private extension View {
-    /// A list of sections led by `SectionLabel`s, with the top section's label pinned over it.
-    func pinnedSectionLabels(_ sections: [(id: Date, title: String)], tops: LabelTops) -> some View {
+    /// A plain list of `entryListRow`s on the card.
+    func entryList() -> some View {
         listStyle(.plain)
-            // Rows pass under the pinned label with a clean edge, not iOS 26's soft fade.
-            .hidesTopScrollEdgeEffect()
-            .listSectionSpacing(0)
             .environment(\.defaultMinListRowHeight, 0)
             .scrollContentBackground(.hidden)
             .scrollDismissesKeyboard(.immediately)
             // Room for the floating tab bar and new-entry button below the last row.
             .contentMargins(.bottom, 96, for: .scrollContent)
+    }
+
+    /// An `entryList` of sections led by `SectionLabel`s, with the top section's label pinned over it.
+    func pinnedSectionLabels(_ sections: [(id: Date, title: String)], tops: LabelTops) -> some View {
+        entryList()
+            // Rows pass under the pinned label with a clean edge, not iOS 26's soft fade.
+            .hidesTopScrollEdgeEffect()
+            .listSectionSpacing(0)
             .onGeometryChange(for: CGFloat.self) { $0.frame(in: .global).minY } action: { tops.listTop = $0 }
             .overlay {
                 // Clipped to the list, so a label pushed up out of it doesn't show above the card.
@@ -422,26 +428,18 @@ private struct TrashList<Header: View>: View {
     @ViewBuilder let header: Header
 
     @Environment(\.modelContext) private var context
-    @State private var labelTops = LabelTops()
-
-    private var months: [EntryMonth] { EntryMonth.grouping(entries) }
 
     var body: some View {
         List {
             header
 
-            ForEach(months, id: \.month) { month in
-                Section {
-                    SectionLabel(month.title) { top in
-                        labelTops.report(top, for: month.month)
-                    }
-                    ForEach(month.entries) { entry in
-                        row(for: entry)
-                    }
-                }
+            ForEach(entries) { entry in
+                row(for: entry)
             }
         }
-        .pinnedSectionLabels(months.map { ($0.month, $0.title) }, tops: labelTops)
+        .entryList()
+        // With the first row's own inset, content starts where every tab's does.
+        .contentMargins(.top, Spacing.l - EntriesView.rowInset, for: .scrollContent)
         .overlay {
             // Centered on the screen rather than placed in the list.
             if entries.isEmpty {
