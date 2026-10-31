@@ -226,7 +226,8 @@ private struct PageTitle: ViewModifier {
     /// the pages' first content; dragging it moves the card (VoiceOver gets an action instead).
     private var grabber: some View {
         Grabber()
-            .frame(maxWidth: .infinity, minHeight: Spacing.l, alignment: .top)
+            // No wider than it needs to be: touches beside it reach the page's content (the map's top).
+            .frame(width: 120, height: Spacing.l, alignment: .top)
             .contentShape(.rect)
             .gesture(
                 // On screen, not on the card, which moves under the finger.
