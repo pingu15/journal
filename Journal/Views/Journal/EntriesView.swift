@@ -210,10 +210,15 @@ struct EntriesView: View {
                 // the left.
                 .padding(.trailing, inset)
         }
-        .swipeToDelete(id: entry.persistentModelID, openRow: $swipedOpen, trailingInset: inset) {
-            withAnimation { entry.moveToTrash() }
-            try? context.save()
-        }
+        .rowSwipeActions(
+            id: entry.persistentModelID,
+            openRow: $swipedOpen,
+            trailingInset: inset,
+            trailing: RowSwipeAction(title: "Delete", symbol: "trash", tint: Theme.destructive) {
+                withAnimation { entry.moveToTrash() }
+                try? context.save()
+            }
+        )
         .entryListRow()
         .contextMenu {
             ShareLink(item: entry.shareText)
@@ -424,6 +429,8 @@ private struct TrashList<Header: View>: View {
 
     @Environment(\.modelContext) private var context
     @State private var labelTops = LabelTops()
+    /// The row swiped open to show its buttons, if any.
+    @State private var swipedOpen: PersistentIdentifier?
 
     /// The one pinned label's key: labels are keyed by date, for the journal's months.
     private static var labelID: Date { .distantPast }
@@ -445,6 +452,9 @@ private struct TrashList<Header: View>: View {
             }
         }
         .pinnedSectionLabels(entries.isEmpty ? [] : [(Self.labelID, count)], tops: labelTops)
+        .onScrollPhaseChange { _, phase in
+            if phase == .interacting { swipedOpen = nil }
+        }
         .overlay {
             // Centered on the screen rather than placed in the list.
             if entries.isEmpty {
@@ -466,21 +476,23 @@ private struct TrashList<Header: View>: View {
         EntryRow(entry: entry, warning: entry.daysUntilPurge == 1 ? "1 day left" : "\(entry.daysUntilPurge) days left")
             // The text and photo end as far in from the right as the month labels start from the left.
             .padding(.trailing, EntriesView.separatorInset)
-            .entryListRow()
-            .swipeActions(edge: .leading) {
-                Button("Restore", systemImage: "arrow.uturn.backward") {
+            // A tap only closes an open row: these open nothing.
+            .contentShape(.rect)
+            .onTapGesture { swipedOpen = nil }
+            .rowSwipeActions(
+                id: entry.persistentModelID,
+                openRow: $swipedOpen,
+                trailingInset: EntriesView.separatorInset,
+                leading: RowSwipeAction(title: "Restore", symbol: "arrow.uturn.backward", tint: Theme.accent) {
                     withAnimation { entry.restore() }
                     try? context.save()
-                }
-                .tint(Theme.accent)
-            }
-            .swipeActions(edge: .trailing) {
-                Button("Delete Permanently", systemImage: "trash", role: .destructive) {
+                },
+                trailing: RowSwipeAction(title: "Delete Permanently", symbol: "trash", tint: Theme.destructive, width: 100) {
                     withAnimation { context.delete(entry) }
                     try? context.save()
                 }
-                .tint(Theme.destructive)
-            }
+            )
+            .entryListRow()
             .contextMenu {
                 Button("Restore", systemImage: "arrow.uturn.backward") {
                     withAnimation { entry.restore() }
