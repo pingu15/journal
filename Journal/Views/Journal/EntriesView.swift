@@ -146,7 +146,7 @@ struct EntriesView: View {
             ForEach(labelledSections, id: \.id) { section in
                 Section {
                     SectionLabel(section.title) { top in
-                        labelTops.tops[section.id] = top
+                        labelTops.report(top, for: section.id)
                     }
                     ForEach(section.entries) { entry in
                         row(for: entry, dateStyle: section.dateStyle)
@@ -307,8 +307,8 @@ struct EntriesView: View {
 /// as far below the card's top edge, or the separator above it, as the label's top padding.
 private struct SectionLabel: View {
     let text: String
-    /// Reports the label's top on screen as it moves (a coordinate space named on the list doesn't
-    /// reach into its rows).
+    /// Reports the label's top on screen as it scrolls (no coordinate space reaches into a list's
+    /// rows from the list: a named one doesn't, and `.scrollView` is the screen's).
     let onTopChange: (CGFloat) -> Void
 
     init(_ text: String, onTopChange: @escaping (CGFloat) -> Void) {
@@ -359,16 +359,17 @@ private struct LabelledSection {
     let dateStyle: EntryRow.DateStyle
 }
 
-/// Where each section's label row sits (its top on screen), as last reported, and the list's top.
+/// Where each section's label row sits in the list (its top), as last reported.
 /// Kept in an object the list only holds, so the scroll redraws just the pinned label.
 @Observable
 private final class LabelTops {
-    var tops: [Date: CGFloat] = [:]
-    var listTop: CGFloat = 0
+    private(set) var tops: [Date: CGFloat] = [:]
+    /// The list's top on screen. It moves with the card, whose movement rows don't report, so a
+    /// label's place is worked out when it's reported, not from its last place on screen later.
+    @ObservationIgnored var listTop: CGFloat = 0
 
-    /// A label's top relative to the list's.
-    func top(of id: Date) -> CGFloat? {
-        tops[id].map { $0 - listTop }
+    func report(_ top: CGFloat, for id: Date) {
+        tops[id] = top - listTop
     }
 }
 
@@ -382,8 +383,8 @@ private struct PinnedSectionLabel: View {
 
     var body: some View {
         // The last section whose label has reached the top.
-        if let index = sections.lastIndex(where: { (labelTops.top(of: $0.id) ?? .infinity) <= 0 }) {
-            let nextTop = sections.indices.contains(index + 1) ? labelTops.top(of: sections[index + 1].id) : nil
+        if let index = sections.lastIndex(where: { (labelTops.tops[$0.id] ?? .infinity) <= 0 }) {
+            let nextTop = sections.indices.contains(index + 1) ? labelTops.tops[sections[index + 1].id] : nil
             SectionLabelContent(text: sections[index].title)
                 .onGeometryChange(for: CGFloat.self, of: \.size.height) { height = $0 }
                 .offset(y: min(0, (nextTop ?? .infinity) - height))
