@@ -8,6 +8,8 @@ struct DaySheet: View {
     let onOpen: (Entry) -> Void
 
     @State private var day: Date
+    /// Which way the last arrow went, so the date slides out that way.
+    @State private var movingForward = true
     private let calendar = Calendar.current
 
     init(day: Date, entries: [Entry], onOpen: @escaping (Entry) -> Void) {
@@ -30,11 +32,21 @@ struct DaySheet: View {
     }
 
     private var header: some View {
-        SheetHeader(
-            title: day.formatted(.dateTime.month(.wide).day().year()),
-            label: day.formatted(.dateTime.weekday(.wide))
-        )
-        .contentTransition(.numericText())
+        ZStack {
+            SheetHeader(
+                title: day.formatted(.dateTime.month(.wide).day().year()),
+                label: day.formatted(.dateTime.weekday(.wide))
+            )
+            .id(day)
+            .transition(.asymmetric(
+                insertion: .move(edge: movingForward ? .trailing : .leading),
+                removal: .move(edge: movingForward ? .leading : .trailing)
+            ))
+        }
+        // Out to the sheet's edges, so the dates slide right across it.
+        .padding(.horizontal, Spacing.m + 4)
+        .clipped()
+        .padding(.horizontal, -(Spacing.m + 4))
         .overlay(alignment: .leading) {
             arrow("Previous Day", "chevron.left", by: -1)
         }
@@ -73,7 +85,12 @@ struct DaySheet: View {
 
     private func shift(by days: Int) {
         guard let next = calendar.date(byAdding: .day, value: days, to: day) else { return }
-        withAnimation(.snappy) { day = next }
+        movingForward = days > 0
+        // On the next turn: the outgoing date takes its transition from the last update, so the
+        // direction has to be in place before the day changes.
+        DispatchQueue.main.async {
+            withAnimation(.snappy) { day = next }
+        }
     }
 }
 
