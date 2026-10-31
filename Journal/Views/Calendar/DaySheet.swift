@@ -22,10 +22,13 @@ struct DaySheet: View {
         SheetPage {
             header
         } content: {
-            entriesSection
-            VStack(alignment: .leading, spacing: Spacing.s) {
-                MetaLabel("Photos")
-                DayPhotos(day: day)
+            VStack(spacing: Spacing.m) {
+                entriesSection
+                VStack(alignment: .leading, spacing: Spacing.s) {
+                    MetaLabel("Photos")
+                    DayPhotos(day: day)
+                }
+                .surfaceCard()
             }
         }
         .sensoryFeedback(.selection, trigger: day)
@@ -81,6 +84,7 @@ struct DaySheet: View {
                 SheetEntryRows(entries: dayEntries, dateStyle: .time, onOpen: onOpen)
             }
         }
+        .surfaceCard()
     }
 
     private func shift(by days: Int) {

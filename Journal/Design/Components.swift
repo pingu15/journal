@@ -105,6 +105,13 @@ extension View {
         modifier(PageTitle(title: title, isHeldFullScreen: isFullScreen))
     }
 
+    /// A softly colored rounded rectangle around a section of content.
+    func surfaceCard() -> some View {
+        padding(Spacing.m)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .background(Theme.surface, in: .rect(cornerRadius: Radius.card))
+    }
+
     /// A sheet's content, with the same `Grabber` as the page's card in place of the system's indicator.
     func sheetGrabber() -> some View {
         presentationDragIndicator(.hidden)

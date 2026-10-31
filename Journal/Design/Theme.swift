@@ -61,7 +61,8 @@ enum Theme {
 }
 
 /// The app's type scale. Views take their fonts from here, never a size or style of their own, so
-/// the same role reads the same everywhere. All of it follows Dynamic Type.
+/// the same role reads the same everywhere. All of it follows Dynamic Type but the Insights numbers,
+/// which are fixed and shrink to fit their tiles.
 enum Typography {
     // Titles. Everything is sans but the journal's name, the day numbers in entry lists and the
     // Insights tiles' numbers.
@@ -97,6 +98,11 @@ enum Typography {
     static let calendarDay = Font.system(.callout).weight(.semibold)
     static let statNumber = Font.system(size: 40, weight: .regular, design: .serif)
     static let largeStatNumber = Font.system(size: 52, weight: .regular, design: .serif)
+}
+
+enum Radius {
+    /// Cards: Insights' tiles, the day sheet's sections, Set Location's map.
+    static let card: CGFloat = 16
 }
 
 enum Spacing {

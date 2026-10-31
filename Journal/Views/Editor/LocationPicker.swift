@@ -84,7 +84,7 @@ struct LocationPicker: View {
     private var map: some View {
         if entry.location == nil && !LocationService.shared.isAuthorized {
             // Nothing to show yet: a quiet placeholder rather than a zoomed-out continent.
-            RoundedRectangle(cornerRadius: 16)
+            RoundedRectangle(cornerRadius: Radius.card)
                 .fill(Theme.primaryText.opacity(0.05))
                 .overlay {
                     VStack(spacing: Spacing.s) {
@@ -115,9 +115,9 @@ struct LocationPicker: View {
         .mapStyle(.standard(pointsOfInterest: .excludingAll))
         .mapControls {}
         .frame(height: 170)
-        .clipShape(.rect(cornerRadius: 16))
+        .clipShape(.rect(cornerRadius: Radius.card))
         .overlay {
-            RoundedRectangle(cornerRadius: 16).strokeBorder(Theme.hairline)
+            RoundedRectangle(cornerRadius: Radius.card).strokeBorder(Theme.hairline)
         }
         .allowsHitTesting(false)
         .accessibilityLabel(entry.placeName.map { "Map showing \($0)" } ?? "Map")

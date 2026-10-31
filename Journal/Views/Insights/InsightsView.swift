@@ -87,9 +87,7 @@ private struct StatGrid: View {
                 .lineLimit(1)
             MetaLabel(label)
         }
-        .padding(Spacing.m)
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .background(Theme.surface, in: .rect(cornerRadius: 16))
+        .surfaceCard()
         .accessibilityElement(children: .combine)
     }
 }
