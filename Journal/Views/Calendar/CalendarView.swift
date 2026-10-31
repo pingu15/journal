@@ -22,7 +22,6 @@ struct CalendarView: View {
     @State private var topMonth: Int?
     @State private var scrollPhase = ScrollPhase.idle
     @State private var openDay: DaySelection?
-    @State private var newEntryCount = 0
     /// Each month's title row, fixed so a month's height is known before it's built.
     @ScaledMetric(relativeTo: .caption2) private var titleHeight: CGFloat = 34
 
@@ -107,18 +106,9 @@ struct CalendarView: View {
         }
         // Hidden from the stack, not the editor, so it returns as soon as the editor starts closing.
         .toolbar(path.isEmpty ? .visible : .hidden, for: .tabBar)
-        .sensoryFeedback(.impact(weight: .light), trigger: newEntryCount)
         .sensoryFeedback(.selection, trigger: openDay?.day)
         .sheet(item: $openDay) { selection in
-            DaySheet(
-                day: selection.day,
-                entries: entries,
-                onOpen: { entry in open(entry) },
-                onNewEntry: { day in
-                    openDay = nil
-                    newEntry(on: day)
-                }
-            )
+            DaySheet(day: selection.day, entries: entries) { entry in open(entry) }
         }
         .onChange(of: path) { _, path in
             if path.isEmpty {
@@ -153,16 +143,6 @@ struct CalendarView: View {
     /// Opens an entry from the day sheet, once the sheet is out of the way.
     private func open(_ entry: Entry) {
         openDay = nil
-        Task {
-            try? await Task.sleep(for: .milliseconds(350))
-            path.append(entry)
-        }
-    }
-
-    /// A new entry for `day`, once the day sheet is out of the way.
-    private func newEntry(on day: Date) {
-        newEntryCount += 1
-        let entry = Entry.create(in: context, on: day)
         Task {
             try? await Task.sleep(for: .milliseconds(350))
             path.append(entry)

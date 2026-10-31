@@ -197,18 +197,9 @@ extension Entry {
 extension Entry {
     static let trashRetentionDays = 30
 
-    /// Creates and inserts an entry. For a day other than today, the current time of day
-    /// is kept so it sorts naturally among that day's entries.
-    static func create(in context: ModelContext, on day: Date? = nil) -> Entry {
-        let calendar = Calendar.current
-        var date = Date.now
-        if let day, !calendar.isDateInToday(day) {
-            let time = calendar.dateComponents([.hour, .minute, .second], from: .now)
-            date = calendar.date(
-                bySettingHour: time.hour ?? 12, minute: time.minute ?? 0, second: time.second ?? 0, of: day
-            ) ?? day
-        }
-        let entry = Entry(createdAt: date)
+    /// Creates and inserts an entry dated now.
+    static func create(in context: ModelContext) -> Entry {
+        let entry = Entry(createdAt: .now)
         context.insert(entry)
         return entry
     }

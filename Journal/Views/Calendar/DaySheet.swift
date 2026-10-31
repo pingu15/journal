@@ -6,16 +6,14 @@ import SwiftUI
 struct DaySheet: View {
     let entries: [Entry]
     let onOpen: (Entry) -> Void
-    let onNewEntry: (Date) -> Void
 
     @State private var day: Date
     private let calendar = Calendar.current
 
-    init(day: Date, entries: [Entry], onOpen: @escaping (Entry) -> Void, onNewEntry: @escaping (Date) -> Void) {
+    init(day: Date, entries: [Entry], onOpen: @escaping (Entry) -> Void) {
         _day = State(initialValue: Calendar.current.startOfDay(for: day))
         self.entries = entries
         self.onOpen = onOpen
-        self.onNewEntry = onNewEntry
     }
 
     var body: some View {
@@ -68,18 +66,7 @@ struct DaySheet: View {
         let dayEntries = entries.filter { calendar.isDate($0.createdAt, inSameDayAs: day) }
 
         VStack(alignment: .leading, spacing: Spacing.s) {
-            HStack {
-                MetaLabel("Entries")
-                Spacer()
-                // There's nothing to write about a day that hasn't happened.
-                if day <= .now {
-                    Button("New Entry", systemImage: "square.and.pencil") { onNewEntry(day) }
-                        .labelStyle(.iconOnly)
-                        .font(Typography.action)
-                        .foregroundStyle(Theme.primaryText)
-                        .buttonStyle(.plain)
-                }
-            }
+            MetaLabel("Entries")
 
             if dayEntries.isEmpty {
                 Text(day > .now ? "This day hasn't happened yet." : "Nothing written on this day.")
