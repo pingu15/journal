@@ -154,26 +154,9 @@ struct EntriesView: View {
                 }
             }
         }
-        .listStyle(.plain)
-        // Rows pass under the pinned label with a clean edge, not iOS 26's soft fade.
-        .hidesTopScrollEdgeEffect()
-        .listSectionSpacing(0)
-        .environment(\.defaultMinListRowHeight, 0)
-        .scrollContentBackground(.hidden)
-        .scrollDismissesKeyboard(.immediately)
-        // Room for the floating new-entry button below the last row.
-        .contentMargins(.bottom, 96, for: .scrollContent)
+        .pinnedSectionLabels(labelledSections.map { ($0.id, $0.title) }, tops: labelTops)
         .onScrollPhaseChange { _, phase in
             if phase == .interacting { swipedOpen = nil }
-        }
-        .onGeometryChange(for: CGFloat.self) { $0.frame(in: .global).minY } action: { labelTops.listTop = $0 }
-        .overlay {
-            // Clipped to the list, so a label pushed up out of it doesn't show above the card.
-            Color.clear
-                .overlay(alignment: .top) {
-                    PinnedSectionLabel(sections: labelledSections.map { ($0.id, $0.title) }, labelTops: labelTops)
-                }
-                .clipped()
         }
     }
 
@@ -184,12 +167,7 @@ struct EntriesView: View {
             result.append(LabelledSection(id: .distantFuture, title: "On this day", entries: onThisDay, dateStyle: .dayAndYear))
         }
         for section in sections {
-            result.append(LabelledSection(
-                id: section.month,
-                title: section.month.formatted(.dateTime.month(.wide).year()),
-                entries: section.entries,
-                dateStyle: .day
-            ))
+            result.append(LabelledSection(id: section.month, title: section.title, entries: section.entries, dateStyle: .day))
         }
         return result
     }
@@ -235,18 +213,7 @@ struct EntriesView: View {
             withAnimation { entry.moveToTrash() }
             try? context.save()
         }
-        // The list's own insets. (A section's first row keeps its inset too — the label row leaves that
-        // much less below it — so its long-press preview isn't cut off at the top.)
-        .listRowInsets(EdgeInsets(top: Self.rowInset, leading: Spacing.m, bottom: Self.rowInset, trailing: Spacing.m))
-        .listRowBackground(Theme.background)
-        .listRowSeparatorTint(Theme.hairline)
-        // Including under a month's last row, which a list leaves bare above the next header.
-        .listRowSeparator(.visible, edges: .bottom)
-        // Every separator starts at the same point (by default each follows its row's weekday
-        // label, so they differed row to row) and ends where the row's content does, and the month
-        // labels start where it does.
-        .alignmentGuide(.listRowSeparatorLeading) { _ in inset }
-        .alignmentGuide(.listRowSeparatorTrailing) { d in d.width - inset }
+        .entryListRow()
         .contextMenu {
             ShareLink(item: entry.shareText)
             Button("Delete", systemImage: "trash", role: .destructive) {
@@ -272,17 +239,9 @@ struct EntriesView: View {
 
     // MARK: - Data
 
-    private var sections: [(month: Date, entries: [Entry])] {
+    private var sections: [EntryMonth] {
         let query = searchText.trimmingCharacters(in: .whitespaces)
-        let matching = query.isEmpty ? entries : entries.filter { $0.matches(query) }
-
-        let calendar = Calendar.current
-        let groups = Dictionary(grouping: matching) {
-            calendar.dateInterval(of: .month, for: $0.createdAt)?.start ?? $0.createdAt
-        }
-        return groups
-            .sorted { $0.key > $1.key }
-            .map { (month: $0.key, entries: $0.value) }
+        return EntryMonth.grouping(query.isEmpty ? entries : entries.filter { $0.matches(query) })
     }
 
     private var onThisDay: [Entry] {
@@ -352,6 +311,68 @@ private struct SectionLabelContent: View {
     }
 }
 
+/// Entries written in one month.
+private struct EntryMonth {
+    let month: Date
+    let entries: [Entry]
+
+    var title: String { month.formatted(.dateTime.month(.wide).year()) }
+
+    /// `entries` by the month they were written, newest first.
+    static func grouping(_ entries: [Entry]) -> [EntryMonth] {
+        let calendar = Calendar.current
+        let groups = Dictionary(grouping: entries) {
+            calendar.dateInterval(of: .month, for: $0.createdAt)?.start ?? $0.createdAt
+        }
+        return groups
+            .sorted { $0.key > $1.key }
+            .map { EntryMonth(month: $0.key, entries: $0.value.sorted { $0.createdAt > $1.createdAt }) }
+    }
+}
+
+private extension View {
+    /// A list of sections led by `SectionLabel`s, with the top section's label pinned over it.
+    func pinnedSectionLabels(_ sections: [(id: Date, title: String)], tops: LabelTops) -> some View {
+        listStyle(.plain)
+            // Rows pass under the pinned label with a clean edge, not iOS 26's soft fade.
+            .hidesTopScrollEdgeEffect()
+            .listSectionSpacing(0)
+            .environment(\.defaultMinListRowHeight, 0)
+            .scrollContentBackground(.hidden)
+            .scrollDismissesKeyboard(.immediately)
+            // Room for the floating tab bar and new-entry button below the last row.
+            .contentMargins(.bottom, 96, for: .scrollContent)
+            .onGeometryChange(for: CGFloat.self) { $0.frame(in: .global).minY } action: { tops.listTop = $0 }
+            .overlay {
+                // Clipped to the list, so a label pushed up out of it doesn't show above the card.
+                Color.clear
+                    .overlay(alignment: .top) {
+                        PinnedSectionLabel(sections: sections, labelTops: tops)
+                    }
+                    .clipped()
+            }
+    }
+
+    /// An entry's row in a list of months.
+    func entryListRow() -> some View {
+        let inset = EntriesView.separatorInset // Read here: the alignment guides run off the main actor.
+        // The list's own insets. (A section's first row keeps its inset too — the label row leaves that
+        // much less below it — so its long-press preview isn't cut off at the top.)
+        return listRowInsets(EdgeInsets(
+            top: EntriesView.rowInset, leading: Spacing.m, bottom: EntriesView.rowInset, trailing: Spacing.m
+        ))
+        .listRowBackground(Theme.background)
+        .listRowSeparatorTint(Theme.hairline)
+        // Including under a month's last row, which a list leaves bare above the next header.
+        .listRowSeparator(.visible, edges: .bottom)
+        // Every separator starts at the same point (by default each follows its row's weekday
+        // label, so they differed row to row) and ends where the row's content does, and the month
+        // labels start where it does.
+        .alignmentGuide(.listRowSeparatorLeading) { _ in inset }
+        .alignmentGuide(.listRowSeparatorTrailing) { d in d.width - inset }
+    }
+}
+
 private struct LabelledSection {
     let id: Date
     let title: String
@@ -401,51 +422,26 @@ private struct TrashList<Header: View>: View {
     @ViewBuilder let header: Header
 
     @Environment(\.modelContext) private var context
+    @State private var labelTops = LabelTops()
+
+    private var months: [EntryMonth] { EntryMonth.grouping(entries) }
 
     var body: some View {
         List {
             header
 
-            if !entries.isEmpty {
-                ForEach(entries) { entry in
-                    VStack(alignment: .leading, spacing: Spacing.xs) {
-                        EntryRow(entry: entry)
-                        MetaLabel(entry.daysUntilPurge == 1 ? "1 day left" : "\(entry.daysUntilPurge) days left")
-                            .padding(.leading, 44 + Spacing.m)
+            ForEach(months, id: \.month) { month in
+                Section {
+                    SectionLabel(month.title) { top in
+                        labelTops.report(top, for: month.month)
                     }
-                    .listRowBackground(Theme.background)
-                    .listRowSeparatorTint(Theme.hairline)
-                    .swipeActions(edge: .leading) {
-                        Button("Restore", systemImage: "arrow.uturn.backward") {
-                            withAnimation { entry.restore() }
-                            try? context.save()
-                        }
-                        .tint(Theme.accent)
-                    }
-                    .swipeActions(edge: .trailing) {
-                        Button("Delete Now", systemImage: "trash", role: .destructive) {
-                            withAnimation { context.delete(entry) }
-                            try? context.save()
-                        }
-                        .tint(Theme.destructive)
-                    }
-                    .contextMenu {
-                        Button("Restore", systemImage: "arrow.uturn.backward") {
-                            withAnimation { entry.restore() }
-                            try? context.save()
-                        }
-                        Button("Delete Now", systemImage: "trash", role: .destructive) {
-                            withAnimation { context.delete(entry) }
-                            try? context.save()
-                        }
+                    ForEach(month.entries) { entry in
+                        row(for: entry)
                     }
                 }
             }
         }
-        .listStyle(.plain)
-        .environment(\.defaultMinListRowHeight, 0)
-        .scrollContentBackground(.hidden)
-        .scrollDismissesKeyboard(.immediately)
+        .pinnedSectionLabels(months.map { ($0.month, $0.title) }, tops: labelTops)
         .overlay {
             // Centered on the screen rather than placed in the list.
             if entries.isEmpty {
@@ -459,6 +455,41 @@ private struct TrashList<Header: View>: View {
                 .foregroundStyle(Theme.secondaryText)
                 .padding(.horizontal, Spacing.l)
                 .allowsHitTesting(false)
+            }
+        }
+    }
+
+    private func row(for entry: Entry) -> some View {
+        VStack(alignment: .leading, spacing: Spacing.xs) {
+            EntryRow(entry: entry)
+            MetaLabel(entry.daysUntilPurge == 1 ? "1 day left" : "\(entry.daysUntilPurge) days left")
+                .padding(.leading, 44 + Spacing.m)
+        }
+        // The text and photo end as far in from the right as the month labels start from the left.
+        .padding(.trailing, EntriesView.separatorInset)
+        .entryListRow()
+        .swipeActions(edge: .leading) {
+            Button("Restore", systemImage: "arrow.uturn.backward") {
+                withAnimation { entry.restore() }
+                try? context.save()
+            }
+            .tint(Theme.accent)
+        }
+        .swipeActions(edge: .trailing) {
+            Button("Delete Now", systemImage: "trash", role: .destructive) {
+                withAnimation { context.delete(entry) }
+                try? context.save()
+            }
+            .tint(Theme.destructive)
+        }
+        .contextMenu {
+            Button("Restore", systemImage: "arrow.uturn.backward") {
+                withAnimation { entry.restore() }
+                try? context.save()
+            }
+            Button("Delete Now", systemImage: "trash", role: .destructive) {
+                withAnimation { context.delete(entry) }
+                try? context.save()
             }
         }
     }
