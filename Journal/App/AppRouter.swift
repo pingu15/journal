@@ -62,7 +62,4 @@ final class AppRouter {
     var pendingNewEntry = false
     /// Entries with an editor on screen, so blank-entry cleanup never removes one mid-edit.
     var openEntries: Set<PersistentIdentifier> = []
-    /// Bumped when the open Calendar tab is tapped again, so the calendar can hold its place against
-    /// the scroll to the top that sets off.
-    var calendarTabRetaps = 0
 }

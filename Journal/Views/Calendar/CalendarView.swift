@@ -21,9 +21,6 @@ struct CalendarView: View {
     /// the very first month.
     @State private var topMonth: Int?
     @State private var scrollPhase = ScrollPhase.idle
-    /// Where the scroll rests or the finger has it, not where the system's scroll to the top has got
-    /// to; in a box so that scrolling doesn't redraw the calendar.
-    @State private var scrollOffset = ScrollOffset()
     @State private var openDay: DaySelection?
     @State private var newEntryCount = 0
     /// Each month's title row, fixed so a month's height is known before it's built.
@@ -54,7 +51,7 @@ struct CalendarView: View {
                     let monthLayout = layout(width: width)
                     let months = shownMonths ?? monthLayout.months(around: Self.weeks.index(of: .now))
                     ZStack(alignment: .top) {
-                        ScrollsToTopDisabled().frame(width: 0, height: 0)
+                        NoScrollToTop().frame(width: 0, height: 0)
                         Color.clear.frame(height: monthLayout.height + Spacing.m)
                         ForEach(Array(months), id: \.self) { index in
                             MonthSection(
@@ -83,19 +80,11 @@ struct CalendarView: View {
                     shownMonths = value[0]...value[1]
                     if scrollPhase != .idle { topMonth = value[2] }
                 }
-                .onScrollGeometryChange(for: CGFloat.self, of: \.visibleRect.minY) { _, y in
-                    if scrollPhase == .interacting || scrollPhase == .decelerating { scrollOffset.y = y }
-                }
-                .onScrollPhaseChange { _, phase, context in
-                    scrollPhase = phase
-                    if phase == .idle { scrollOffset.y = context.geometry.visibleRect.minY }
-                }
+                .onScrollPhaseChange { _, phase in scrollPhase = phase }
                 .onGeometryChange(for: CGFloat.self, of: \.size.width) { newWidth in
                     guard newWidth > 0, newWidth != width else { return }
                     width = newWidth
-                    let top = layout(width: newWidth).top(topMonth ?? Self.weeks.index(of: .now))
-                    position.scrollTo(y: top)
-                    scrollOffset.y = top
+                    position.scrollTo(y: layout(width: newWidth).top(topMonth ?? Self.weeks.index(of: .now)))
                 }
                 .scrollIndicators(.hidden)
                 // Room for the floating tab bar below the last month.
@@ -120,8 +109,6 @@ struct CalendarView: View {
         .toolbar(path.isEmpty ? .visible : .hidden, for: .tabBar)
         .sensoryFeedback(.impact(weight: .light), trigger: newEntryCount)
         .sensoryFeedback(.selection, trigger: openDay?.day)
-        // Tapping the open tab scrolls it to the top, five centuries back; `scrollsToTop` doesn't stop it.
-        .onChange(of: router.calendarTabRetaps) { position.scrollTo(y: scrollOffset.y) }
         .sheet(item: $openDay) { selection in
             DaySheet(
                 day: selection.day,
@@ -410,27 +397,60 @@ extension Calendar {
         .environment(AppRouter())
 }
 
-private final class ScrollOffset {
-    var y: CGFloat = 0
-}
-
-/// Inside a `ScrollView`, turns off tapping the status bar to scroll to the top: the top of the
-/// calendar is five centuries back.
-private struct ScrollsToTopDisabled: UIViewRepresentable {
+/// Inside a `ScrollView`, turns off scrolling to the top from the status bar and from tapping the
+/// open tab again (which does nothing here, even mid-scroll): the top of the calendar is five
+/// centuries back.
+private struct NoScrollToTop: UIViewRepresentable {
     func makeUIView(context: Context) -> UIView { Probe() }
     func updateUIView(_ uiView: UIView, context: Context) {}
 
     private final class Probe: UIView {
+        private var tabTaps: OpenTabTapIgnorer?
+
         override func didMoveToWindow() {
             super.didMoveToWindow()
+            guard window != nil else { return }
             var view = superview
             while let current = view {
                 if let scrollView = current as? UIScrollView {
                     scrollView.scrollsToTop = false
-                    return
+                    break
                 }
                 view = current.superview
             }
+            let controller = sequence(first: self as UIResponder, next: \.next)
+                .lazy.compactMap { $0 as? UITabBarController }.first
+            if let controller, !(controller.delegate is OpenTabTapIgnorer) {
+                let ignorer = OpenTabTapIgnorer(wrapping: controller.delegate, calendar: self)
+                tabTaps = ignorer
+                controller.delegate = ignorer
+            }
         }
+    }
+}
+
+/// Stands in for SwiftUI's tab bar delegate, passing everything on except a tap on the Calendar tab
+/// while it's open, which it refuses so that nothing starts.
+private final class OpenTabTapIgnorer: NSObject, UITabBarControllerDelegate {
+    private nonisolated(unsafe) weak var wrapped: UITabBarControllerDelegate?
+    private weak var calendar: UIView?
+
+    init(wrapping wrapped: UITabBarControllerDelegate?, calendar: UIView) {
+        self.wrapped = wrapped
+        self.calendar = calendar
+    }
+
+    nonisolated override func responds(to selector: Selector!) -> Bool {
+        super.responds(to: selector) || wrapped?.responds(to: selector) == true
+    }
+
+    nonisolated override func forwardingTarget(for selector: Selector!) -> Any? { wrapped }
+
+    func tabBarController(_ controller: UITabBarController, shouldSelectTab tab: UITab) -> Bool {
+        if tab == controller.selectedTab, let calendar, let open = controller.selectedViewController?.view,
+           calendar.isDescendant(of: open) {
+            return false
+        }
+        return wrapped?.tabBarController?(controller, shouldSelectTab: tab) ?? true
     }
 }
