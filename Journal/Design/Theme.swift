@@ -78,7 +78,6 @@ enum Typography {
     /// Secondary lines: the editor's date and place, list excerpts.
     static let detail = Font.system(.subheadline)
     static let entryExcerpt = detail
-    static let smallAction = Font.system(.subheadline).weight(.medium)
     /// Empty-state and explanatory notes ("Nothing written on this day.").
     static let note = Font.system(.footnote)
     /// An entry's time and place under its text.

@@ -401,32 +401,12 @@ private struct TrashList<Header: View>: View {
     @ViewBuilder let header: Header
 
     @Environment(\.modelContext) private var context
-    @State private var confirmingDeleteAll = false
 
     var body: some View {
         List {
             header
 
             if !entries.isEmpty {
-                Section {
-                    HStack {
-                        MetaLabel("Deleted after \(Entry.trashRetentionDays) days")
-                        Spacer()
-                        Button("Restore All") {
-                            withAnimation { entries.forEach { $0.restore() } }
-                            try? context.save()
-                        }
-                        Button("Delete All", role: .destructive) {
-                            confirmingDeleteAll = true
-                        }
-                        .padding(.leading, Spacing.m)
-                    }
-                    .font(Typography.smallAction)
-                    .buttonStyle(.borderless)
-                    .listRowBackground(Color.clear)
-                    .listRowSeparator(.hidden)
-                }
-
                 ForEach(entries) { entry in
                     VStack(alignment: .leading, spacing: Spacing.xs) {
                         EntryRow(entry: entry)
@@ -480,18 +460,6 @@ private struct TrashList<Header: View>: View {
                 .padding(.horizontal, Spacing.l)
                 .allowsHitTesting(false)
             }
-        }
-        .confirmationDialog(
-            "Permanently delete \(entries.count == 1 ? "1 entry" : "\(entries.count) entries")?",
-            isPresented: $confirmingDeleteAll,
-            titleVisibility: .visible
-        ) {
-            Button("Delete All", role: .destructive) {
-                withAnimation { entries.forEach { context.delete($0) } }
-                try? context.save()
-            }
-        } message: {
-            Text("This can't be undone.")
         }
     }
 }
