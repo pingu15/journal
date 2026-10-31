@@ -12,8 +12,8 @@ struct EntryPin: Equatable {
     }
 }
 
-/// The entries' places as sand dots on an `MKMapView`, which groups nearby dots into one with a
-/// count (SwiftUI's `Map` can't cluster). Tapping a dot opens its entry; tapping a group zooms in on
+/// The entries' places as numbered sand dots on an `MKMapView`, which groups nearby entries into one
+/// dot (SwiftUI's `Map` can't cluster). Tapping a dot opens its entry; tapping a group zooms in on
 /// it, or — when its entries are all in the same spot, so zooming can't split it — opens them as a
 /// list. Long-pressing the map asks for a new entry there. It opens on the current location, or
 /// fitted to every dot without one.
@@ -30,7 +30,6 @@ struct EntryMap: UIViewRepresentable {
         map.pointOfInterestFilter = .excludingAll
         map.showsCompass = false
         map.register(EntryDotView.self, forAnnotationViewWithReuseIdentifier: EntryDotView.reuseID)
-        map.register(EntryClusterView.self, forAnnotationViewWithReuseIdentifier: EntryClusterView.reuseID)
 
         let press = UILongPressGestureRecognizer(target: context.coordinator, action: #selector(Coordinator.longPress(_:)))
         press.minimumPressDuration = 0.5
@@ -111,9 +110,7 @@ struct EntryMap: UIViewRepresentable {
 
         func mapView(_ map: MKMapView, viewFor annotation: MKAnnotation) -> MKAnnotationView? {
             switch annotation {
-            case is MKClusterAnnotation:
-                map.dequeueReusableAnnotationView(withIdentifier: EntryClusterView.reuseID, for: annotation)
-            case is EntryAnnotation:
+            case is MKClusterAnnotation, is EntryAnnotation:
                 map.dequeueReusableAnnotationView(withIdentifier: EntryDotView.reuseID, for: annotation)
             default:
                 nil
@@ -154,14 +151,26 @@ private final class EntryAnnotation: NSObject, MKAnnotation {
     }
 }
 
-/// One entry: a small sand dot ringed in white.
+/// An entry, or several close together: a sand dot ringed in white with their count, always the
+/// same size.
 private final class EntryDotView: MKAnnotationView {
     static let reuseID = "entry"
-    private static let size: CGFloat = 16
+    private static let size: CGFloat = 36
+    private let label = UILabel()
+
+    // Set with the annotation: MapKit decides what to group as soon as it has the view, and views
+    // are reused between entries and groups.
+    override var annotation: MKAnnotation? {
+        didSet { updateClustering() }
+    }
+
+    private func updateClustering() {
+        clusteringIdentifier = annotation is MKClusterAnnotation ? nil : "entries"
+    }
 
     override init(annotation: MKAnnotation?, reuseIdentifier: String?) {
         super.init(annotation: annotation, reuseIdentifier: reuseIdentifier)
-        clusteringIdentifier = "entries"
+        updateClustering()
         collisionMode = .circle
         frame = CGRect(x: 0, y: 0, width: Self.size, height: Self.size)
         backgroundColor = UITheme.accent
@@ -170,37 +179,16 @@ private final class EntryDotView: MKAnnotationView {
         layer.borderWidth = 2
         layer.shadowColor = UIColor.black.cgColor
         layer.shadowOpacity = 0.25
-        layer.shadowRadius = 2
-        layer.shadowOffset = CGSize(width: 0, height: 1)
-    }
-
-    required init?(coder: NSCoder) { fatalError("init(coder:) has not been implemented") }
-
-    override func prepareForDisplay() {
-        super.prepareForDisplay()
-        clusteringIdentifier = "entries"
-    }
-}
-
-/// Several entries close together: a bigger sand dot with their count.
-private final class EntryClusterView: MKAnnotationView {
-    static let reuseID = "cluster"
-    private let label = UILabel()
-
-    override init(annotation: MKAnnotation?, reuseIdentifier: String?) {
-        super.init(annotation: annotation, reuseIdentifier: reuseIdentifier)
-        collisionMode = .circle
-        backgroundColor = UITheme.accent
-        layer.borderColor = UIColor.white.cgColor
-        layer.borderWidth = 2
-        layer.shadowColor = UIColor.black.cgColor
-        layer.shadowOpacity = 0.25
         layer.shadowRadius = 3
         layer.shadowOffset = CGSize(width: 0, height: 1)
+        label.frame = bounds.insetBy(dx: 4, dy: 4)
         label.textColor = .white
         label.textAlignment = .center
         label.font = UIFontMetrics(forTextStyle: .footnote).scaledFont(for: .systemFont(ofSize: 13, weight: .semibold))
         label.adjustsFontForContentSizeCategory = true
+        // The dot doesn't grow, so a long count or a large text size shrinks to fit.
+        label.adjustsFontSizeToFitWidth = true
+        label.minimumScaleFactor = 0.5
         addSubview(label)
     }
 
@@ -208,13 +196,8 @@ private final class EntryClusterView: MKAnnotationView {
 
     override func prepareForDisplay() {
         super.prepareForDisplay()
-        let count = (annotation as? MKClusterAnnotation)?.memberAnnotations.count ?? 0
+        let count = (annotation as? MKClusterAnnotation)?.memberAnnotations.count ?? 1
         label.text = count.formatted()
-        // A little bigger for bigger groups.
-        let side: CGFloat = count < 10 ? 30 : count < 100 ? 36 : 42
-        frame = CGRect(x: 0, y: 0, width: side, height: side)
-        layer.cornerRadius = side / 2
-        label.frame = bounds
-        accessibilityLabel = "\(count) entries"
+        accessibilityLabel = count == 1 ? "1 entry" : "\(count) entries"
     }
 }
