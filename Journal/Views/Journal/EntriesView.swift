@@ -214,10 +214,15 @@ struct EntriesView: View {
             id: entry.persistentModelID,
             openRow: $swipedOpen,
             trailingInset: inset,
-            trailing: RowSwipeAction(title: "Delete", symbol: "trash", tint: Theme.destructive) {
-                withAnimation { entry.moveToTrash() }
-                try? context.save()
-            }
+            actions: [
+                RowSwipeAction(title: "Share", symbol: "square.and.arrow.up", tint: Theme.accent, removesRow: false) {
+                    Task { await ShareSheet.present(entry.shareText) }
+                },
+                RowSwipeAction(title: "Delete", symbol: "trash", tint: Theme.destructive) {
+                    withAnimation { entry.moveToTrash() }
+                    try? context.save()
+                },
+            ]
         )
         .entryListRow()
         .contextMenu {
@@ -483,14 +488,16 @@ private struct TrashList<Header: View>: View {
                 id: entry.persistentModelID,
                 openRow: $swipedOpen,
                 trailingInset: EntriesView.separatorInset,
-                leading: RowSwipeAction(title: "Restore", symbol: "arrow.uturn.backward", tint: Theme.accent) {
-                    withAnimation { entry.restore() }
-                    try? context.save()
-                },
-                trailing: RowSwipeAction(title: "Delete Permanently", symbol: "trash", tint: Theme.destructive, width: 100) {
-                    withAnimation { context.delete(entry) }
-                    try? context.save()
-                }
+                actions: [
+                    RowSwipeAction(title: "Restore", symbol: "arrow.uturn.backward", tint: Theme.accent) {
+                        withAnimation { entry.restore() }
+                        try? context.save()
+                    },
+                    RowSwipeAction(title: "Delete Permanently", symbol: "trash", tint: Theme.destructive) {
+                        withAnimation { context.delete(entry) }
+                        try? context.save()
+                    },
+                ]
             )
             .entryListRow()
             .contextMenu {

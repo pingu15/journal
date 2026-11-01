@@ -2,7 +2,7 @@ import UIKit
 
 /// Presents the system share sheet over whatever is on screen (the Settings sheet, the editor).
 enum ShareSheet {
-    static func present(_ url: URL) async {
+    static func present(_ item: Any) async {
         guard let root = UIApplication.shared.connectedScenes
             .compactMap({ $0 as? UIWindowScene })
             .flatMap(\.windows)
@@ -14,7 +14,7 @@ enum ShareSheet {
             var top = root
             while let presented = top.presentedViewController, !presented.isBeingDismissed { top = presented }
             if top.presentedViewController == nil {
-                let controller = UIActivityViewController(activityItems: [url], applicationActivities: nil)
+                let controller = UIActivityViewController(activityItems: [item], applicationActivities: nil)
                 controller.popoverPresentationController?.sourceView = top.view
                 top.present(controller, animated: true)
                 return

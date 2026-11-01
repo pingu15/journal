@@ -1,30 +1,29 @@
 import SwiftUI
 import UIKit
 
-/// A button revealed by swiping a row.
+/// A button revealed by swiping a row: an icon, with its title for VoiceOver.
 struct RowSwipeAction {
     let title: String
     let symbol: String
     let tint: Color
-    /// Wider for a label that needs two lines.
-    var width: CGFloat = 76
+    /// Off for an action that leaves the row where it is, which then just closes.
+    var removesRow = true
     let perform: () -> Void
 }
 
 extension View {
-    /// Buttons revealed by swiping a row: rounded rectangles as tall as the row (the system's swipe
-    /// actions are a fixed-size capsule), moving like the system's. Only tapping one acts on it —
-    /// there's no full swipe. Only one row is open at a time (`openRow`); the list closes it when it
-    /// scrolls, and a tap on the row should close it rather than act on the row.
-    /// `trailingInset`: how far in from the row's trailing edge its content ends, so the button does too.
+    /// Buttons revealed by swiping a row left, in the order given: rounded rectangles as tall as the
+    /// row (the system's swipe actions are a fixed-size capsule), moving like the system's. Only
+    /// tapping one acts on it — there's no full swipe. Only one row is open at a time (`openRow`); the
+    /// list closes it when it scrolls, and a tap on the row should close it rather than act on the row.
+    /// `trailingInset`: how far in from the row's trailing edge its content ends, so the buttons do too.
     func rowSwipeActions<ID: Hashable>(
         id: ID,
         openRow: Binding<ID?>,
         trailingInset: CGFloat = 0,
-        leading: RowSwipeAction? = nil,
-        trailing: RowSwipeAction
+        actions: [RowSwipeAction]
     ) -> some View {
-        modifier(RowSwipe(id: id, openRow: openRow, trailingInset: trailingInset, leading: leading, trailing: trailing))
+        modifier(RowSwipe(id: id, openRow: openRow, trailingInset: trailingInset, actions: actions))
     }
 }
 
@@ -32,64 +31,60 @@ private struct RowSwipe<ID: Hashable>: ViewModifier {
     let id: ID
     @Binding var openRow: ID?
     let trailingInset: CGFloat
-    let leading: RowSwipeAction?
-    let trailing: RowSwipeAction
+    let actions: [RowSwipeAction]
 
-    /// Negative shows the trailing button, positive the leading one.
     @State private var offset: CGFloat = 0
     @State private var dragStart: CGFloat?
     @State private var width: CGFloat = 0
     @State private var isActing = false
 
+    private static var buttonWidth: CGFloat { 64 }
+    private static var buttonGap: CGFloat { Spacing.s }
+    /// Between the row and the buttons.
     private static var gap: CGFloat { Spacing.m }
     private static var cornerRadius: CGFloat { 12 }
-    private var trailingOpen: CGFloat { -(trailing.width + Self.gap) }
-    private var leadingOpen: CGFloat { leading.map { $0.width + Self.gap } ?? 0 }
+
+    private var buttonsWidth: CGFloat {
+        CGFloat(actions.count) * Self.buttonWidth + CGFloat(actions.count - 1) * Self.buttonGap
+    }
+    private var openOffset: CGFloat { -(buttonsWidth + Self.gap) }
 
     func body(content: Content) -> some View {
         content
             .offset(x: offset)
             .background(alignment: .trailing) {
-                button(trailing, revealed: max(0, -offset - Self.gap))
-                    .padding(.trailing, trailingInset)
-            }
-            .background(alignment: .leading) {
-                if let leading {
-                    button(leading, revealed: max(0, offset - Self.gap), edge: .leading)
-                }
+                buttons.padding(.trailing, trailingInset)
             }
             .onGeometryChange(for: CGFloat.self, of: \.size.width) { width = $0 }
             .gesture(SidewaysPan(onChange: drag(by:), onEnd: release(velocity:)))
             .onChange(of: openRow) { _, row in
                 if row != id && !isActing && dragStart == nil { settle(at: 0) }
             }
-            .accessibilityAction(named: trailing.title) { act(trailing, edge: .trailing) }
             .accessibilityActions {
-                if let leading {
-                    Button(leading.title) { act(leading, edge: .leading) }
+                ForEach(actions, id: \.title) { action in
+                    Button(action.title) { act(action) }
                 }
             }
     }
 
-    private func button(_ action: RowSwipeAction, revealed: CGFloat, edge: HorizontalEdge = .trailing) -> some View {
-        VStack(spacing: Spacing.xs) {
-            Image(systemName: action.symbol)
-                .font(Typography.icon)
-            Text(action.title)
-                .font(Typography.note)
-                .multilineTextAlignment(.center)
+    /// Grows with the swipe, buttons and gaps alike.
+    private var buttons: some View {
+        let revealed = max(0, -offset - Self.gap) / buttonsWidth
+        return HStack(spacing: Self.buttonGap * revealed) {
+            ForEach(actions, id: \.title) { action in
+                Image(systemName: action.symbol)
+                    .font(Typography.icon)
+                    .foregroundStyle(Theme.onAccent)
+                    .opacity(min(1, revealed))
+                    .frame(width: Self.buttonWidth * revealed)
+                    .frame(maxHeight: .infinity)
+                    .background(action.tint)
+                    .clipShape(.rect(cornerRadius: Self.cornerRadius, style: .continuous))
+                    .contentShape(.rect)
+                    .onTapGesture { act(action) }
+                    .accessibilityHidden(true)
+            }
         }
-        .foregroundStyle(Theme.onAccent)
-        // Its full size even while only partly revealed, and clipped below.
-        .frame(width: action.width - Spacing.s)
-        .opacity(min(1, revealed / action.width))
-        .frame(width: revealed)
-        .frame(maxHeight: .infinity)
-        .background(action.tint)
-        .clipShape(.rect(cornerRadius: Self.cornerRadius, style: .continuous))
-        .contentShape(.rect)
-        .onTapGesture { act(action, edge: edge) }
-        .accessibilityHidden(true)
     }
 
     private func drag(by translation: CGFloat) {
@@ -99,8 +94,8 @@ private struct RowSwipe<ID: Hashable>: ViewModifier {
         }
         let proposed = (dragStart ?? 0) + translation
         // A little give past either end.
-        offset = proposed > leadingOpen ? leadingOpen + (proposed - leadingOpen) / 5
-            : proposed < trailingOpen ? trailingOpen + (proposed - trailingOpen) / 5
+        offset = proposed > 0 ? proposed / 5
+            : proposed < openOffset ? openOffset + (proposed - openOffset) / 5
             : proposed
     }
 
@@ -108,9 +103,9 @@ private struct RowSwipe<ID: Hashable>: ViewModifier {
     private func release(velocity: CGFloat) {
         dragStart = nil
         let coast = offset + velocity * 0.2
-        let target = [trailingOpen, 0, leadingOpen].min { abs($0 - coast) < abs($1 - coast) } ?? 0
-        settle(at: target, velocity: velocity)
-        if target == 0 && openRow == id { openRow = nil }
+        let opens = abs(coast - openOffset) < abs(coast)
+        settle(at: opens ? openOffset : 0, velocity: velocity)
+        if !opens && openRow == id { openRow = nil }
     }
 
     /// Springs to `target`, carrying on at the finger's speed. Measured from the system's swipe
@@ -127,10 +122,10 @@ private struct RowSwipe<ID: Hashable>: ViewModifier {
         }
     }
 
-    /// Runs `action` as the row slides off that way.
-    private func act(_ action: RowSwipeAction, edge: HorizontalEdge) {
-        isActing = true
-        settle(at: edge == .trailing ? -width : width)
+    /// Runs `action`, sliding the row off if that takes it out of the list.
+    private func act(_ action: RowSwipeAction) {
+        isActing = action.removesRow
+        settle(at: action.removesRow ? -width : 0)
         if openRow == id { openRow = nil }
         action.perform()
     }
