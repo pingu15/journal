@@ -380,6 +380,16 @@ private struct EntryMonth {
     }
 }
 
+extension View {
+    /// An entry's content inside its row, so that the row's highlight reaches past it. The text and
+    /// photo end as far in from the right as the month labels start from the left.
+    func entryRowPadding() -> some View {
+        padding(.leading, Spacing.m)
+            .padding(.trailing, EntriesView.contentInset)
+            .padding(.vertical, EntriesView.rowInset)
+    }
+}
+
 private extension View {
     /// A list of sections led by `SectionLabel`s, with the top section's label pinned over it.
     func pinnedSectionLabels(_ sections: [(id: Date, title: String)], tops: LabelTops) -> some View {
@@ -401,14 +411,6 @@ private extension View {
                     }
                     .clipped()
             }
-    }
-
-    /// An entry's content inside its row, so that the row's highlight reaches past it. The text and
-    /// photo end as far in from the right as the month labels start from the left.
-    func entryRowPadding() -> some View {
-        padding(.leading, Spacing.m)
-            .padding(.trailing, EntriesView.contentInset)
-            .padding(.vertical, EntriesView.rowInset)
     }
 
     /// An entry's row in a list of months.

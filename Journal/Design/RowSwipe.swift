@@ -35,8 +35,8 @@ extension EnvironmentValues {
     @Entry var rowIsSwiped = false
 }
 
-/// A row you can swipe: softly highlighted while it's touched, and on through a swipe, which cancels
-/// the touch, until it closes again.
+/// A row softly highlighted while it's touched, and, if it can be swiped, on through a swipe, which
+/// cancels the touch, until it closes again.
 struct SwipeRowButtonStyle: ButtonStyle {
     @Environment(\.rowIsSwiped) private var isSwiped
 

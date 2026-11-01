@@ -104,7 +104,7 @@ enum Radius {
     static let card: CGFloat = 16
     /// The top of a page's card.
     static let page: CGFloat = 28
-    /// Rows you can swipe: their highlight.
+    /// Entry rows: their highlight.
     static let row: CGFloat = 12
 }
 
