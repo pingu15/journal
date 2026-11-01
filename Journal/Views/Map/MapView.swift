@@ -44,13 +44,8 @@ struct MapView: View {
             Text("You can turn it on in Settings.")
         }
         .sheet(item: $listed) { listed in
-            PlaceEntriesSheet(entries: listed.entries) { entry in
-                self.listed = nil
-                Task {
-                    try? await Task.sleep(for: .milliseconds(350))
-                    path.append(entry)
-                }
-            }
+            // Live, so an entry trashed or moved from the sheet's editor leaves the list.
+            PlaceEntriesSheet(entries: entries.filter { listed.ids.contains($0.persistentModelID) })
         }
         .onChange(of: path) { _, path in
             if path.isEmpty {
@@ -73,7 +68,7 @@ struct MapView: View {
         if chosen.count == 1, let entry = chosen.first {
             path.append(entry)
         } else if !chosen.isEmpty {
-            listed = ListedEntries(entries: chosen)
+            listed = ListedEntries(ids: Set(chosen.map(\.persistentModelID)))
         }
     }
 
@@ -103,13 +98,21 @@ struct MapView: View {
 
 private struct ListedEntries: Identifiable {
     let id = UUID()
-    let entries: [Entry]
+    let ids: Set<PersistentIdentifier>
 }
 
-/// The entries in one of the map's groups, newest first, in a sheet that swipes down to close.
+/// The entries in one of the map's groups, newest first, in a sheet that swipes down to close. An
+/// entry opens inside the sheet, grown to full height, and going back returns to the list.
 private struct PlaceEntriesSheet: View {
     let entries: [Entry]
-    let onOpen: (Entry) -> Void
+
+    @Environment(\.modelContext) private var context
+    @Environment(\.dismiss) private var dismiss
+    @Environment(AppRouter.self) private var router
+    @State private var path: [Entry] = []
+    @State private var detent: PresentationDetent = .medium
+    /// The list's size when an entry opened, to go back to.
+    @State private var listDetent: PresentationDetent = .medium
 
     /// Their place, or the most common one: a group can span several.
     private var title: String {
@@ -117,11 +120,41 @@ private struct PlaceEntriesSheet: View {
         return places.max { ($0.value.count, $1.key) < ($1.value.count, $0.key) }?.key ?? "Entries"
     }
 
+    /// Every entry was trashed or moved from the editor, which has closed.
+    private var isEmptied: Bool { path.isEmpty && entries.isEmpty }
+
     var body: some View {
-        SheetPage {
-            SheetHeader(title: title, label: entries.count == 1 ? "1 entry" : "\(entries.count) entries")
-        } content: {
-            SheetEntryRows(entries: entries, onOpen: onOpen)
+        NavigationStack(path: $path) {
+            SheetPage {
+                SheetHeader(title: title, label: entries.count == 1 ? "1 entry" : "\(entries.count) entries")
+            } content: {
+                SheetEntryRows(entries: entries, onOpen: open(_:))
+            }
+            .toolbar(.hidden, for: .navigationBar)
+            .navigationDestination(for: Entry.self) { entry in
+                EntryEditorView(entry: entry)
+            }
         }
+        .presentationDetents(path.isEmpty ? [.medium, .large] : [.large], selection: $detent)
+        // A pull at the top of the text shouldn't take the entry away.
+        .interactiveDismissDisabled(!path.isEmpty)
+        .sheetGrabber()
+        .onChange(of: path) { _, path in
+            if path.isEmpty {
+                Task { detent = listDetent } // On the next turn, for the same reason as in `open`.
+                Entry.deleteBlankEntries(in: context, keeping: router.openEntries)
+            }
+        }
+        .onChange(of: isEmptied) {
+            if isEmptied { dismiss() }
+        }
+    }
+
+    private func open(_ entry: Entry) {
+        listDetent = detent
+        detent = .large
+        // On the next turn: changing the sheet's detents in the same update as the one selected
+        // leaves it where it was.
+        Task { path.append(entry) }
     }
 }
