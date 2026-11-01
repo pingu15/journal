@@ -5,6 +5,7 @@ struct SettingsView: View {
     @Environment(AppLock.self) private var lock
     @Environment(\.dismiss) private var dismiss
     @Environment(\.openURL) private var openURL
+    @Environment(\.scenePhase) private var scenePhase
 
     @AppStorage(AppLock.enabledKey) private var lockEnabled = false
     @AppStorage(JournalName.storageKey) private var journalName = JournalName.default
@@ -122,6 +123,11 @@ struct SettingsView: View {
             .scrollContentBackground(.hidden)
             .background(Theme.background)
             .navigationTitle("Settings")
+            // Including on the way back from iOS's Settings.
+            .task(id: scenePhase) {
+                guard scenePhase == .active else { return }
+                notificationsDenied = reminderEnabled ? !(await ReminderScheduler.isAllowed()) : false
+            }
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .confirmationAction) {
@@ -153,17 +159,19 @@ struct SettingsView: View {
         } set: { enable in
             guard enable else {
                 reminderEnabled = false
+                notificationsDenied = false
                 ReminderScheduler.cancel()
                 return
             }
+            // On whatever iOS says; with notifications off, the note says so and it's scheduled
+            // once they're on (`ReminderScheduler.refresh`).
+            withAnimation { reminderEnabled = true }
             Task {
-                guard await ReminderScheduler.requestAuthorization() else {
-                    notificationsDenied = true
-                    return
+                let allowed = await ReminderScheduler.requestAuthorization()
+                notificationsDenied = !allowed
+                if allowed {
+                    await ReminderScheduler.schedule(minutesAfterMidnight: reminderMinutes)
                 }
-                notificationsDenied = false
-                withAnimation { reminderEnabled = true }
-                await ReminderScheduler.schedule(minutesAfterMidnight: reminderMinutes)
             }
         }
     }

@@ -17,6 +17,21 @@ enum ReminderScheduler {
         }
     }
 
+    /// Whether iOS lets the app show notifications at all.
+    static func isAllowed() async -> Bool {
+        let status = await UNUserNotificationCenter.current().notificationSettings().authorizationStatus
+        return status == .authorized || status == .provisional
+    }
+
+    /// Puts the reminder in place if it's on. It can be on with notifications off in iOS, when it can't
+    /// be scheduled, so this runs whenever the app comes back, in case they've been turned on.
+    static func refresh() async {
+        let defaults = UserDefaults.standard
+        guard defaults.bool(forKey: enabledKey), await isAllowed() else { return }
+        let minutes = defaults.object(forKey: minutesKey) as? Int ?? defaultMinutes
+        await schedule(minutesAfterMidnight: minutes)
+    }
+
     static func schedule(minutesAfterMidnight minutes: Int) async {
         let center = UNUserNotificationCenter.current()
         center.removePendingNotificationRequests(withIdentifiers: [identifier])

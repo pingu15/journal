@@ -96,6 +96,7 @@ struct RootView: View {
                 lock.lock()
                 hasPromptedSinceForeground = false
             case .active:
+                Task { await ReminderScheduler.refresh() }
                 if lockEnabled && !lock.isUnlocked && !hasPromptedSinceForeground {
                     hasPromptedSinceForeground = true
                     Task { await lock.unlock() }
