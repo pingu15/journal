@@ -26,6 +26,8 @@ enum UITheme {
             ? UIColor(hex: Palette.stone).withAlphaComponent(0.14)
             : UIColor(hex: Palette.sand).withAlphaComponent(0.45)
     }
+    /// Over the page's card behind a sheet, on top of the system's dimming (`SheetBackdrop`).
+    static let sheetBackdrop = UIColor.black.withAlphaComponent(0.5)
 }
 
 /// Semantic colors. Light mode is ink on paper; dark mode is paper on night.
@@ -103,6 +105,8 @@ enum Typography {
 enum Radius {
     /// Cards: Insights' tiles, the day sheet's sections, Set Location's map.
     static let card: CGFloat = 16
+    /// The top of a page's card.
+    static let page: CGFloat = 28
     /// Rows you can swipe: their highlight.
     static let row: CGFloat = 12
 }

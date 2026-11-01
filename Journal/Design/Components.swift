@@ -107,9 +107,11 @@ extension View {
             .background(Theme.surface, in: .rect(cornerRadius: Radius.card))
     }
 
-    /// A sheet's content, with the same `Grabber` as the page's card in place of the system's indicator.
+    /// A sheet's content, with the same `Grabber` as the page's card in place of the system's indicator,
+    /// and the page behind it darkened (`SheetBackdrop`).
     func sheetGrabber() -> some View {
         presentationDragIndicator(.hidden)
+            .background { SheetBackdrop() }
             .overlay(alignment: .top) {
                 // The sheet drags itself; this only shows that it does.
                 Grabber()
@@ -173,16 +175,17 @@ private struct PageTitle: ViewModifier {
                 .accessibilityHidden(isExpanded || isHeldFullScreen)
             content
                 // The scroll bar starts below the card's rounded corners.
-                .contentMargins(.top, Self.cornerRadius, for: .scrollIndicators)
+                .contentMargins(.top, Radius.page, for: .scrollIndicators)
                 .background(Theme.background)
+                .background { PageCardMarker() }
                 .overlay(alignment: .top) {
                     if !isHeldFullScreen {
                         grabber
                     }
                 }
                 .clipShape(UnevenRoundedRectangle(
-                    topLeadingRadius: Self.cornerRadius,
-                    topTrailingRadius: Self.cornerRadius,
+                    topLeadingRadius: Radius.page,
+                    topTrailingRadius: Radius.page,
                     style: .continuous
                 ))
                 // Negative padding grows the card up over the title.
@@ -211,8 +214,6 @@ private struct PageTitle: ViewModifier {
             }
         }
     }
-
-    static let cornerRadius: CGFloat = 28
 
     /// The top of the screen's safe area: just below the notch.
     private static var windowTop: CGFloat {
