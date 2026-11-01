@@ -31,6 +31,8 @@ struct DaySheet: View {
                 .surfaceCard()
             }
         }
+        .presentationDetents([.medium, .large])
+        .sheetGrabber()
         .sensoryFeedback(.selection, trigger: day)
     }
 

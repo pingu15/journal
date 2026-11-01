@@ -368,7 +368,8 @@ private struct PageTitle: ViewModifier {
 }
 
 /// A popup listing entries (a calendar day, a group on the map): a scrolling page under a
-/// `SheetHeader`, so they're all the same width, spacing and height.
+/// `SheetHeader`, so they're all the same width and spacing. Its detents and `sheetGrabber()` go on
+/// the sheet's outermost view (a map group's page is the root of a navigation stack).
 struct SheetPage<Header: View, Content: View>: View {
     @ViewBuilder let header: Header
     @ViewBuilder let content: Content
@@ -384,8 +385,6 @@ struct SheetPage<Header: View, Content: View>: View {
         }
         .scrollIndicators(.hidden)
         .background(Theme.background)
-        .presentationDetents([.medium, .large])
-        .sheetGrabber()
     }
 }
 
