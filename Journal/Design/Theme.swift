@@ -48,17 +48,14 @@ enum Theme {
     static let activityFilled = primaryText.opacity(0.8)
     static let activityEmpty = primaryText.opacity(0.07)
 
-    /// Bar titles (sheets: Settings, Set Location, Entry Date) match the other popups' (`Typography.title`).
+    /// Bar titles (sheets: Settings, Set Location, Entry Date) keep the system's size.
     static func applyNavigationBarAppearance() {
         let bar = UINavigationBar.appearance()
         bar.largeTitleTextAttributes = [
             .font: UIFont.sans(.largeTitle, bold: true),
             .foregroundColor: UITheme.primaryText,
         ]
-        bar.titleTextAttributes = [
-            .font: UIFont.sans(.title2, bold: true),
-            .foregroundColor: UITheme.primaryText,
-        ]
+        bar.titleTextAttributes = [.foregroundColor: UITheme.primaryText]
     }
 }
 
@@ -69,7 +66,7 @@ enum Typography {
     // Titles. Everything is sans but the page titles, the day numbers in entry lists and the Insights
     // tiles' numbers.
     static let pageTitle = Font.system(.largeTitle, design: .serif).weight(.bold)
-    /// Popup titles (sheets' bars too, `Theme.applyNavigationBarAppearance`) and empty states.
+    /// Popup titles (not sheets' bars, which keep the system's) and empty states.
     static let title = Font.system(.title2).weight(.bold)
     static let entryTitle = Font.system(.title3).weight(.semibold)
 

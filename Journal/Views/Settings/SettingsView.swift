@@ -20,7 +20,6 @@ struct SettingsView: View {
             Form {
                 Section {
                     TextField(JournalName.default, text: $journalName)
-                        .font(Typography.body)
                         .submitLabel(.done)
                         .onSubmit {
                             journalName = JournalName.display(journalName)
@@ -31,7 +30,7 @@ struct SettingsView: View {
                             }
                         }
                 } header: {
-                    MetaLabel("Journal name")
+                    Text("Journal name")
                 } footer: {
                     Text("Shown at the top of your journal.")
                 }
@@ -44,11 +43,10 @@ struct SettingsView: View {
                     }
                     .pickerStyle(.segmented)
                     .controlSize(.large)
-                    .onAppear(perform: SegmentedFont.matchBody)
                     .listRowBackground(Color.clear)
                     .listRowInsets(EdgeInsets())
                 } header: {
-                    MetaLabel("Appearance")
+                    Text("Appearance")
                 }
 
                 Section {
@@ -58,7 +56,7 @@ struct SettingsView: View {
                         DatePicker("Time", selection: reminderTime, displayedComponents: .hourAndMinute)
                     }
                 } header: {
-                    MetaLabel("Reminders")
+                    Text("Reminders")
                 } footer: {
                     if notificationsDenied {
                         Button {
@@ -66,7 +64,6 @@ struct SettingsView: View {
                         } label: {
                             Text("Notifications are off for Journal. ") + Text("Open Settings").underline()
                         }
-                        .font(Typography.note)
                         .foregroundStyle(Theme.secondaryText)
                         .multilineTextAlignment(.leading)
                         .frame(maxWidth: .infinity, alignment: .leading)
@@ -78,7 +75,7 @@ struct SettingsView: View {
                     Toggle("Add current location", isOn: autoTagBinding)
                         .tint(Theme.secondaryText)
                 } header: {
-                    MetaLabel("Location")
+                    Text("Location")
                 } footer: {
                     if locationDenied {
                         Button {
@@ -86,7 +83,6 @@ struct SettingsView: View {
                         } label: {
                             Text("Location access is off for Journal. ") + Text("Open Settings").underline()
                         }
-                        .font(Typography.note)
                         .foregroundStyle(Theme.secondaryText)
                         .multilineTextAlignment(.leading)
                         .frame(maxWidth: .infinity, alignment: .leading)
@@ -101,7 +97,7 @@ struct SettingsView: View {
                         .tint(Theme.secondaryText)
                         .disabled(!lock.isAvailable && !lockEnabled)
                 } header: {
-                    MetaLabel("Privacy")
+                    Text("Privacy")
                 } footer: {
                     Text(lock.isAvailable
                          ? "Your journal is hidden whenever you leave the app."
@@ -111,7 +107,7 @@ struct SettingsView: View {
                 Section {
                     ExportRow(journalName: JournalName.display(journalName))
                 } header: {
-                    MetaLabel("Export")
+                    Text("Export")
                 } footer: {
                     Text("Entries are stored only on this device. Exports include text, dates, places and weather; the PDF includes photos too.")
                 }
@@ -250,16 +246,6 @@ private struct ExportRow: View {
                 failed = true
             }
         }
-    }
-}
-
-/// Segmented controls take their font from UIKit; this makes the appearance options the same
-/// size as the rest of Settings (body text). It's the app's only segmented control.
-private enum SegmentedFont {
-    static func matchBody() {
-        let appearance = UISegmentedControl.appearance()
-        appearance.setTitleTextAttributes([.font: UIFont.preferredFont(forTextStyle: .body)], for: .normal)
-        appearance.setTitleTextAttributes([.font: UIFont.preferredFont(forTextStyle: .body)], for: .selected)
     }
 }
 
