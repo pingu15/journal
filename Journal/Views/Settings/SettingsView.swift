@@ -58,7 +58,7 @@ struct SettingsView: View {
                         Button {
                             if let url = URL(string: UIApplication.openSettingsURLString) { openURL(url) }
                         } label: {
-                            Text("Notifications are off for Journal. ") + Text("Open Settings").underline()
+                            Text("Notifications are off. ") + Text("Open Settings").underline()
                         }
                         .foregroundStyle(Theme.secondaryText)
                         .multilineTextAlignment(.leading)
@@ -83,8 +83,6 @@ struct SettingsView: View {
                         .multilineTextAlignment(.leading)
                         .frame(maxWidth: .infinity, alignment: .leading)
                         .buttonStyle(.plain)
-                    } else {
-                        Text("New entries are tagged with where you are when you start writing.")
                     }
                 }
 
@@ -95,17 +93,15 @@ struct SettingsView: View {
                 } header: {
                     Text("Privacy")
                 } footer: {
-                    Text(lock.isAvailable
-                         ? "Your journal is hidden whenever you leave the app."
-                         : "Set a device passcode to lock your journal.")
+                    if !lock.isAvailable {
+                        Text("Set a device passcode to lock your journal.")
+                    }
                 }
 
                 Section {
                     ExportRow(journalName: JournalName.display(journalName))
                 } header: {
                     Text("Export")
-                } footer: {
-                    Text("Entries are stored only on this device. Exports include text, dates, places and weather; the PDF includes photos too.")
                 }
 
                 Section {
