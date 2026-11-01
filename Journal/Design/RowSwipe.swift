@@ -38,22 +38,19 @@ private struct RowSwipe<ID: Hashable>: ViewModifier {
     @State private var width: CGFloat = 0
     @State private var isActing = false
 
-    private static var buttonWidth: CGFloat { 64 }
-    private static var buttonGap: CGFloat { Spacing.s }
     /// Between the row and the buttons.
     private static var gap: CGFloat { Spacing.m }
-    private static var cornerRadius: CGFloat { 12 }
 
-    private var buttonsWidth: CGFloat {
-        CGFloat(actions.count) * Self.buttonWidth + CGFloat(actions.count - 1) * Self.buttonGap
+    private var openOffset: CGFloat {
+        -(SwipeButtons.width(of: actions.count) + Self.gap)
     }
-    private var openOffset: CGFloat { -(buttonsWidth + Self.gap) }
 
     func body(content: Content) -> some View {
         content
             .offset(x: offset)
             .background(alignment: .trailing) {
-                buttons.padding(.trailing, trailingInset)
+                SwipeButtons(revealed: max(0, -offset - Self.gap), actions: actions, perform: act)
+                    .padding(.trailing, trailingInset)
             }
             .onGeometryChange(for: CGFloat.self, of: \.size.width) { width = $0 }
             .gesture(SidewaysPan(onChange: drag(by:), onEnd: release(velocity:)))
@@ -65,26 +62,6 @@ private struct RowSwipe<ID: Hashable>: ViewModifier {
                     Button(action.title) { act(action) }
                 }
             }
-    }
-
-    /// Grows with the swipe, buttons and gaps alike.
-    private var buttons: some View {
-        let revealed = max(0, -offset - Self.gap) / buttonsWidth
-        return HStack(spacing: Self.buttonGap * revealed) {
-            ForEach(actions, id: \.title) { action in
-                Image(systemName: action.symbol)
-                    .font(Typography.icon)
-                    .foregroundStyle(Theme.onAccent)
-                    .opacity(min(1, revealed))
-                    .frame(width: Self.buttonWidth * revealed)
-                    .frame(maxHeight: .infinity)
-                    .background(action.tint)
-                    .clipShape(.rect(cornerRadius: Self.cornerRadius, style: .continuous))
-                    .contentShape(.rect)
-                    .onTapGesture { act(action) }
-                    .accessibilityHidden(true)
-            }
-        }
     }
 
     private func drag(by translation: CGFloat) {
@@ -128,6 +105,68 @@ private struct RowSwipe<ID: Hashable>: ViewModifier {
         settle(at: action.removesRow ? -width : 0)
         if openRow == id { openRow = nil }
         action.perform()
+    }
+}
+
+/// The buttons, each coming out from under the row once the one to its right is fully out, and
+/// going back in the reverse order. Animatable so that this is worked out from the row's position
+/// on every frame: from the final position alone, all of them would animate to their sizes at once.
+private struct SwipeButtons: View, @MainActor Animatable {
+    /// How much room the row has left beside it.
+    var revealed: CGFloat
+    let actions: [RowSwipeAction]
+    let perform: (RowSwipeAction) -> Void
+
+    var animatableData: CGFloat {
+        get { revealed }
+        set { revealed = newValue }
+    }
+
+    private static var buttonWidth: CGFloat { 64 }
+    private static var buttonGap: CGFloat { Spacing.s }
+    private static var cornerRadius: CGFloat { 12 }
+
+    static func width(of count: Int) -> CGFloat {
+        CGFloat(count) * buttonWidth + CGFloat(count - 1) * buttonGap
+    }
+
+    var body: some View {
+        // Past fully open (the little give, or the row sliding away), the buttons share the extra.
+        let extra = max(0, revealed - Self.width(of: actions.count)) / CGFloat(actions.count)
+
+        HStack(spacing: 0) {
+            ForEach(Array(actions.enumerated()), id: \.element.title) { index, action in
+                let fromRight = actions.count - 1 - index
+                let full = CGFloat(fromRight) * (Self.buttonWidth + Self.buttonGap)
+                button(action, width: clamp(revealed - full, to: Self.buttonWidth), extra: extra)
+                if fromRight > 0 {
+                    Color.clear.frame(width: clamp(revealed - full + Self.buttonGap, to: Self.buttonGap))
+                }
+            }
+        }
+    }
+
+    private func clamp(_ value: CGFloat, to limit: CGFloat) -> CGFloat {
+        min(max(value, 0), limit)
+    }
+
+    private func button(_ action: RowSwipeAction, width: CGFloat, extra: CGFloat) -> some View {
+        // The icon arrives over the second half of the way out, once there's room around it.
+        let arrival = clamp(width / Self.buttonWidth - 0.5, to: 0.5) * 2
+
+        return Image(systemName: action.symbol)
+            .font(Typography.icon)
+            .foregroundStyle(Theme.onAccent)
+            .opacity(arrival)
+            .scaleEffect(0.7 + 0.3 * arrival)
+            .frame(width: width + extra)
+            .frame(maxHeight: .infinity)
+            .background(action.tint)
+            // Never more than half its width, so a sliver stays a rounded sliver.
+            .clipShape(.rect(cornerRadius: min(Self.cornerRadius, width / 2), style: .continuous))
+            .contentShape(.rect)
+            .onTapGesture { perform(action) }
+            .accessibilityHidden(true)
     }
 }
 
