@@ -317,7 +317,7 @@ private struct SectionLabelContent: View {
             // In line with the row separators.
             .padding(.leading, Spacing.m + EntriesView.separatorInset)
             .padding(.trailing, Spacing.m)
-            // Edge to edge, so rows passing under the pinned label don't show beside it.
+            // So rows passing under the pinned label don't show beside it.
             .background(Theme.background)
     }
 }
@@ -418,6 +418,8 @@ private struct PinnedSectionLabel: View {
         if let index = sections.lastIndex(where: { (labelTops.tops[$0.id] ?? .infinity) <= 0 }) {
             let nextTop = sections.indices.contains(index + 1) ? labelTops.tops[sections[index + 1].id] : nil
             SectionLabelContent(text: sections[index].title)
+                // Short of the edge, which rows stop well before, to leave the scroll bar showing.
+                .padding(.trailing, Spacing.s)
                 .onGeometryChange(for: CGFloat.self, of: \.size.height) { height = $0 }
                 .offset(y: min(0, (nextTop ?? .infinity) - height))
                 // Drags go through to the list beneath.
