@@ -135,6 +135,13 @@ extension View {
         }
     }
 
+    /// Places this at the top of the screen, just below the notch, with or without the bar there.
+    func belowNotch() -> some View {
+        padding(.top, PageTitle.windowTop)
+            .frame(maxHeight: .infinity, alignment: .top)
+            .ignoresSafeArea(.container, edges: .top)
+    }
+
     /// Liquid Glass on iOS 26, a material before it — for custom controls that sit in the bar.
     @ViewBuilder
     func glassBackground(in shape: some Shape) -> some View {
@@ -251,7 +258,7 @@ private struct PageTitle: ViewModifier {
     private static var bottomFade: CGFloat { 110 }
 
     /// The top of the screen's safe area: just below the notch.
-    private static var windowTop: CGFloat {
+    static var windowTop: CGFloat {
         UIApplication.shared.connectedScenes
             .compactMap { ($0 as? UIWindowScene)?.keyWindow }
             .first?.safeAreaInsets.top ?? 0
@@ -475,19 +482,26 @@ struct SettingsButton: View {
     }
 }
 
-/// A search field that grows sideways from a circle like the bar's search button, at the top of the
-/// full-screen card (the bar steps aside), widening to fill the row, with a close button at the far
-/// end.
+/// A search field that grows sideways out of the bar's search button, a close button coming in at the
+/// far end. Drawn over the page, `belowNotch()`: it starts as a circle exactly over the button, which
+/// goes with the bar, and settles at the top of the card as the card rises to full screen, and on
+/// closing it shrinks back onto the button as the card comes down.
 struct ExpandingSearchBar: View {
     @Binding var text: String
     var isFocused: FocusState<Bool>.Binding
     let prompt: String
     var focusOnAppear = true
+    /// Called as the field starts to shrink, when the card should start down.
+    let onClosing: () -> Void
     /// Called once the field has shrunk back into the button.
     let onClose: () -> Void
 
     @State private var expanded = false
-    private let size: CGFloat = 44
+    private let size = Self.height
+
+    private static let height: CGFloat = 44
+    /// What the page leaves at the card's top for the field.
+    static let room = height + Spacing.m
 
     var body: some View {
         GeometryReader { geometry in
@@ -495,7 +509,8 @@ struct ExpandingSearchBar: View {
                 HStack(spacing: 0) {
                     Image(systemName: "magnifyingglass")
                         .font(Typography.action)
-                        .foregroundStyle(expanded ? Theme.secondaryText : Theme.primaryText)
+                        // White like the bar's, on the sand, as a circle.
+                        .foregroundStyle(expanded ? Theme.secondaryText : Theme.onAccent)
                         .frame(width: size, height: size)
                     if expanded {
                         TextField(prompt, text: $text, prompt: Text(prompt).foregroundStyle(Theme.secondaryText))
@@ -538,21 +553,27 @@ struct ExpandingSearchBar: View {
             }
         }
         .frame(height: size)
+        .padding(.top, expanded ? Spacing.m : 0)
         .onAppear {
             withAnimation(.snappy) { expanded = true }
             guard focusOnAppear else { return }
-            // Once the field exists, so the focus request isn't dropped.
-            DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) { isFocused.wrappedValue = true }
+            // Once it's up: the keyboard takes long enough to load that it holds up the card's rise.
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.35) {
+                if expanded { isFocused.wrappedValue = true }
+            }
         }
     }
 
     private func close() {
         isFocused.wrappedValue = false
         text = ""
-        withAnimation(.snappy(duration: 0.3)) {
+        onClosing()
+        // The card's own way down (`PageTitle.move(up:)`), so they land together.
+        withAnimation(.smooth(duration: 0.25)) {
             expanded = false
         } completion: {
-            onClose()
+            // A moment longer than the card, as the bar takes a frame or two to come back.
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) { onClose() }
         }
     }
 }

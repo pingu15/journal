@@ -13,6 +13,13 @@ struct EntriesView: View {
 
     @State private var searchText = ""
     @State private var searchActive = false
+    /// The field, which outlasts `searchActive`: the card starts down as it starts to shrink.
+    @State private var searchBarShown = false
+    /// Changes as search closes, for a new search button: the bar was hidden as the old one was
+    /// pressed, so it would come back big and shrink.
+    @State private var searchButtonID = 0
+    /// What the list leaves above it for the field.
+    @State private var searchRoom: CGFloat = 0
     /// False when search opens with a query already filled in (a tapped tag), so results aren't hidden by the keyboard.
     @State private var focusSearchOnOpen = true
     @FocusState private var isSearching: Bool
@@ -35,41 +42,46 @@ struct EntriesView: View {
 
         NavigationStack(path: $router.journalPath) {
             ScrollViewReader { proxy in
-                VStack(spacing: 0) {
-                    // While searching the card is full screen, with the field at its top.
-                    if searchActive {
-                        ExpandingSearchBar(
-                            text: $searchText,
-                            isFocused: $isSearching,
-                            prompt: "Search by text, date, or tag",
-                            focusOnAppear: focusSearchOnOpen,
-                            onClose: closeSearch
-                        )
-                        .padding(.horizontal, Spacing.m)
-                        .padding(.top, Spacing.m)
+                content
+                    // While searching the card is full screen, with the field over its top.
+                    .padding(.top, searchRoom)
+                    .onChange(of: searchActive) { _, active in
+                        if active {
+                            withAnimation { proxy.scrollTo(Self.topID, anchor: .top) }
+                        }
                     }
-                    content
-                }
-                .onChange(of: searchActive) { _, active in
-                    if active {
-                        withAnimation { proxy.scrollTo(Self.topID, anchor: .top) }
-                    }
-                }
             }
             .pageTitle(filter == .all ? nil : "Recently Deleted", isFullScreen: searchActive)
             .toolbar { toolbarContent }
             .navigationDestination(for: Entry.self) { entry in
                 EntryEditorView(entry: entry)
             }
-            .overlay(alignment: .bottomTrailing) {
-                if filter == .all && !searchActive {
-                    NewEntryButton(action: newEntry)
-                        .padding(.trailing, Spacing.l)
-                        .padding(.bottom, Spacing.l)
-                        .transition(.scale.combined(with: .opacity))
+            .overlay {
+                if searchBarShown {
+                    ExpandingSearchBar(
+                        text: $searchText,
+                        isFocused: $isSearching,
+                        prompt: "Search by text, date, or tag",
+                        focusOnAppear: focusSearchOnOpen,
+                        onClosing: closingSearch,
+                        onClose: closeSearch
+                    )
+                    .padding(.horizontal, Spacing.m)
+                    .belowNotch()
+                    .transition(.asymmetric(insertion: .identity, removal: .opacity))
                 }
             }
-            .animation(.snappy, value: searchActive)
+            .overlay(alignment: .bottomTrailing) {
+                ZStack {
+                    if filter == .all && !searchActive {
+                        NewEntryButton(action: newEntry)
+                            .padding(.trailing, Spacing.l)
+                            .padding(.bottom, Spacing.l)
+                            .transition(.scale.combined(with: .opacity))
+                    }
+                }
+                .animation(.snappy, value: searchActive)
+            }
         }
         // Hidden from the stack rather than the editor, so it's back as soon as the editor starts
         // closing (a pushed view's own setting only lifts once its pop animation ends).
@@ -91,20 +103,19 @@ struct EntriesView: View {
 
     // MARK: - Content
 
-    /// While searching, the bar is left to the search field (drawn over it), so it has no buttons.
+    /// These stay while searching, when the bar is hidden: taken out, they'd fly off on their own.
     @ToolbarContentBuilder
     private var toolbarContent: some ToolbarContent {
-        if !searchActive {
-            ToolbarItem(placement: .topBarLeading) {
-                Button("Search", systemImage: "magnifyingglass", action: openSearch)
-                    .disabled(filter == .all && entries.isEmpty)
-            }
-            ToolbarItem(placement: .topBarTrailing) {
-                filterMenu
-            }
-            ToolbarItem(placement: .topBarTrailing) {
-                SettingsButton()
-            }
+        ToolbarItem(placement: .topBarLeading) {
+            Button("Search", systemImage: "magnifyingglass", action: openSearch)
+                .disabled(filter == .all && entries.isEmpty)
+                .id(searchButtonID)
+        }
+        ToolbarItem(placement: .topBarTrailing) {
+            filterMenu
+        }
+        ToolbarItem(placement: .topBarTrailing) {
+            SettingsButton()
         }
     }
 
@@ -187,13 +198,29 @@ struct EntriesView: View {
 
     private func openSearch() {
         focusSearchOnOpen = true
-        withAnimation(.snappy) { searchActive = true }
+        // Not in an animation: the field takes the button's place as it is, and animates from there.
+        searchBarShown = true
+        searchActive = true
+        // On the next turn, with the card (`PageTitle.move(up:)`): started here, it isn't animated.
+        DispatchQueue.main.async {
+            withAnimation(.snappy) { searchRoom = ExpandingSearchBar.room }
+        }
+    }
+
+    /// The field has started to shrink, so everything else starts back.
+    private func closingSearch() {
+        searchButtonID += 1
+        searchActive = false
+        withAnimation(.smooth(duration: 0.25)) { searchRoom = 0 }
     }
 
     private func closeSearch() {
         searchText = ""
         isSearching = false
-        withAnimation(.snappy) { searchActive = false }
+        searchActive = false
+        searchRoom = 0
+        // Fading into the button, which it only nearly matches.
+        withAnimation(.easeOut(duration: 0.15)) { searchBarShown = false }
     }
 
     /// A plain button rather than a NavigationLink, so rows carry no disclosure chevron.
