@@ -219,8 +219,7 @@ struct EntriesView: View {
                     Task { await ShareSheet.present(entry.shareText) }
                 },
                 RowSwipeAction(title: "Trash", accessibilityTitle: "Delete", symbol: "trash", tint: Theme.destructive) {
-                    withAnimation { entry.moveToTrash() }
-                    try? context.save()
+                    moveToTrash(entry)
                 },
             ]
         )
@@ -228,9 +227,16 @@ struct EntriesView: View {
         .contextMenu {
             ShareLink(item: entry.shareText)
             Button("Delete", systemImage: "trash", role: .destructive) {
-                withAnimation { entry.moveToTrash() }
-                try? context.save()
+                moveToTrash(entry)
             }
+        }
+    }
+
+    /// Saved in the animation too: that's what takes the row out of the list.
+    private func moveToTrash(_ entry: Entry) {
+        withAnimation {
+            entry.moveToTrash()
+            try? context.save()
         }
     }
 
@@ -501,25 +507,37 @@ private struct TrashList<Header: View>: View {
             trailingInset: EntriesView.contentInset,
             actions: [
                 RowSwipeAction(title: "Restore", symbol: "arrow.uturn.backward", tint: Theme.accent) {
-                    withAnimation { entry.restore() }
-                    try? context.save()
+                    restore(entry)
                 },
                 RowSwipeAction(title: "Delete", accessibilityTitle: "Delete Permanently", symbol: "trash", tint: Theme.destructive) {
-                    withAnimation { context.delete(entry) }
-                    try? context.save()
+                    deletePermanently(entry)
                 },
             ]
         )
         .entryListRow()
         .contextMenu {
             Button("Restore", systemImage: "arrow.uturn.backward") {
-                withAnimation { entry.restore() }
-                try? context.save()
+                restore(entry)
             }
             Button("Delete Permanently", systemImage: "trash", role: .destructive) {
-                withAnimation { context.delete(entry) }
-                try? context.save()
+                deletePermanently(entry)
             }
+        }
+    }
+
+    // Saved in the animation too: that's what takes the row out of the list.
+
+    private func restore(_ entry: Entry) {
+        withAnimation {
+            entry.restore()
+            try? context.save()
+        }
+    }
+
+    private func deletePermanently(_ entry: Entry) {
+        withAnimation {
+            context.delete(entry)
+            try? context.save()
         }
     }
 }

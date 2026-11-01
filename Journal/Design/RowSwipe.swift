@@ -8,7 +8,8 @@ struct RowSwipeAction {
     var accessibilityTitle: String?
     let symbol: String
     let tint: Color
-    /// Off for an action that leaves the row where it is, which then just closes.
+    /// Off for an action that leaves the row where it is, which then just closes. On, `perform` waits
+    /// for the row to go, and should take it out of the list with an animation.
     var removesRow = true
     let perform: () -> Void
 }
@@ -66,6 +67,8 @@ private struct RowSwipe<ID: Hashable>: ViewModifier {
 
     /// Between the row and the buttons.
     private static var gap: CGFloat { Spacing.m }
+    /// A row leaving the list slides and fades away over this, before the list closes up behind it.
+    private static var fadeDuration: Double { 0.2 }
 
     /// How far the row moves before the first button starts to come out.
     private var lead: CGFloat { trailingInset + Self.gap }
@@ -82,6 +85,8 @@ private struct RowSwipe<ID: Hashable>: ViewModifier {
                 SwipeButtons(revealed: max(0, -offset - lead), actions: actions, perform: act)
                     .padding(.trailing, trailingInset)
             }
+            .opacity(isActing ? 0 : 1)
+            .animation(.easeOut(duration: Self.fadeDuration), value: isActing)
             .onGeometryChange(for: CGFloat.self, of: \.size.width) { width = $0 }
             .gesture(SidewaysPan(onChange: drag(by:), onEnd: release(velocity:)))
             .onChange(of: openRow) { _, row in
@@ -129,12 +134,17 @@ private struct RowSwipe<ID: Hashable>: ViewModifier {
         }
     }
 
-    /// Runs `action`, sliding the row off if that takes it out of the list.
+    /// Runs `action`. One that takes the row out of the list waits while the row slides and fades.
     private func act(_ action: RowSwipeAction) {
+        guard !isActing else { return }
         isActing = action.removesRow
         settle(at: action.removesRow ? -width : 0)
         if openRow == id { openRow = nil }
-        action.perform()
+        guard action.removesRow else { return action.perform() }
+        Task {
+            try? await Task.sleep(for: .seconds(Self.fadeDuration))
+            action.perform()
+        }
     }
 }
 
