@@ -191,6 +191,20 @@ private struct PageTitle: ViewModifier {
                 .contentMargins(.top, Radius.page, for: .scrollIndicators)
                 .background(Theme.background)
                 .background { PageCardMarker() }
+                .overlay(alignment: .bottom) {
+                    // The page fades out around and below the floating tab bar.
+                    LinearGradient(
+                        stops: [
+                            .init(color: Theme.background.opacity(0), location: 0),
+                            .init(color: Theme.background.opacity(0.85), location: 0.6),
+                            .init(color: Theme.background, location: 1),
+                        ],
+                        startPoint: .top,
+                        endPoint: .bottom
+                    )
+                    .frame(height: Self.bottomFade)
+                    .allowsHitTesting(false)
+                }
                 .overlay(alignment: .top) {
                     if !isHeldFullScreen {
                         grabber
@@ -228,6 +242,9 @@ private struct PageTitle: ViewModifier {
             }
         }
     }
+
+    /// How far up from the bottom of the screen the page fades out.
+    private static var bottomFade: CGFloat { 110 }
 
     /// The top of the screen's safe area: just below the notch.
     private static var windowTop: CGFloat {
