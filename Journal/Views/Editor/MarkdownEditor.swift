@@ -1024,7 +1024,7 @@ struct MarkdownToolbar: View {
                             Spacer(minLength: 0)
                             Image(systemName: "checkmark")
                                 .font(Typography.action)
-                                .foregroundStyle(Theme.primaryText)
+                                .foregroundStyle(Theme.accent)
                                 .opacity(controller.textStyle == style ? 1 : 0)
                         }
                         .padding(.horizontal, Spacing.m)

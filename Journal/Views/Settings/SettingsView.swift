@@ -36,22 +36,18 @@ struct SettingsView: View {
                 }
 
                 Section {
-                    Picker("Theme", selection: $appearance) {
-                        ForEach(Appearance.allCases) { option in
-                            Text(option.label).tag(option)
-                        }
+                    NavigationLink {
+                        ThemeList(selection: $appearance)
+                    } label: {
+                        LabeledContent("Theme", value: appearance.label)
                     }
-                    .pickerStyle(.segmented)
-                    .controlSize(.large)
-                    .listRowBackground(Color.clear)
-                    .listRowInsets(EdgeInsets())
                 } header: {
                     Text("Appearance")
                 }
 
                 Section {
                     Toggle("Daily reminder", isOn: reminderBinding)
-                        .tint(Theme.secondaryText)
+                        .tint(Theme.accent)
                     if reminderEnabled {
                         DatePicker("Time", selection: reminderTime, displayedComponents: .hourAndMinute)
                     }
@@ -73,7 +69,7 @@ struct SettingsView: View {
 
                 Section {
                     Toggle("Add current location", isOn: autoTagBinding)
-                        .tint(Theme.secondaryText)
+                        .tint(Theme.accent)
                 } header: {
                     Text("Location")
                 } footer: {
@@ -94,7 +90,7 @@ struct SettingsView: View {
 
                 Section {
                     Toggle("Require \(lock.biometryName)", isOn: lockBinding)
-                        .tint(Theme.secondaryText)
+                        .tint(Theme.accent)
                         .disabled(!lock.isAvailable && !lockEnabled)
                 } header: {
                     Text("Privacy")
@@ -246,6 +242,39 @@ private struct ExportRow: View {
                 failed = true
             }
         }
+    }
+}
+
+/// Settings' theme choices, with a checkmark on the current one. Not a navigation-link `Picker`, whose
+/// page has a background of its own.
+private struct ThemeList: View {
+    @Binding var selection: Appearance
+    @Environment(\.dismiss) private var dismiss
+
+    var body: some View {
+        Form {
+            ForEach(Appearance.allCases) { option in
+                Button {
+                    selection = option
+                    dismiss()
+                } label: {
+                    HStack {
+                        Text(option.label)
+                            .foregroundStyle(.primary)
+                        Spacer()
+                        if selection == option {
+                            Image(systemName: "checkmark")
+                                .fontWeight(.semibold)
+                                .foregroundStyle(Theme.accent)
+                        }
+                    }
+                }
+            }
+        }
+        .scrollContentBackground(.hidden)
+        .background(Theme.background)
+        .navigationTitle("Theme")
+        .navigationBarTitleDisplayMode(.inline)
     }
 }
 
