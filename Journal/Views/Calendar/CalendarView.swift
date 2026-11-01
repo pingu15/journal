@@ -41,7 +41,8 @@ struct CalendarView: View {
                     .padding(.horizontal, inset)
                     // Below the card's grabber, where every tab's content starts.
                     .padding(.top, Spacing.l)
-                    .padding(.bottom, Spacing.s + 3)
+                    // The line below sits at the height of the journal's first one.
+                    .padding(.bottom, Spacing.m)
                     .overlay(alignment: .bottom) {
                         Rectangle().fill(Theme.hairline).frame(height: 1)
                     }
