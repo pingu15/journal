@@ -16,12 +16,17 @@ struct MapView: View {
     /// they're still discarded (see `EntryEditorView.placeIsProvisional`).
     @State private var startedHere: Set<PersistentIdentifier> = []
     @State private var newEntryCount = 0
+    @State private var recenterCount = 0
+    @State private var locationDenied = false
 
     var body: some View {
         NavigationStack(path: $path) {
-            EntryMap(pins: pins, onOpen: open(_:), onLongPress: newEntry(at:))
+            EntryMap(pins: pins, recenterCount: recenterCount, onOpen: open(_:), onLongPress: newEntry(at:))
                 .pageTitle()
                 .toolbar {
+                    ToolbarItem(placement: .topBarTrailing) {
+                        Button("Current Location", systemImage: "location", action: recenter)
+                    }
                     ToolbarItem(placement: .topBarTrailing) {
                         SettingsButton()
                     }
@@ -33,6 +38,11 @@ struct MapView: View {
         // Hidden from the stack, not the editor, so it returns as soon as the editor starts closing.
         .toolbar(path.isEmpty ? .visible : .hidden, for: .tabBar)
         .sensoryFeedback(.impact(weight: .medium), trigger: newEntryCount)
+        .alert("Location access is off", isPresented: $locationDenied) {
+            Button("OK", role: .cancel) {}
+        } message: {
+            Text("You can turn it on in Settings.")
+        }
         .sheet(item: $listed) { listed in
             PlaceEntriesSheet(entries: listed.entries) { entry in
                 self.listed = nil
@@ -64,6 +74,17 @@ struct MapView: View {
             path.append(entry)
         } else if !chosen.isEmpty {
             listed = ListedEntries(entries: chosen)
+        }
+    }
+
+    /// Asks for access the first time, and says so if it's refused rather than doing nothing.
+    private func recenter() {
+        Task {
+            if await LocationService.shared.requestAuthorization() {
+                recenterCount += 1
+            } else {
+                locationDenied = true
+            }
         }
     }
 

@@ -17,6 +17,8 @@ struct EntryPin: Equatable {
 /// fitted to every dot without one.
 struct EntryMap: UIViewRepresentable {
     let pins: [EntryPin]
+    /// Goes back to the current location whenever this changes.
+    let recenterCount: Int
     let onOpen: ([PersistentIdentifier]) -> Void
     let onLongPress: (CLLocationCoordinate2D) -> Void
 
@@ -48,6 +50,10 @@ struct EntryMap: UIViewRepresentable {
     func updateUIView(_ map: MKMapView, context: Context) {
         context.coordinator.parent = self
         context.coordinator.update(map, with: pins)
+        if recenterCount != context.coordinator.recenterCount {
+            context.coordinator.recenterCount = recenterCount
+            context.coordinator.showCurrentLocation(in: map, animated: true)
+        }
     }
 
     /// Shows all of `annotations`, clear of the screen's edges and the floating tab bar.
@@ -67,10 +73,12 @@ struct EntryMap: UIViewRepresentable {
 
     final class Coordinator: NSObject, MKMapViewDelegate, UIGestureRecognizerDelegate {
         var parent: EntryMap
+        var recenterCount: Int
         private var shown: [PersistentIdentifier: EntryAnnotation] = [:]
 
         init(parent: EntryMap) {
             self.parent = parent
+            recenterCount = parent.recenterCount
         }
 
         /// Adds, moves and removes annotations to match `pins`, leaving unchanged ones alone.
@@ -90,11 +98,11 @@ struct EntryMap: UIViewRepresentable {
 
         /// Goes to the last known location at once if there is one (the app refreshes it on launch),
         /// and to the fresh one (asking for access the first time) only if that's somewhere else.
-        func showCurrentLocation(in map: MKMapView) {
+        func showCurrentLocation(in map: MKMapView, animated: Bool = false) {
             let known = LocationService.shared.lastKnownLocation
             if let known {
                 map.showsUserLocation = true
-                map.setRegion(Self.region(around: known), animated: false)
+                map.setRegion(Self.region(around: known), animated: animated)
             }
             Task { [weak map] in
                 guard let location = try? await LocationService.shared.currentLocation(), let map else { return }
