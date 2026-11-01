@@ -23,9 +23,11 @@ struct EntriesView: View {
     @State private var swipedOpen: PersistentIdentifier?
 
     private static let topID = "top"
-    /// Where row separators start, from a row's content edge; month labels start there too.
-    static let separatorInset = Spacing.xs
-    /// Above and below each row, as the list would give it.
+    /// How far in from the screen's edges row separators and month labels start and end. Rows' text
+    /// and swipe buttons end there too.
+    static let contentInset = Spacing.m + Spacing.xs
+    /// Above and below each row's content, as the list would give it, but inside the row so that its
+    /// highlight reaches from separator to separator. The sides too: it spans the screen.
     static let rowInset: CGFloat = 15
 
     var body: some View {
@@ -196,8 +198,7 @@ struct EntriesView: View {
 
     /// A plain button rather than a NavigationLink, so rows carry no disclosure chevron.
     private func row(for entry: Entry, dateStyle: EntryRow.DateStyle = .day) -> some View {
-        let inset = Self.separatorInset // Read here: the alignment guides run off the main actor.
-        return Button {
+        Button {
             // A tap while a row is swiped open just closes it.
             if swipedOpen != nil {
                 swipedOpen = nil
@@ -206,15 +207,13 @@ struct EntriesView: View {
             }
         } label: {
             EntryRow(entry: entry, dateStyle: dateStyle)
-                // The text and photo end as far in from the right as the month labels start from
-                // the left.
-                .padding(.trailing, inset)
+                .entryRowPadding()
         }
         .buttonStyle(SwipeRowButtonStyle())
         .rowSwipeActions(
             id: entry.persistentModelID,
             openRow: $swipedOpen,
-            trailingInset: inset,
+            trailingInset: Self.contentInset,
             actions: [
                 RowSwipeAction(title: "Share", symbol: "square.and.arrow.up", tint: Theme.accent, removesRow: false) {
                     Task { await ShareSheet.present(entry.shareText) }
@@ -274,8 +273,6 @@ struct EntriesView: View {
 }
 
 /// A month or "On this day" label, as a row of its own.
-/// A month or "On this day" label, as its section's header (pinned while its rows scroll by). It sits
-/// as far below the card's top edge, or the separator above it, as the label's top padding.
 private struct SectionLabel: View {
     let text: String
     /// Reports the label's top on screen as it scrolls (no coordinate space reaches into a list's
@@ -288,8 +285,7 @@ private struct SectionLabel: View {
     }
 
     var body: some View {
-        // The first row's top inset makes up the rest of the space below the label.
-        SectionLabelContent(text: text, bottomPadding: Spacing.m - EntriesView.rowInset)
+        SectionLabelContent(text: text)
             .onGeometryChange(for: CGFloat.self) { proxy in
                 proxy.frame(in: .global).minY
             } action: { top in
@@ -302,24 +298,30 @@ private struct SectionLabel: View {
     }
 }
 
-/// A section label's look, shared by its row and the pinned copy over the list.
+/// A section label's look, shared by its row and the pinned copy over the list. The row ends in a
+/// separator. The pinned copy stops just above that line, leaving it showing while the label is in
+/// place, and it scrolls away under the copy with the rows.
 private struct SectionLabelContent: View {
     let text: String
-    /// The pinned copy keeps the full space below it, which rows scroll under.
-    var bottomPadding = Spacing.m
+    var isPinned = false
 
     var body: some View {
         MetaLabel(text)
             .frame(maxWidth: .infinity, alignment: .leading)
             .padding(.top, Spacing.l)
-            // With the first row's top inset and padding, the label sits as far above that row's text
-            // as below the card's edge; while pinned, rows pass under here.
-            .padding(.bottom, bottomPadding)
+            .padding(.bottom, isPinned ? Spacing.m - 1 : Spacing.m)
+            .overlay(alignment: .bottom) {
+                if !isPinned {
+                    Rectangle()
+                        .fill(Theme.hairline)
+                        .frame(height: 1)
+                }
+            }
             // In line with the row separators.
-            .padding(.leading, Spacing.m + EntriesView.separatorInset)
-            .padding(.trailing, Spacing.m)
-            // So rows passing under the pinned label don't show beside it.
-            .background(Theme.background)
+            .padding(.horizontal, EntriesView.contentInset)
+            // So rows passing under the pinned label don't show beside it. Short of the edge, which
+            // rows stop well before, to leave the scroll bar showing.
+            .background(Theme.background.padding(.trailing, Spacing.s))
     }
 }
 
@@ -365,14 +367,19 @@ private extension View {
             }
     }
 
+    /// An entry's content inside its row, so that the row's highlight reaches past it. The text and
+    /// photo end as far in from the right as the month labels start from the left.
+    func entryRowPadding() -> some View {
+        padding(.leading, Spacing.m)
+            .padding(.trailing, EntriesView.contentInset)
+            .padding(.vertical, EntriesView.rowInset)
+    }
+
     /// An entry's row in a list of months.
     func entryListRow() -> some View {
-        let inset = EntriesView.separatorInset // Read here: the alignment guides run off the main actor.
-        // The list's own insets. (A section's first row keeps its inset too — the label row leaves that
-        // much less below it — so its long-press preview isn't cut off at the top.)
-        return listRowInsets(EdgeInsets(
-            top: EntriesView.rowInset, leading: Spacing.m, bottom: EntriesView.rowInset, trailing: Spacing.m
-        ))
+        let inset = EntriesView.contentInset // Read here: the alignment guides run off the main actor.
+        // The row keeps its insets inside it (`entryRowPadding`).
+        return listRowInsets(EdgeInsets())
         .listRowBackground(Theme.background)
         .listRowSeparatorTint(Theme.hairline)
         // Including under a month's last row, which a list leaves bare above the next header.
@@ -418,9 +425,7 @@ private struct PinnedSectionLabel: View {
         // The last section whose label has reached the top.
         if let index = sections.lastIndex(where: { (labelTops.tops[$0.id] ?? .infinity) <= 0 }) {
             let nextTop = sections.indices.contains(index + 1) ? labelTops.tops[sections[index + 1].id] : nil
-            SectionLabelContent(text: sections[index].title)
-                // Short of the edge, which rows stop well before, to leave the scroll bar showing.
-                .padding(.trailing, Spacing.s)
+            SectionLabelContent(text: sections[index].title, isPinned: true)
                 .onGeometryChange(for: CGFloat.self, of: \.size.height) { height = $0 }
                 .offset(y: min(0, (nextTop ?? .infinity) - height))
                 // Drags go through to the list beneath.
@@ -486,15 +491,14 @@ private struct TrashList<Header: View>: View {
             swipedOpen = nil
         } label: {
             EntryRow(entry: entry, warning: entry.daysUntilPurge == 1 ? "1 day left" : "\(entry.daysUntilPurge) days left")
-                // The text and photo end as far in from the right as the month labels start from the left.
-                .padding(.trailing, EntriesView.separatorInset)
+                .entryRowPadding()
         }
         .buttonStyle(SwipeRowButtonStyle())
         .accessibilityRemoveTraits(.isButton)
         .rowSwipeActions(
             id: entry.persistentModelID,
             openRow: $swipedOpen,
-            trailingInset: EntriesView.separatorInset,
+            trailingInset: EntriesView.contentInset,
             actions: [
                 RowSwipeAction(title: "Restore", symbol: "arrow.uturn.backward", tint: Theme.accent) {
                     withAnimation { entry.restore() }

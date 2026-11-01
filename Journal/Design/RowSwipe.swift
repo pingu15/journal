@@ -65,8 +65,11 @@ private struct RowSwipe<ID: Hashable>: ViewModifier {
     /// Between the row and the buttons.
     private static var gap: CGFloat { Spacing.m }
 
+    /// How far the row moves before the first button starts to come out.
+    private var lead: CGFloat { trailingInset + Self.gap }
+
     private var openOffset: CGFloat {
-        -(SwipeButtons.width(of: actions.count) + Self.gap)
+        -(SwipeButtons.width(of: actions.count) + lead)
     }
 
     func body(content: Content) -> some View {
@@ -74,7 +77,7 @@ private struct RowSwipe<ID: Hashable>: ViewModifier {
             .environment(\.rowIsSwiped, offset != 0 || dragStart != nil)
             .offset(x: offset)
             .background(alignment: .trailing) {
-                SwipeButtons(revealed: max(0, -offset - Self.gap), actions: actions, perform: act)
+                SwipeButtons(revealed: max(0, -offset - lead), actions: actions, perform: act)
                     .padding(.trailing, trailingInset)
             }
             .onGeometryChange(for: CGFloat.self, of: \.size.width) { width = $0 }
