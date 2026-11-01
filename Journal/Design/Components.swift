@@ -142,6 +142,19 @@ extension View {
     }
 }
 
+/// What every tab's card has in common: they're all up at full screen or all down, and they share
+/// the measurements for it, so a page first opened at full screen has them at once.
+@Observable
+private final class PageCards {
+    static let shared = PageCards()
+
+    /// Dragged up to full screen.
+    var isExpanded = false
+    /// The title's height with the space below it, and the bar's, measured while they show.
+    var titleHeight: CGFloat = 0
+    var barHeight: CGFloat = 0
+}
+
 private struct PageTitle: ViewModifier {
     let title: String?
     let isHeldFullScreen: Bool
@@ -150,16 +163,16 @@ private struct PageTitle: ViewModifier {
     @Query(filter: #Predicate<Entry> { $0.deletedAt == nil }, sort: \Entry.createdAt)
     private var entries: [Entry]
 
-    /// Dragged up to full screen.
-    @State private var isExpanded = false
     /// The card is off its resting place, on its way up or at full screen (the bar is hidden).
-    @State private var isUp = false
+    @State private var isUp = PageCards.shared.isExpanded
     /// How far the card's top is moved from where the layout puts it: up over the title (negative)
     /// when full screen, and following the finger during a drag.
-    @State private var lift: CGFloat = 0
-    /// The title's height with the space below it, and the bar's, measured while they show.
-    @State private var titleHeight: CGFloat = 0
-    @State private var barHeight: CGFloat = 0
+    @State private var lift = PageCards.shared.isExpanded ? -PageCards.shared.titleHeight : 0
+
+    private var cards: PageCards { .shared }
+    private var isExpanded: Bool { cards.isExpanded }
+    private var titleHeight: CGFloat { cards.titleHeight }
+    private var barHeight: CGFloat { cards.barHeight }
 
     func body(content: Content) -> some View {
         let name = title ?? JournalName.display(journalName)
@@ -169,7 +182,7 @@ private struct PageTitle: ViewModifier {
             LargePageTitle(name, subtitle: title == nil ? yearSpan : nil)
                 .padding(.horizontal, Spacing.m)
                 .padding(.bottom, Spacing.m)
-                .onGeometryChange(for: CGFloat.self, of: \.size.height) { titleHeight = $0 }
+                .onGeometryChange(for: CGFloat.self, of: \.size.height) { cards.titleHeight = $0 }
                 // Where it sits with the bar, even while the bar is hidden.
                 .offset(y: isUp ? barHeight : 0)
                 .accessibilityHidden(isExpanded || isHeldFullScreen)
@@ -193,13 +206,14 @@ private struct PageTitle: ViewModifier {
                 .ignoresSafeArea(edges: .bottom)
         }
         .onGeometryChange(for: CGFloat.self) { $0.frame(in: .global).minY } action: { top in
-            if !isUp && top > Self.windowTop { barHeight = top - Self.windowTop }
+            if !isUp && top > Self.windowTop { cards.barHeight = top - Self.windowTop }
         }
         .background(Theme.accent)
         // Full screen, the card takes the bar's place too, so it starts just below the notch.
         .toolbar(isUp ? .hidden : .visible, for: .navigationBar)
         .onChange(of: isHeldFullScreen) { _, held in move(up: held || isExpanded) }
         .onChange(of: titleHeight) { if isUp { lift = -titleHeight } }
+        .onAppear(perform: matchOtherPages)
         .navigationTitle(name)
         .navigationBarTitleDisplayMode(.inline)
         // The bar sits on sand in both modes, so its buttons are white. The sand is the page's own
@@ -262,8 +276,18 @@ private struct PageTitle: ViewModifier {
     }
 
     private func setExpanded(_ expanded: Bool) {
-        isExpanded = expanded
+        cards.isExpanded = expanded
         move(up: expanded || isHeldFullScreen)
+    }
+
+    /// Takes up the place the card was left in on another tab, at once.
+    private func matchOtherPages() {
+        let up = isExpanded || isHeldFullScreen
+        guard up != isUp else { return }
+        withTransaction(Self.still) {
+            isUp = up
+            lift = up ? -titleHeight : 0
+        }
     }
 
     /// Applies a change at once, inside whatever animation is running.
