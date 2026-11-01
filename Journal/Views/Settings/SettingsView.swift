@@ -39,17 +39,23 @@ struct SettingsView: View {
                     NavigationLink {
                         ThemeList(selection: $appearance)
                     } label: {
-                        LabeledContent("Theme", value: appearance.label)
+                        LabeledContent {
+                            Text(appearance.label)
+                        } label: {
+                            Label("Theme", systemImage: "paintpalette")
+                        }
                     }
                 } header: {
                     Text("Appearance")
                 }
 
                 Section {
-                    Toggle("Daily reminder", isOn: reminderBinding)
+                    Toggle("Daily reminder", systemImage: "bell", isOn: reminderBinding)
                         .tint(Theme.accent)
                     if reminderEnabled {
-                        DatePicker("Time", selection: reminderTime, displayedComponents: .hourAndMinute)
+                        DatePicker(selection: reminderTime, displayedComponents: .hourAndMinute) {
+                            Label("Time", systemImage: "clock")
+                        }
                     }
                 } header: {
                     Text("Reminders")
@@ -68,7 +74,7 @@ struct SettingsView: View {
                 }
 
                 Section {
-                    Toggle("Add current location", isOn: autoTagBinding)
+                    Toggle("Add current location", systemImage: "location", isOn: autoTagBinding)
                         .tint(Theme.accent)
                 } header: {
                     Text("Location")
@@ -87,7 +93,7 @@ struct SettingsView: View {
                 }
 
                 Section {
-                    Toggle("Require \(lock.biometryName)", isOn: lockBinding)
+                    Toggle("Require \(lock.biometryName)", systemImage: lock.biometrySymbol, isOn: lockBinding)
                         .tint(Theme.accent)
                         .disabled(!lock.isAvailable && !lockEnabled)
                 } header: {
@@ -105,7 +111,11 @@ struct SettingsView: View {
                 }
 
                 Section {
-                    LabeledContent("Version", value: Bundle.main.shortVersion)
+                    LabeledContent {
+                        Text(Bundle.main.shortVersion)
+                    } label: {
+                        Label("Version", systemImage: "info.circle")
+                    }
                 }
             }
             .tint(Theme.primaryText)
