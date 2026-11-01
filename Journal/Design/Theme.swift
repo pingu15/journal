@@ -80,7 +80,7 @@ enum Typography {
     static let entryExcerpt = detail
     /// Empty-state and explanatory notes ("Nothing written on this day.").
     static let note = Font.system(.footnote)
-    /// An entry's time and place under its text.
+    /// An entry's time and place under its text; the words under a row's swipe buttons.
     static let caption = Font.system(.caption)
     /// Small uppercase labels (dates, section headers). Pair with `.tracking(Typography.metaTracking)`.
     static let meta = Font.system(.caption2).weight(.semibold)
@@ -88,6 +88,8 @@ enum Typography {
     static let bodyLineSpacing: CGFloat = 6
 
     // Icons standing on their own.
+    /// In a row's swipe buttons.
+    static let smallIcon = Font.system(.subheadline).weight(.medium)
     static let icon = Font.system(.title2)
     static let largeIcon = Font.system(.title)
 
@@ -101,7 +103,7 @@ enum Typography {
 enum Radius {
     /// Cards: Insights' tiles, the day sheet's sections, Set Location's map.
     static let card: CGFloat = 16
-    /// Rows you can swipe: their highlight and the buttons they reveal.
+    /// Rows you can swipe: their highlight.
     static let row: CGFloat = 12
 }
 

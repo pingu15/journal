@@ -1,9 +1,11 @@
 import SwiftUI
 import UIKit
 
-/// A button revealed by swiping a row: an icon, with its title for VoiceOver.
+/// A button revealed by swiping a row: an icon in a circle, with one short word under it.
 struct RowSwipeAction {
     let title: String
+    /// For VoiceOver, when `title` needs more to stand on its own.
+    var accessibilityTitle: String?
     let symbol: String
     let tint: Color
     /// Off for an action that leaves the row where it is, which then just closes.
@@ -12,8 +14,8 @@ struct RowSwipeAction {
 }
 
 extension View {
-    /// Buttons revealed by swiping a row left, in the order given: rounded rectangles as tall as the
-    /// row (the system's swipe actions are a fixed-size capsule), moving like the system's. Only
+    /// Buttons revealed by swiping a row left, in the order given: captioned circles (the system's
+    /// swipe actions are a fixed-size capsule), moving like the system's. Only
     /// tapping one acts on it — there's no full swipe. Only one row is open at a time (`openRow`); the
     /// list closes it when it scrolls, and a tap on the row should close it rather than act on the row.
     /// `trailingInset`: how far in from the row's trailing edge its content ends, so the buttons do too.
@@ -87,7 +89,7 @@ private struct RowSwipe<ID: Hashable>: ViewModifier {
             }
             .accessibilityActions {
                 ForEach(actions, id: \.title) { action in
-                    Button(action.title) { act(action) }
+                    Button(action.accessibilityTitle ?? action.title) { act(action) }
                 }
             }
     }
@@ -150,22 +152,19 @@ private struct SwipeButtons: View, @MainActor Animatable {
         set { revealed = newValue }
     }
 
-    private static var buttonWidth: CGFloat { 64 }
-    private static var buttonGap: CGFloat { Spacing.s }
+    private static var buttonWidth: CGFloat { 44 }
+    private static var buttonGap: CGFloat { Spacing.m }
 
     static func width(of count: Int) -> CGFloat {
         CGFloat(count) * buttonWidth + CGFloat(count - 1) * buttonGap
     }
 
     var body: some View {
-        // Past fully open (the little give, or the row sliding away), the buttons share the extra.
-        let extra = max(0, revealed - Self.width(of: actions.count)) / CGFloat(actions.count)
-
         HStack(spacing: 0) {
             ForEach(Array(actions.enumerated()), id: \.element.title) { index, action in
                 let fromRight = actions.count - 1 - index
                 let full = CGFloat(fromRight) * (Self.buttonWidth + Self.buttonGap)
-                button(action, width: clamp(revealed - full, to: Self.buttonWidth), extra: extra)
+                button(action, width: clamp(revealed - full, to: Self.buttonWidth))
                 if fromRight > 0 {
                     Color.clear.frame(width: clamp(revealed - full + Self.buttonGap, to: Self.buttonGap))
                 }
@@ -177,23 +176,56 @@ private struct SwipeButtons: View, @MainActor Animatable {
         min(max(value, 0), limit)
     }
 
-    private func button(_ action: RowSwipeAction, width: CGFloat, extra: CGFloat) -> some View {
-        // The icon arrives over the second half of the way out, once there's room around it.
-        let arrival = clamp(width / Self.buttonWidth - 0.5, to: 0.5) * 2
+    private func button(_ action: RowSwipeAction, width: CGFloat) -> some View {
+        Button {
+            perform(action)
+        } label: {
+            Image(systemName: action.symbol)
+        }
+        .buttonStyle(CircleStyle(title: action.title, tint: action.tint, width: width))
+        .accessibilityHidden(true)
+    }
 
-        return Image(systemName: action.symbol)
-            .font(Typography.icon)
-            .foregroundStyle(Theme.onAccent)
-            .opacity(arrival)
-            .scaleEffect(0.7 + 0.3 * arrival)
-            .frame(width: width + extra)
+    /// The icon in a circle, which lights up slightly while pressed, over the button's word. The whole
+    /// height of the row can be tapped.
+    private struct CircleStyle: ButtonStyle {
+        let title: String
+        let tint: Color
+        /// How far out the button has come.
+        let width: CGFloat
+
+        func makeBody(configuration: Configuration) -> some View {
+            let growth = width / SwipeButtons.buttonWidth
+            // The icon and caption arrive over the second half of the way out.
+            let arrival = min(max(growth - 0.5, 0), 0.5) * 2
+
+            VStack(spacing: Spacing.xs) {
+                configuration.label
+                    .font(Typography.smallIcon)
+                    .foregroundStyle(Theme.onAccent)
+                    .opacity(arrival)
+                    .frame(width: SwipeButtons.buttonWidth, height: SwipeButtons.buttonWidth)
+                    .background(tint, in: .circle)
+                    .overlay {
+                        Circle()
+                            .fill(Theme.onAccent.opacity(configuration.isPressed ? 0.2 : 0))
+                            .animation(.easeOut(duration: 0.15), value: configuration.isPressed)
+                    }
+                Text(title)
+                    .font(Typography.caption)
+                    .foregroundStyle(Theme.secondaryText)
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.7)
+                    .opacity(arrival)
+                    // A word can be wider than its circle, into the gap beside it.
+                    .frame(width: SwipeButtons.buttonWidth + SwipeButtons.buttonGap)
+            }
+            .frame(width: SwipeButtons.buttonWidth)
+            .scaleEffect(growth)
+            .frame(width: width)
             .frame(maxHeight: .infinity)
-            .background(action.tint)
-            // Never more than half its width, so a sliver stays a rounded sliver.
-            .clipShape(.rect(cornerRadius: min(Radius.row, width / 2), style: .continuous))
             .contentShape(.rect)
-            .onTapGesture { perform(action) }
-            .accessibilityHidden(true)
+        }
     }
 }
 

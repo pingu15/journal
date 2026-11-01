@@ -218,7 +218,7 @@ struct EntriesView: View {
                 RowSwipeAction(title: "Share", symbol: "square.and.arrow.up", tint: Theme.accent, removesRow: false) {
                     Task { await ShareSheet.present(entry.shareText) }
                 },
-                RowSwipeAction(title: "Delete", symbol: "trash", tint: Theme.destructive) {
+                RowSwipeAction(title: "Trash", accessibilityTitle: "Delete", symbol: "trash", tint: Theme.destructive) {
                     withAnimation { entry.moveToTrash() }
                     try? context.save()
                 },
@@ -504,7 +504,7 @@ private struct TrashList<Header: View>: View {
                     withAnimation { entry.restore() }
                     try? context.save()
                 },
-                RowSwipeAction(title: "Delete Permanently", symbol: "trash", tint: Theme.destructive) {
+                RowSwipeAction(title: "Delete", accessibilityTitle: "Delete Permanently", symbol: "trash", tint: Theme.destructive) {
                     withAnimation { context.delete(entry) }
                     try? context.save()
                 },
