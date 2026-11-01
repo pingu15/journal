@@ -224,10 +224,13 @@ struct EntriesView: View {
             ]
         )
         .entryListRow()
+        // A list's context menu covers the whole row, so none while its buttons are showing.
         .contextMenu {
-            ShareLink(item: entry.shareText)
-            Button("Delete", systemImage: "trash", role: .destructive) {
-                moveToTrash(entry)
+            if swipedOpen != entry.persistentModelID {
+                ShareLink(item: entry.shareText)
+                Button("Delete", systemImage: "trash", role: .destructive) {
+                    moveToTrash(entry)
+                }
             }
         }
     }
@@ -515,12 +518,15 @@ private struct TrashList<Header: View>: View {
             ]
         )
         .entryListRow()
+        // A list's context menu covers the whole row, so none while its buttons are showing.
         .contextMenu {
-            Button("Restore", systemImage: "arrow.uturn.backward") {
-                restore(entry)
-            }
-            Button("Delete Permanently", systemImage: "trash", role: .destructive) {
-                deletePermanently(entry)
+            if swipedOpen != entry.persistentModelID {
+                Button("Restore", systemImage: "arrow.uturn.backward") {
+                    restore(entry)
+                }
+                Button("Delete Permanently", systemImage: "trash", role: .destructive) {
+                    deletePermanently(entry)
+                }
             }
         }
     }
