@@ -210,6 +210,7 @@ struct EntriesView: View {
                 // the left.
                 .padding(.trailing, inset)
         }
+        .buttonStyle(SwipeRowButtonStyle())
         .rowSwipeActions(
             id: entry.persistentModelID,
             openRow: $swipedOpen,
@@ -480,38 +481,42 @@ private struct TrashList<Header: View>: View {
     }
 
     private func row(for entry: Entry) -> some View {
-        EntryRow(entry: entry, warning: entry.daysUntilPurge == 1 ? "1 day left" : "\(entry.daysUntilPurge) days left")
-            // The text and photo end as far in from the right as the month labels start from the left.
-            .padding(.trailing, EntriesView.separatorInset)
-            // A tap only closes an open row: these open nothing.
-            .contentShape(.rect)
-            .onTapGesture { swipedOpen = nil }
-            .rowSwipeActions(
-                id: entry.persistentModelID,
-                openRow: $swipedOpen,
-                trailingInset: EntriesView.separatorInset,
-                actions: [
-                    RowSwipeAction(title: "Restore", symbol: "arrow.uturn.backward", tint: Theme.accent) {
-                        withAnimation { entry.restore() }
-                        try? context.save()
-                    },
-                    RowSwipeAction(title: "Delete Permanently", symbol: "trash", tint: Theme.destructive) {
-                        withAnimation { context.delete(entry) }
-                        try? context.save()
-                    },
-                ]
-            )
-            .entryListRow()
-            .contextMenu {
-                Button("Restore", systemImage: "arrow.uturn.backward") {
+        // A tap only closes an open row: these open nothing.
+        Button {
+            swipedOpen = nil
+        } label: {
+            EntryRow(entry: entry, warning: entry.daysUntilPurge == 1 ? "1 day left" : "\(entry.daysUntilPurge) days left")
+                // The text and photo end as far in from the right as the month labels start from the left.
+                .padding(.trailing, EntriesView.separatorInset)
+        }
+        .buttonStyle(SwipeRowButtonStyle())
+        .accessibilityRemoveTraits(.isButton)
+        .rowSwipeActions(
+            id: entry.persistentModelID,
+            openRow: $swipedOpen,
+            trailingInset: EntriesView.separatorInset,
+            actions: [
+                RowSwipeAction(title: "Restore", symbol: "arrow.uturn.backward", tint: Theme.accent) {
                     withAnimation { entry.restore() }
                     try? context.save()
-                }
-                Button("Delete Permanently", systemImage: "trash", role: .destructive) {
+                },
+                RowSwipeAction(title: "Delete Permanently", symbol: "trash", tint: Theme.destructive) {
                     withAnimation { context.delete(entry) }
                     try? context.save()
-                }
+                },
+            ]
+        )
+        .entryListRow()
+        .contextMenu {
+            Button("Restore", systemImage: "arrow.uturn.backward") {
+                withAnimation { entry.restore() }
+                try? context.save()
             }
+            Button("Delete Permanently", systemImage: "trash", role: .destructive) {
+                withAnimation { context.delete(entry) }
+                try? context.save()
+            }
+        }
     }
 }
 

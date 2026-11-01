@@ -27,6 +27,30 @@ extension View {
     }
 }
 
+extension EnvironmentValues {
+    /// Whether the row around this is being swiped, or is swiped open.
+    @Entry var rowIsSwiped = false
+}
+
+/// A row you can swipe: softly highlighted while it's touched, and on through a swipe, which cancels
+/// the touch, until it closes again.
+struct SwipeRowButtonStyle: ButtonStyle {
+    @Environment(\.rowIsSwiped) private var isSwiped
+
+    func makeBody(configuration: Configuration) -> some View {
+        let isHighlighted = configuration.isPressed || isSwiped
+
+        configuration.label
+            .contentShape(.rect)
+            .background {
+                RoundedRectangle(cornerRadius: Radius.row, style: .continuous)
+                    .fill(Theme.surface)
+                    .opacity(isHighlighted ? 1 : 0)
+                    .animation(.easeOut(duration: 0.15), value: isHighlighted)
+            }
+    }
+}
+
 private struct RowSwipe<ID: Hashable>: ViewModifier {
     let id: ID
     @Binding var openRow: ID?
@@ -47,6 +71,7 @@ private struct RowSwipe<ID: Hashable>: ViewModifier {
 
     func body(content: Content) -> some View {
         content
+            .environment(\.rowIsSwiped, offset != 0 || dragStart != nil)
             .offset(x: offset)
             .background(alignment: .trailing) {
                 SwipeButtons(revealed: max(0, -offset - Self.gap), actions: actions, perform: act)
@@ -124,7 +149,6 @@ private struct SwipeButtons: View, @MainActor Animatable {
 
     private static var buttonWidth: CGFloat { 64 }
     private static var buttonGap: CGFloat { Spacing.s }
-    private static var cornerRadius: CGFloat { 12 }
 
     static func width(of count: Int) -> CGFloat {
         CGFloat(count) * buttonWidth + CGFloat(count - 1) * buttonGap
@@ -163,7 +187,7 @@ private struct SwipeButtons: View, @MainActor Animatable {
             .frame(maxHeight: .infinity)
             .background(action.tint)
             // Never more than half its width, so a sliver stays a rounded sliver.
-            .clipShape(.rect(cornerRadius: min(Self.cornerRadius, width / 2), style: .continuous))
+            .clipShape(.rect(cornerRadius: min(Radius.row, width / 2), style: .continuous))
             .contentShape(.rect)
             .onTapGesture { perform(action) }
             .accessibilityHidden(true)
@@ -199,6 +223,15 @@ private struct SidewaysPan: UIGestureRecognizerRepresentable {
             guard let pan = gesture as? UIPanGestureRecognizer else { return true }
             let velocity = pan.velocity(in: pan.view)
             return abs(velocity.x) > abs(velocity.y) * 1.5
+        }
+
+        /// Not blocked by the hold for the context menu, for a finger that rests before it swipes.
+        /// The list's scrolling stays exclusive.
+        func gestureRecognizer(
+            _ gesture: UIGestureRecognizer,
+            shouldRecognizeSimultaneouslyWith other: UIGestureRecognizer
+        ) -> Bool {
+            !(other is UIPanGestureRecognizer)
         }
     }
 }

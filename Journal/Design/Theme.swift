@@ -101,6 +101,8 @@ enum Typography {
 enum Radius {
     /// Cards: Insights' tiles, the day sheet's sections, Set Location's map.
     static let card: CGFloat = 16
+    /// Rows you can swipe: their highlight and the buttons they reveal.
+    static let row: CGFloat = 12
 }
 
 enum Spacing {
