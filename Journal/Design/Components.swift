@@ -107,11 +107,15 @@ extension View {
             .background(Theme.surface, in: .rect(cornerRadius: Radius.card))
     }
 
-    /// A sheet's content, with the same `Grabber` as the page's card in place of the system's indicator,
-    /// and the page behind it darkened (`SheetBackdrop`).
-    func sheetGrabber() -> some View {
+    /// A sheet's content, with no drag indicator and the page behind it darkened (`SheetBackdrop`).
+    func sheetBackdrop() -> some View {
         presentationDragIndicator(.hidden)
             .background { SheetBackdrop() }
+    }
+
+    /// A `sheetBackdrop()` with the same `Grabber` as the page's card in place of the system's indicator.
+    func sheetGrabber() -> some View {
+        sheetBackdrop()
             .overlay(alignment: .top) {
                 // The sheet drags itself; this only shows that it does.
                 Grabber()
@@ -467,7 +471,7 @@ struct SettingsButton: View {
 
     var body: some View {
         Button("Settings", systemImage: "gearshape") { showing = true }
-            .sheet(isPresented: $showing) { SettingsView().sheetGrabber() }
+            .sheet(isPresented: $showing) { SettingsView().sheetBackdrop() }
     }
 }
 
