@@ -408,22 +408,26 @@ struct SheetHeader: View {
     }
 }
 
-/// A map group's entries, as tappable rows with a hairline between them.
+/// A map group's entries, as tappable rows with a hairline between them. Highlighted like the
+/// journal's rows: from hairline to hairline, across the sheet's full width.
 struct SheetEntryRows: View {
     let entries: [Entry]
     let onOpen: (Entry) -> Void
 
     var body: some View {
-        ForEach(entries) { entry in
-            Button {
-                onOpen(entry)
-            } label: {
-                EntryRow(entry: entry, dateStyle: .dayAndMonth)
-                    .padding(.vertical, 6)
-            }
-            .buttonStyle(.plain)
-            if entry.id != entries.last?.id {
-                Rectangle().fill(Theme.hairline).frame(height: 1)
+        VStack(alignment: .leading, spacing: 0) {
+            ForEach(entries) { entry in
+                Button {
+                    onOpen(entry)
+                } label: {
+                    EntryRow(entry: entry, dateStyle: .dayAndMonth)
+                        .entryRowPadding()
+                }
+                .buttonStyle(SwipeRowButtonStyle())
+                .padding(.horizontal, -EntriesView.contentInset)
+                if entry.id != entries.last?.id {
+                    Rectangle().fill(Theme.hairline).frame(height: 1)
+                }
             }
         }
     }
