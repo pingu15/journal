@@ -13,6 +13,7 @@ struct SettingsView: View {
     @AppStorage(ReminderScheduler.enabledKey) private var reminderEnabled = false
     @AppStorage(ReminderScheduler.minutesKey) private var reminderMinutes = ReminderScheduler.defaultMinutes
     @AppStorage(LocationService.autoTagKey) private var autoTagLocation = false
+    @AppStorage(PlaceTracker.enabledKey) private var trackPlaces = false
     @State private var notificationsDenied = false
     @State private var locationDenied = false
 
@@ -76,6 +77,8 @@ struct SettingsView: View {
 
                 Section {
                     Toggle("Add current location", systemImage: "location", isOn: autoTagBinding)
+                        .tint(Theme.accent)
+                    Toggle("Track places", systemImage: "mappin.and.ellipse", isOn: trackPlacesBinding)
                         .tint(Theme.accent)
                 } header: {
                     Text("Location")
@@ -193,6 +196,19 @@ struct SettingsView: View {
                 locationDenied = false
                 autoTagLocation = true
             }
+        }
+    }
+
+    /// Like "Add current location": stays off if location access is refused.
+    private var trackPlacesBinding: Binding<Bool> {
+        Binding {
+            trackPlaces
+        } set: { enable in
+            guard enable else {
+                PlaceTracker.shared.disable()
+                return
+            }
+            Task { locationDenied = !(await PlaceTracker.shared.enable()) }
         }
     }
 

@@ -232,9 +232,11 @@
 				DEVELOPMENT_TEAM = L3957C4ZBL;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = Info.plist;
 				INFOPLIST_KEY_CFBundleDisplayName = Journal;
 				INFOPLIST_KEY_NSFaceIDUsageDescription = "Face ID keeps your journal private.";
-				INFOPLIST_KEY_NSLocationWhenInUseUsageDescription = "Journal tags an entry with your location only when you ask it to.";
+				INFOPLIST_KEY_NSLocationAlwaysAndWhenInUseUsageDescription = "With Track Places on, Journal notes where you spend time through the day, so each day can show the places you went. It stays on this iPhone.";
+				INFOPLIST_KEY_NSLocationWhenInUseUsageDescription = "Journal tags an entry with your location when you ask it to, and notes the places you spend time if you turn that on.";
 				INFOPLIST_KEY_NSPhotoLibraryUsageDescription = "Journal shows the photos you took on a day alongside what you wrote.";
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
@@ -270,9 +272,11 @@
 				DEVELOPMENT_TEAM = L3957C4ZBL;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = Info.plist;
 				INFOPLIST_KEY_CFBundleDisplayName = Journal;
 				INFOPLIST_KEY_NSFaceIDUsageDescription = "Face ID keeps your journal private.";
-				INFOPLIST_KEY_NSLocationWhenInUseUsageDescription = "Journal tags an entry with your location only when you ask it to.";
+				INFOPLIST_KEY_NSLocationAlwaysAndWhenInUseUsageDescription = "With Track Places on, Journal notes where you spend time through the day, so each day can show the places you went. It stays on this iPhone.";
+				INFOPLIST_KEY_NSLocationWhenInUseUsageDescription = "Journal tags an entry with your location when you ask it to, and notes the places you spend time if you turn that on.";
 				INFOPLIST_KEY_NSPhotoLibraryUsageDescription = "Journal shows the photos you took on a day alongside what you wrote.";
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;

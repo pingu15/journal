@@ -15,6 +15,7 @@ struct EntryEditorView: View {
     @State private var isTrashed = false
     @State private var editingDate = false
     @State private var editingLocation = false
+    @State private var viewingDay = false
     @State private var choosingPhotos = false
     @State private var pickerItems: [PhotosPickerItem] = []
     @State private var viewingPhoto: PhotoSelection?
@@ -69,6 +70,7 @@ struct EntryEditorView: View {
             ToolbarItem(placement: .topBarTrailing) {
                 Menu("More", systemImage: "ellipsis") {
                     Section {
+                        Button("View Day", systemImage: "calendar") { viewingDay = true }
                         Button("Share", systemImage: "square.and.arrow.up", action: sharePDF)
                         Button("Delete Entry", systemImage: "trash", role: .destructive) {
                             confirmingDelete = true
@@ -105,6 +107,12 @@ struct EntryEditorView: View {
                 Task { await refreshWeather() }
             }
             .sheetGrabber()
+        }
+        .sheet(isPresented: $viewingDay) {
+            EntryDaySheet(entry: entry) {
+                autoPlaced = false
+                Task { await refreshWeather() }
+            }
         }
         .fullScreenCover(item: $viewingPhoto) { selection in
             PhotoViewer(
@@ -232,6 +240,20 @@ struct EntryEditorView: View {
         if let snapshot = await WeatherFetcher.snapshot(at: location, on: entry.createdAt) {
             entry.apply(snapshot)
         }
+    }
+}
+
+/// The day sheet for the entry's day, without the entry itself. Its own view with its own query,
+/// so the editor doesn't re-render as entries change.
+private struct EntryDaySheet: View {
+    let entry: Entry
+    let onSetPlace: () -> Void
+
+    @Query(filter: #Predicate<Entry> { $0.deletedAt == nil }, sort: \Entry.createdAt)
+    private var entries: [Entry]
+
+    var body: some View {
+        DaySheet(day: entry.createdAt, entries: entries, openedFrom: entry, onSetPlace: onSetPlace)
     }
 }
 

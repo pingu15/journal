@@ -236,14 +236,18 @@ struct LocationPicker: View {
     }
 }
 
-/// Ink teardrop pin with a sand dot — reads clearly on the light map tiles.
-/// The exact spot: a sand dot ringed in white, on a soft sand halo.
-private struct MapPin: View {
+/// The exact spot: a sand dot ringed in white, on a soft sand halo. Also the day sheet's places,
+/// where only the chosen one has the halo.
+struct MapPin: View {
+    var showsHalo = true
+
     var body: some View {
         ZStack {
             Circle()
                 .fill(Theme.accent.opacity(0.3))
                 .frame(width: 44, height: 44)
+                .scaleEffect(showsHalo ? 1 : 0.3)
+                .opacity(showsHalo ? 1 : 0)
             Circle()
                 .fill(Theme.accent)
                 .frame(width: 16, height: 16)

@@ -8,6 +8,8 @@ struct JournalApp: App {
 
     init() {
         Theme.applyNavigationBarAppearance()
+        // Here, as iOS can relaunch the app in the background, with no scene, for a move.
+        PlaceTracker.shared.resume()
     }
 
     var body: some Scene {
@@ -73,6 +75,9 @@ struct RootView: View {
             #if DEBUG
             if ProcessInfo.processInfo.arguments.contains("-seedSampleData") {
                 SampleData.populate(context)
+            }
+            if ProcessInfo.processInfo.arguments.contains("-seedSamplePlaces") {
+                PlaceTracker.seedSampleDays()
             }
             #endif
             Entry.purgeExpiredTrash(in: context)

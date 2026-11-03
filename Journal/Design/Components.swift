@@ -1,21 +1,30 @@
 import SwiftData
 import SwiftUI
 
-/// Small uppercase tracked label used for dates, section headers and stat captions.
+/// Small uppercase tracked label used for dates, section headers and stat captions, optionally led by
+/// an icon (the day sheet's cards).
 struct MetaLabel: View {
     let text: String
+    var systemImage: String?
     var color = Theme.secondaryText
 
-    init(_ text: String, color: Color = Theme.secondaryText) {
+    init(_ text: String, systemImage: String? = nil, color: Color = Theme.secondaryText) {
         self.text = text
+        self.systemImage = systemImage
         self.color = color
     }
 
     var body: some View {
-        Text(text.uppercased())
-            .font(Typography.meta)
-            .tracking(Typography.metaTracking)
-            .foregroundStyle(color)
+        HStack(spacing: Spacing.xs + 2) {
+            if let systemImage {
+                Image(systemName: systemImage)
+                    .accessibilityHidden(true)
+            }
+            Text(text.uppercased())
+                .tracking(Typography.metaTracking)
+        }
+        .font(Typography.meta)
+        .foregroundStyle(color)
     }
 }
 

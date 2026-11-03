@@ -3,19 +3,31 @@ import SwiftData
 import SwiftUI
 
 /// A day from the calendar, in a sheet that swipes down to close: the date with arrows to the day
-/// before and after, that day's entries, then the photos taken that day from the photo library.
+/// before and after, that day's entries, the places the user spent time, then the photos taken
+/// that day from the photo library. Also opened from an entry (the editor's View Day), which is then
+/// left out of the list, and a place tapped becomes its place.
 struct DaySheet: View {
     let entries: [Entry]
+    /// The entry this was opened from, if any.
+    let openedFrom: Entry?
+    /// After a place is set on `openedFrom`.
+    let onSetPlace: () -> Void
 
     @State private var day: Date
     @State private var openEntry: Entry?
+    /// An entry started here from a place, whose place is provisional.
+    @State private var startedEntry: PersistentIdentifier?
+    @Environment(\.modelContext) private var context
+    @Environment(\.dismiss) private var dismiss
     /// Which way the last arrow went, so the day slides out that way.
     @State private var movingForward = true
     private let calendar = Calendar.current
 
-    init(day: Date, entries: [Entry]) {
+    init(day: Date, entries: [Entry], openedFrom: Entry? = nil, onSetPlace: @escaping () -> Void = {}) {
         _day = State(initialValue: Calendar.current.startOfDay(for: day))
         self.entries = entries
+        self.openedFrom = openedFrom
+        self.onSetPlace = onSetPlace
     }
 
     var body: some View {
@@ -25,8 +37,11 @@ struct DaySheet: View {
             slidingDay {
                 VStack(spacing: Spacing.m) {
                     entriesSection
+                    DayPlacesCard(day: day, current: openedFrom.flatMap { entry in
+                        entry.location.map { ($0, entry.createdAt) }
+                    }, action: placeAction)
                     VStack(alignment: .leading, spacing: Spacing.s) {
-                        MetaLabel("Photos")
+                        MetaLabel("Photos", systemImage: "photo.on.rectangle")
                         DayPhotos(day: day)
                     }
                     .surfaceCard()
@@ -36,16 +51,37 @@ struct DaySheet: View {
         .presentationDetents([.medium, .large])
         .sheetGrabber()
         .sensoryFeedback(.selection, trigger: day)
-        // The days either side, so their photos are already there as they slide in.
+        // The days either side, so their photos and places are already there as they slide in.
         .task(id: day) {
             for offset in [1, -1] {
                 guard let neighbor = calendar.date(byAdding: .day, value: offset, to: day) else { continue }
                 await PhotoLibrary.preloadThumbnails(on: neighbor, side: AssetThumbnail.side)
+                await DayMapSnapshots.preload(on: neighbor)
+                await PlaceNames.preload(on: neighbor)
             }
         }
         .fullScreenCover(item: $openEntry) { entry in
-            EntryCover(entry: entry) { show(nil) }
+            EntryCover(entry: entry, placeIsProvisional: entry.persistentModelID == startedEntry) { show(nil) }
         }
+    }
+
+    private var placeAction: DayPlacesCard.Action {
+        guard let entry = openedFrom else { return .newEntry(startEntry) }
+        return .setPlace { name, coordinate, time in
+            entry.setPlace(name: name, coordinate: coordinate)
+            if let time { entry.createdAt = time }
+            onSetPlace()
+            dismiss()
+        }
+    }
+
+    /// An entry at a place the user spent time, dated when they got there, opened over the sheet. Its
+    /// place is provisional, so it's discarded if nothing else is added (`EntryEditorView`).
+    private func startEntry(name: String, coordinate: CLLocationCoordinate2D, time: Date) {
+        let entry = Entry.create(in: context, at: time)
+        entry.setPlace(name: name, coordinate: coordinate)
+        startedEntry = entry.persistentModelID
+        show(entry)
     }
 
     /// With no animation of the cover's own: the slide is the push inside it.
@@ -100,10 +136,11 @@ struct DaySheet: View {
 
     @ViewBuilder
     private var entriesSection: some View {
-        let dayEntries = entries.filter { calendar.isDate($0.createdAt, inSameDayAs: day) }
+        let dayEntries = entries.filter { calendar.isDate($0.createdAt, inSameDayAs: day) && $0 != openedFrom }
+        let isOpenedFromDay = openedFrom.map { calendar.isDate($0.createdAt, inSameDayAs: day) } ?? false
 
         if dayEntries.isEmpty {
-            Text("Nothing written on this day.")
+            Text(isOpenedFromDay ? "Nothing else written on this day." : "Nothing written on this day.")
                 .font(Typography.note)
                 .foregroundStyle(Theme.secondaryText)
                 .surfaceCard()
@@ -136,6 +173,7 @@ struct DaySheet: View {
 /// so it slides in from the right over the sheet, which stays where it is.
 private struct EntryCover: View {
     let entry: Entry
+    var placeIsProvisional = false
     let onClose: () -> Void
 
     @Environment(\.modelContext) private var context
@@ -148,7 +186,7 @@ private struct EntryCover: View {
                 .toolbar(.hidden, for: .navigationBar)
                 .containerBackground(.clear, for: .navigation)
                 .navigationDestination(for: Entry.self) { entry in
-                    EntryEditorView(entry: entry)
+                    EntryEditorView(entry: entry, placeIsProvisional: placeIsProvisional)
                         // Not on the path emptying, which is as the slide back starts.
                         .onDisappear {
                             guard path.isEmpty else { return }

@@ -198,8 +198,8 @@ extension Entry {
     static let trashRetentionDays = 30
 
     /// Creates and inserts an entry dated now.
-    static func create(in context: ModelContext) -> Entry {
-        let entry = Entry(createdAt: .now)
+    static func create(in context: ModelContext, at date: Date = .now) -> Entry {
+        let entry = Entry(createdAt: date)
         context.insert(entry)
         return entry
     }
