@@ -36,6 +36,13 @@ struct DaySheet: View {
         .presentationDetents([.medium, .large])
         .sheetGrabber()
         .sensoryFeedback(.selection, trigger: day)
+        // The days either side, so their photos are already there as they slide in.
+        .task(id: day) {
+            for offset in [1, -1] {
+                guard let neighbor = calendar.date(byAdding: .day, value: offset, to: day) else { continue }
+                await PhotoLibrary.preloadThumbnails(on: neighbor, side: AssetThumbnail.side)
+            }
+        }
         .fullScreenCover(item: $openEntry) { entry in
             EntryCover(entry: entry) { show(nil) }
         }
@@ -223,8 +230,16 @@ private struct DayPhotos: View {
 }
 
 private struct AssetThumbnail: View {
+    static let side: CGFloat = 120
+
     let asset: PHAsset
     @State private var image: UIImage?
+
+    init(asset: PHAsset) {
+        self.asset = asset
+        // From the cache when it's there, so a day's card slides in with its photos.
+        _image = State(initialValue: PhotoLibrary.cachedThumbnail(for: asset, side: Self.side))
+    }
 
     var body: some View {
         Color.primary.opacity(0.06)
@@ -239,7 +254,8 @@ private struct AssetThumbnail: View {
             }
             .clipShape(.rect(cornerRadius: 6, style: .continuous))
             .task(id: asset.localIdentifier) {
-                let thumbnail = await PhotoLibrary.thumbnail(for: asset, side: 120)
+                guard image == nil else { return }
+                let thumbnail = await PhotoLibrary.thumbnail(for: asset, side: Self.side)
                 withAnimation(.easeOut(duration: 0.2)) { image = thumbnail }
             }
             .accessibilityLabel(asset.creationDate?.formatted(date: .omitted, time: .shortened) ?? "Photo")

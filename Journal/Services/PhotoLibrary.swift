@@ -33,8 +33,28 @@ enum PhotoLibrary {
         return assets
     }
 
+    private static let thumbnails = NSCache<NSString, UIImage>()
+
+    private static func key(_ asset: PHAsset, _ side: CGFloat) -> NSString {
+        "\(asset.localIdentifier)@\(Int(side))" as NSString
+    }
+
+    /// A thumbnail already fetched, to show at once.
+    static func cachedThumbnail(for asset: PHAsset, side: CGFloat) -> UIImage? {
+        thumbnails.object(forKey: key(asset, side))
+    }
+
+    /// Fetches the first photos' thumbnails from `day` ahead of time, so they're there the moment
+    /// they're shown.
+    static func preloadThumbnails(on day: Date, side: CGFloat, limit: Int = 24) async {
+        for asset in photos(on: day).prefix(limit) where cachedThumbnail(for: asset, side: side) == nil {
+            _ = await thumbnail(for: asset, side: side)
+        }
+    }
+
     /// A square-cropped thumbnail about `side` points across.
     static func thumbnail(for asset: PHAsset, side: CGFloat) async -> UIImage? {
+        if let cached = cachedThumbnail(for: asset, side: side) { return cached }
         let scale = UIScreen.main.scale
         let options = PHImageRequestOptions()
         // One callback with the final image (opportunistic delivery calls back twice).
@@ -48,6 +68,7 @@ enum PhotoLibrary {
                 contentMode: .aspectFill,
                 options: options
             ) { image, _ in
+                if let image { thumbnails.setObject(image, forKey: key(asset, side)) }
                 continuation.resume(returning: image)
             }
         }
