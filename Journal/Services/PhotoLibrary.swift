@@ -19,11 +19,35 @@ enum PhotoLibrary {
         }
     }
 
+    /// Days already fetched, so a day sliding into the day sheet (fetched ahead, with its
+    /// thumbnails) doesn't fetch again on the way; all dropped when the library changes.
+    private static var fetched: [Date: [PHAsset]] = [:]
+    private static let changes: LibraryChanges = {
+        let changes = LibraryChanges()
+        PHPhotoLibrary.shared().register(changes)
+        return changes
+    }()
+
+    private final class LibraryChanges: NSObject, PHPhotoLibraryChangeObserver {
+        nonisolated func photoLibraryDidChange(_ changeInstance: PHChange) {
+            Task { @MainActor in PhotoLibrary.fetched = [:] }
+        }
+    }
+
     /// Photos (not videos) taken on `day`, oldest first.
     static func photos(on day: Date) -> [PHAsset] {
+        let start = Calendar.current.startOfDay(for: day)
+        guard canRead else { return [] }
+        _ = changes
+        if let assets = fetched[start] { return assets }
+        let assets = fetchPhotos(from: start)
+        fetched[start] = assets
+        return assets
+    }
+
+    private static func fetchPhotos(from start: Date) -> [PHAsset] {
         let calendar = Calendar.current
-        let start = calendar.startOfDay(for: day)
-        guard canRead, let end = calendar.date(byAdding: .day, value: 1, to: start) else { return [] }
+        guard let end = calendar.date(byAdding: .day, value: 1, to: start) else { return [] }
         let options = PHFetchOptions()
         options.predicate = NSPredicate(format: "creationDate >= %@ AND creationDate < %@", start as NSDate, end as NSDate)
         options.sortDescriptors = [NSSortDescriptor(key: "creationDate", ascending: true)]
