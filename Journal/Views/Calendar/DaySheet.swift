@@ -8,7 +8,7 @@ struct DaySheet: View {
     let onOpen: (Entry) -> Void
 
     @State private var day: Date
-    /// Which way the last arrow went, so the date slides out that way.
+    /// Which way the last arrow went, so the day slides out that way.
     @State private var movingForward = true
     private let calendar = Calendar.current
 
@@ -22,13 +22,15 @@ struct DaySheet: View {
         SheetPage {
             header
         } content: {
-            VStack(spacing: Spacing.m) {
-                entriesSection
-                VStack(alignment: .leading, spacing: Spacing.s) {
-                    MetaLabel("Photos")
-                    DayPhotos(day: day)
+            slidingDay {
+                VStack(spacing: Spacing.m) {
+                    entriesSection
+                    VStack(alignment: .leading, spacing: Spacing.s) {
+                        MetaLabel("Photos")
+                        DayPhotos(day: day)
+                    }
+                    .surfaceCard()
                 }
-                .surfaceCard()
             }
         }
         .presentationDetents([.medium, .large])
@@ -37,27 +39,36 @@ struct DaySheet: View {
     }
 
     private var header: some View {
-        ZStack {
+        slidingDay {
             SheetHeader(
                 title: day.formatted(.dateTime.month(.wide).day().year()),
                 label: day.formatted(.dateTime.weekday(.wide))
             )
-            .id(day)
-            .transition(.asymmetric(
-                insertion: .move(edge: movingForward ? .trailing : .leading),
-                removal: .move(edge: movingForward ? .leading : .trailing)
-            ))
         }
-        // Out to the sheet's edges, so the dates slide right across it.
-        .padding(.horizontal, Spacing.m + 4)
-        .clipped()
-        .padding(.horizontal, -(Spacing.m + 4))
         .overlay(alignment: .leading) {
             arrow("Previous Day", "chevron.left", by: -1)
         }
         .overlay(alignment: .trailing) {
             arrow("Next Day", "chevron.right", by: 1)
         }
+    }
+
+    /// Part of the page that belongs to the day, sliding across the sheet when the day changes. It
+    /// moves with the page's margins inside it, out to the sheet's edges: a move goes by the view's
+    /// own width, which would otherwise leave the cards' ends showing until they're removed.
+    private func slidingDay<Content: View>(@ViewBuilder _ content: () -> Content) -> some View {
+        ZStack(alignment: .top) {
+            content()
+                .padding(.horizontal, Spacing.m + 4)
+                .id(day)
+                .transition(.asymmetric(
+                    insertion: .move(edge: movingForward ? .trailing : .leading),
+                    removal: .move(edge: movingForward ? .leading : .trailing)
+                ))
+        }
+        // Only at the sides: the height changes as it goes, which would cut off the taller day.
+        .mask { Color.black.padding(.vertical, -2000) }
+        .padding(.horizontal, -(Spacing.m + 4))
     }
 
     private func arrow(_ label: String, _ symbol: String, by days: Int) -> some View {
@@ -96,7 +107,7 @@ struct DaySheet: View {
     private func shift(by days: Int) {
         guard let next = calendar.date(byAdding: .day, value: days, to: day) else { return }
         movingForward = days > 0
-        // On the next turn: the outgoing date takes its transition from the last update, so the
+        // On the next turn: the outgoing day takes its transition from the last update, so the
         // direction has to be in place before the day changes.
         DispatchQueue.main.async {
             withAnimation(.snappy) { day = next }
@@ -110,20 +121,25 @@ private struct DayPhotos: View {
 
     @Environment(\.openURL) private var openURL
     @State private var status = PhotoLibrary.status
-    @State private var assets: [PHAsset] = []
-    @State private var loaded = false
+    @State private var assets: [PHAsset]
 
     private let columns = [GridItem(.adaptive(minimum: 96), spacing: 4)]
 
+    init(day: Date) {
+        self.day = day
+        // Here, not on appear: a day's card slides in whole, and anything added to it once it's moving
+        // takes a path of its own.
+        _assets = State(initialValue: PhotoLibrary.photos(on: day))
+    }
+
     var body: some View {
-        // A stack, not a Group: before loading there's nothing to show, and an empty Group never appears.
         VStack(alignment: .leading, spacing: 0) {
             switch status {
             case .notDetermined:
                 Button {
                     Task {
                         status = await PhotoLibrary.requestAccess()
-                        load()
+                        assets = PhotoLibrary.photos(on: day)
                     }
                 } label: {
                     Label("Show Photos From Your Library", systemImage: "photo.on.rectangle")
@@ -146,12 +162,10 @@ private struct DayPhotos: View {
                 .buttonStyle(.plain)
             default:
                 if assets.isEmpty {
-                    if loaded {
-                        Text("No photos from this day.")
-                            .font(Typography.note)
-                            .foregroundStyle(Theme.secondaryText)
-                            .padding(.vertical, Spacing.xs)
-                    }
+                    Text("No photos from this day.")
+                        .font(Typography.note)
+                        .foregroundStyle(Theme.secondaryText)
+                        .padding(.vertical, Spacing.xs)
                 } else {
                     LazyVGrid(columns: columns, spacing: 4) {
                         ForEach(assets, id: \.localIdentifier) { asset in
@@ -162,13 +176,6 @@ private struct DayPhotos: View {
             }
         }
         .frame(maxWidth: .infinity, alignment: .leading)
-        .onChange(of: day) { load() }
-        .onAppear { load() }
-    }
-
-    private func load() {
-        assets = PhotoLibrary.photos(on: day)
-        loaded = true
     }
 }
 
