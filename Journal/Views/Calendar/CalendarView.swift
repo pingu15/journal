@@ -304,9 +304,8 @@ private struct DayCell: View {
                         .clipped()
                     Color.black.opacity(0.22)
                 } else if info != nil {
-                    // Written day: sand, a shade deeper when selected.
+                    // Written day: sand.
                     shape.fill(Theme.accent)
-                    if isSelected { shape.fill(Color.black.opacity(0.15)) }
                 } else {
                     shape.fill(Theme.primaryText.opacity(0.05))
                 }
@@ -324,18 +323,32 @@ private struct DayCell: View {
             .frame(width: size, height: size)
             .clipShape(shape)
             .overlay {
-                if isSelected {
-                    shape.strokeBorder(Theme.primaryText, lineWidth: 2)
-                } else if isToday {
+                if isToday {
                     shape.strokeBorder(Theme.secondaryText, lineWidth: 1)
                 }
             }
             .contentShape(shape)
         }
-        .buttonStyle(.plain)
+        .buttonStyle(DayCellStyle(isHeld: isSelected))
         .accessibilityLabel(day.formatted(date: .complete, time: .omitted))
         .accessibilityValue(info != nil ? "Has entries" : "")
         .accessibilityAddTraits(isSelected ? .isSelected : [])
+    }
+}
+
+/// A day dims while it's pressed, as buttons do, and stays that way while its day is open in the
+/// sheet, letting go as the sheet closes.
+private struct DayCellStyle: ButtonStyle {
+    let isHeld: Bool
+
+    func makeBody(configuration: Configuration) -> some View {
+        let isDown = configuration.isPressed || isHeld
+        configuration.label
+            .opacity(isDown ? 0.5 : 1)
+            // Only letting go of the open day eases back. The tap's release comes an update before
+            // the day opens, so easing that too would start a fade that the hold lands on top of
+            // (animations add), flashing the day out.
+            .animation(isHeld ? nil : .easeOut(duration: 0.35), value: isHeld)
     }
 }
 
