@@ -1027,15 +1027,17 @@ struct MarkdownToolbar: View {
                                 .foregroundStyle(Theme.accent)
                                 .opacity(controller.textStyle == style ? 1 : 0)
                         }
+                        // The same room around each, whatever its font: a fixed height left Title
+                        // against the top edge and Regular low in its row.
                         .padding(.horizontal, Spacing.m)
-                        .frame(minHeight: 48)
+                        .padding(.vertical, Spacing.s + 2)
                         .contentShape(.rect)
                     }
                     .buttonStyle(.borderless)
                     .accessibilityAddTraits(controller.textStyle == style ? .isSelected : [])
                 }
             }
-            .padding(.vertical, Spacing.xs)
+            .padding(.vertical, Spacing.s)
             .frame(width: 220)
             .presentationCompactAdaptation(.popover)
         }
