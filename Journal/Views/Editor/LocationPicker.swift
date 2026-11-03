@@ -71,7 +71,7 @@ struct LocationPicker: View {
                 }
                 .labelStyle(.iconOnly)
                 .foregroundStyle(Theme.secondaryText)
-                .buttonStyle(.plain)
+                .buttonStyle(.borderless)
             }
         }
         .padding(.horizontal, 14)
@@ -157,7 +157,7 @@ struct LocationPicker: View {
                         Text("Location access is off for Journal. ") + Text("Open Settings").underline()
                     }
                     .foregroundStyle(Theme.secondaryText)
-                    .buttonStyle(.plain)
+                    .buttonStyle(.borderless)
                 } else if let errorMessage {
                     Text(errorMessage)
                 }

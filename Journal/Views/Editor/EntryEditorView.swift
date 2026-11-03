@@ -250,7 +250,7 @@ struct EntryHeader: View {
             Button(action: onEditDate) {
                 MetaLabel(dateLine)
             }
-            .buttonStyle(.plain)
+            .buttonStyle(.borderless)
             .accessibilityHint("Changes the entry's date")
 
             HStack(spacing: Spacing.s) {
@@ -258,7 +258,7 @@ struct EntryHeader: View {
                     Text(entry.placeName ?? "Add location")
                         .lineLimit(1)
                 }
-                .buttonStyle(.plain)
+                .buttonStyle(.borderless)
 
                 if let weather = entry.weather {
                     Text("·")

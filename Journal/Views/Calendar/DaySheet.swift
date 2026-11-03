@@ -93,7 +93,7 @@ struct DaySheet: View {
             .labelStyle(.iconOnly)
             .font(Typography.action)
             .foregroundStyle(Theme.primaryText)
-            .buttonStyle(.plain)
+            .buttonStyle(.borderless)
             .frame(width: 44, height: 44)
             .contentShape(.rect)
     }
@@ -116,7 +116,7 @@ struct DaySheet: View {
                         .surfaceCard()
                         .contentShape(.rect)
                 }
-                .buttonStyle(.plain)
+                .buttonStyle(.borderless)
             }
         }
     }
@@ -199,7 +199,7 @@ private struct DayPhotos: View {
                         .padding(.vertical, Spacing.s + 2)
                         .background(Theme.accent, in: .capsule)
                 }
-                .buttonStyle(.plain)
+                .buttonStyle(.borderless)
             case .denied, .restricted:
                 Button {
                     if let url = URL(string: UIApplication.openSettingsURLString) { openURL(url) }
@@ -209,7 +209,7 @@ private struct DayPhotos: View {
                 .font(Typography.note)
                 .foregroundStyle(Theme.secondaryText)
                 .multilineTextAlignment(.leading)
-                .buttonStyle(.plain)
+                .buttonStyle(.borderless)
             default:
                 if assets.isEmpty {
                     Text("No photos from this day.")

@@ -528,7 +528,7 @@ struct ExpandingSearchBar: View {
                             Button("Clear", systemImage: "xmark.circle.fill") { text = "" }
                                 .labelStyle(.iconOnly)
                                 .foregroundStyle(Theme.secondaryText)
-                                .buttonStyle(.plain)
+                                .buttonStyle(.borderless)
                                 .padding(.horizontal, 12)
                         }
                     }

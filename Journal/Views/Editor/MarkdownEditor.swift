@@ -995,7 +995,7 @@ struct MarkdownToolbar: View {
         .frame(height: Self.height)
         .clipShape(.capsule)
         .glassBackground(in: .capsule)
-        .buttonStyle(.plain)
+        .buttonStyle(.borderless)
         .padding(.horizontal, Spacing.s)
         .padding(.bottom, Spacing.s)
     }
@@ -1031,7 +1031,7 @@ struct MarkdownToolbar: View {
                         .frame(minHeight: 48)
                         .contentShape(.rect)
                     }
-                    .buttonStyle(.plain)
+                    .buttonStyle(.borderless)
                     .accessibilityAddTraits(controller.textStyle == style ? .isSelected : [])
                 }
             }

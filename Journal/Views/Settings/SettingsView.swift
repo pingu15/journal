@@ -70,7 +70,7 @@ struct SettingsView: View {
                         .foregroundStyle(Theme.secondaryText)
                         .multilineTextAlignment(.leading)
                         .frame(maxWidth: .infinity, alignment: .leading)
-                        .buttonStyle(.plain)
+                        .buttonStyle(.borderless)
                     }
                 }
 
@@ -89,7 +89,7 @@ struct SettingsView: View {
                         .foregroundStyle(Theme.secondaryText)
                         .multilineTextAlignment(.leading)
                         .frame(maxWidth: .infinity, alignment: .leading)
-                        .buttonStyle(.plain)
+                        .buttonStyle(.borderless)
                     }
                 }
 
