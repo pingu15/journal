@@ -255,7 +255,7 @@ struct EntryHeader: View {
 
             HStack(spacing: Spacing.s) {
                 Button(action: onEditLocation) {
-                    Label(entry.placeName ?? "Add location", systemImage: entry.placeName == nil ? "location" : "location.fill")
+                    Text(entry.placeName ?? "Add location")
                         .lineLimit(1)
                 }
                 .buttonStyle(.plain)
