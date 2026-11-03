@@ -103,7 +103,7 @@ struct DaySheet: View {
         let dayEntries = entries.filter { calendar.isDate($0.createdAt, inSameDayAs: day) }
 
         if dayEntries.isEmpty {
-            Text(day > .now ? "This day hasn't happened yet." : "Nothing written on this day.")
+            Text("Nothing written on this day.")
                 .font(Typography.note)
                 .foregroundStyle(Theme.secondaryText)
                 .surfaceCard()
