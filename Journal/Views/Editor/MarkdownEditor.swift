@@ -1027,18 +1027,22 @@ struct MarkdownToolbar: View {
                                 .foregroundStyle(Theme.accent)
                                 .opacity(controller.textStyle == style ? 1 : 0)
                         }
-                        // The same room around each, whatever its font: a fixed height left Title
-                        // against the top edge and Regular low in its row.
-                        .padding(.horizontal, Spacing.m)
-                        .padding(.vertical, Spacing.s + 2)
+                        // One height for every row, whatever its font, so they sit evenly apart (sized
+                        // to their text, Title's row ran taller than the others), and in from the
+                        // popover's rounded corners.
+                        .padding(.horizontal, Spacing.m + 4)
+                        .frame(height: 50)
                         .contentShape(.rect)
                     }
                     .buttonStyle(.borderless)
                     .accessibilityAddTraits(controller.textStyle == style ? .isSelected : [])
                 }
             }
-            .padding(.vertical, Spacing.s)
-            .frame(width: 220)
+            // A little more above: Title's taller letters otherwise sit nearer the top edge than
+            // Regular's do the bottom.
+            .padding(.top, Spacing.s + 3)
+            .padding(.bottom, Spacing.s)
+            .frame(width: 236)
             .presentationCompactAdaptation(.popover)
         }
     }
