@@ -76,6 +76,25 @@ enum PhotoLibrary {
         }
     }
 
+    /// The whole photo at twice the screen's size (room to zoom), for the full-screen viewer.
+    static func fullImage(for asset: PHAsset) async -> UIImage? {
+        let screen = UIScreen.main.bounds.size
+        let scale = UIScreen.main.scale * 2
+        let options = PHImageRequestOptions()
+        options.deliveryMode = .highQualityFormat
+        options.isNetworkAccessAllowed = true
+        return await withCheckedContinuation { continuation in
+            PHImageManager.default().requestImage(
+                for: asset,
+                targetSize: CGSize(width: screen.width * scale, height: screen.height * scale),
+                contentMode: .aspectFit,
+                options: options
+            ) { image, _ in
+                continuation.resume(returning: image)
+            }
+        }
+    }
+
     /// A square-cropped thumbnail about `side` points across.
     static func thumbnail(for asset: PHAsset, side: CGFloat) async -> UIImage? {
         if let cached = cachedThumbnail(for: asset, side: side) { return cached }

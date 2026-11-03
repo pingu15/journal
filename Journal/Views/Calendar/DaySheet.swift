@@ -172,6 +172,7 @@ private struct DayPhotos: View {
     @Environment(\.openURL) private var openURL
     @State private var status = PhotoLibrary.status
     @State private var assets: [PHAsset]
+    @State private var viewing: ViewedPhoto?
 
     private let columns = [GridItem(.adaptive(minimum: 96), spacing: 4)]
 
@@ -219,14 +220,27 @@ private struct DayPhotos: View {
                 } else {
                     LazyVGrid(columns: columns, spacing: 4) {
                         ForEach(assets, id: \.localIdentifier) { asset in
-                            AssetThumbnail(asset: asset)
+                            Button {
+                                viewing = ViewedPhoto(id: asset.localIdentifier)
+                            } label: {
+                                AssetThumbnail(asset: asset)
+                            }
+                            .buttonStyle(.borderless)
                         }
                     }
                 }
             }
         }
         .frame(maxWidth: .infinity, alignment: .leading)
+        // Like an entry's photos, swiping between the day's.
+        .fullScreenCover(item: $viewing) { photo in
+            PhotoViewer(photos: assets.map(ViewerPhoto.init), initialID: photo.id)
+        }
     }
+}
+
+private struct ViewedPhoto: Identifiable {
+    let id: String
 }
 
 private struct AssetThumbnail: View {

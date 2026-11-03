@@ -1,25 +1,44 @@
+import Photos
 import SwiftUI
 
-/// Full-screen, swipeable viewer for an entry's embedded photos, with "Set as Cover Image"
-/// and delete in the ⋯ menu.
-struct PhotoViewer: View {
-    let onSetCover: (UUID) -> Void
-    let onDelete: (UUID) -> Void
+/// A photo the viewer shows: one of an entry's, or one from the photo library.
+struct ViewerPhoto<ID: Hashable>: Identifiable {
+    let id: ID
+    let load: () async -> UIImage?
+}
+
+extension ViewerPhoto where ID == UUID {
+    init(_ attachment: Attachment) {
+        self.init(id: attachment.identifier) { attachment.imageData.flatMap(UIImage.init(data:)) }
+    }
+}
+
+extension ViewerPhoto where ID == String {
+    init(_ asset: PHAsset) {
+        self.init(id: asset.localIdentifier) { await PhotoLibrary.fullImage(for: asset) }
+    }
+}
+
+/// Full-screen, swipeable photo viewer. For an entry's embedded photos it has "Set as Cover Image"
+/// and delete in a ⋯ menu; for the library's (the day sheet's), just the close button.
+struct PhotoViewer<ID: Hashable>: View {
+    let onSetCover: ((ID) -> Void)?
+    let onDelete: ((ID) -> Void)?
 
     @Environment(\.dismiss) private var dismiss
-    @State private var photos: [Attachment]
-    @State private var selection: UUID
-    @State private var currentCover: UUID?
+    @State private var photos: [ViewerPhoto<ID>]
+    @State private var selection: ID
+    @State private var currentCover: ID?
     @State private var confirmingDelete = false
     /// How far a swipe-down has pulled the photo toward closing (0–1); fades the backdrop and buttons.
     @State private var dismissProgress: CGFloat = 0
 
     init(
-        photos: [Attachment],
-        initialID: UUID,
-        coverID: UUID?,
-        onSetCover: @escaping (UUID) -> Void,
-        onDelete: @escaping (UUID) -> Void
+        photos: [ViewerPhoto<ID>],
+        initialID: ID,
+        coverID: ID? = nil,
+        onSetCover: ((ID) -> Void)? = nil,
+        onDelete: ((ID) -> Void)? = nil
     ) {
         self.onSetCover = onSetCover
         self.onDelete = onDelete
@@ -36,7 +55,7 @@ struct PhotoViewer: View {
 
             TabView(selection: $selection) {
                 ForEach(photos) { photo in
-                    FullImage(attachment: photo, onDragDown: { progress in
+                    FullImage(load: photo.load, onDragDown: { progress in
                         // A cancelled swipe springs back; bring the backdrop back with it.
                         if progress == 0 {
                             withAnimation(.snappy) { dismissProgress = 0 }
@@ -44,7 +63,7 @@ struct PhotoViewer: View {
                             dismissProgress = progress
                         }
                     }) { dismiss() }
-                        .tag(photo.identifier)
+                        .tag(photo.id)
                 }
             }
             .tabViewStyle(.page(indexDisplayMode: photos.count > 1 ? .automatic : .never))
@@ -58,22 +77,24 @@ struct PhotoViewer: View {
                 .buttonStyle(.plain)
                 .accessibilityLabel("Close")
                 Spacer()
-                Menu {
-                    Button(
-                        "Set as Cover Image",
-                        systemImage: currentCover == selection ? "checkmark" : "photo.badge.checkmark"
-                    ) {
-                        withAnimation { currentCover = selection }
-                        onSetCover(selection)
+                if let onSetCover, onDelete != nil {
+                    Menu {
+                        Button(
+                            "Set as Cover Image",
+                            systemImage: currentCover == selection ? "checkmark" : "photo.badge.checkmark"
+                        ) {
+                            withAnimation { currentCover = selection }
+                            onSetCover(selection)
+                        }
+                        .disabled(currentCover == selection)
+                        Button("Delete Photo", systemImage: "trash", role: .destructive) {
+                            confirmingDelete = true
+                        }
+                    } label: {
+                        GlassIcon(symbol: "ellipsis")
                     }
-                    .disabled(currentCover == selection)
-                    Button("Delete Photo", systemImage: "trash", role: .destructive) {
-                        confirmingDelete = true
-                    }
-                } label: {
-                    GlassIcon(symbol: "ellipsis")
+                    .accessibilityLabel("More")
                 }
-                .accessibilityLabel("More")
             }
             .foregroundStyle(.white)
             .tint(.white)
@@ -92,19 +113,19 @@ struct PhotoViewer: View {
         }
         .sensoryFeedback(.success, trigger: currentCover)
         .statusBarHidden()
-        // Lets the editor show through as the photo is swiped down.
+        // Lets the editor (or day sheet) show through as the photo is swiped down.
         .presentationBackground(.clear)
     }
 
     private func deleteCurrent() {
         let deleted = selection
-        guard let index = photos.firstIndex(where: { $0.identifier == deleted }) else { return }
+        guard let onDelete, let index = photos.firstIndex(where: { $0.id == deleted }) else { return }
         onDelete(deleted)
         photos.remove(at: index)
         if photos.isEmpty {
             dismiss()
         } else {
-            selection = photos[min(index, photos.count - 1)].identifier
+            selection = photos[min(index, photos.count - 1)].id
         }
     }
 }
@@ -125,7 +146,7 @@ private struct GlassIcon: View {
 /// One photo, fitted to the screen. Pinch or double-tap to zoom; at normal size, swiping down
 /// closes it (`onDragDown` reports how far, 0–1), and so does a tap on the black around it.
 private struct FullImage: View {
-    let attachment: Attachment
+    let load: () async -> UIImage?
     let onDragDown: (CGFloat) -> Void
     let onClose: () -> Void
     @State private var image: UIImage?
@@ -142,9 +163,7 @@ private struct FullImage: View {
             }
         }
         .task {
-            if let data = attachment.imageData {
-                image = UIImage(data: data)
-            }
+            image = await load()
         }
     }
 }

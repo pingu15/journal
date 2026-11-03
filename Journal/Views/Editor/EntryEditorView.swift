@@ -108,7 +108,7 @@ struct EntryEditorView: View {
         }
         .fullScreenCover(item: $viewingPhoto) { selection in
             PhotoViewer(
-                photos: entry.photos,
+                photos: entry.photos.map(ViewerPhoto.init),
                 initialID: selection.id,
                 coverID: entry.coverPhoto?.identifier,
                 onSetCover: { entry.coverImageID = $0 },
