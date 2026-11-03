@@ -42,7 +42,10 @@ struct SheetBackdrop: UIViewControllerRepresentable {
                 var container: UIView = view
                 while let next = container.superview, next !== window { container = next }
                 backdrop.frame = container.bounds
-                if let card = PageCardMarker.cards.allObjects.first(where: { $0.window === window }) {
+                // Only one in what's showing the sheet: a card can still be in the window, covered
+                // (by an entry opened from a popup).
+                let shownFrom = presentingViewController?.view
+                if let shownFrom, let card = PageCardMarker.cards.allObjects.first(where: { $0.isDescendant(of: shownFrom) }) {
                     let top = card.convert(card.bounds, to: container).minY
                     backdrop.frame.origin.y = top
                     backdrop.frame.size.height -= top

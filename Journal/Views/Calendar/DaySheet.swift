@@ -1,21 +1,21 @@
 import Photos
+import SwiftData
 import SwiftUI
 
 /// A day from the calendar, in a sheet that swipes down to close: the date with arrows to the day
 /// before and after, that day's entries, then the photos taken that day from the photo library.
 struct DaySheet: View {
     let entries: [Entry]
-    let onOpen: (Entry) -> Void
 
     @State private var day: Date
+    @State private var openEntry: Entry?
     /// Which way the last arrow went, so the day slides out that way.
     @State private var movingForward = true
     private let calendar = Calendar.current
 
-    init(day: Date, entries: [Entry], onOpen: @escaping (Entry) -> Void) {
+    init(day: Date, entries: [Entry]) {
         _day = State(initialValue: Calendar.current.startOfDay(for: day))
         self.entries = entries
-        self.onOpen = onOpen
     }
 
     var body: some View {
@@ -36,6 +36,16 @@ struct DaySheet: View {
         .presentationDetents([.medium, .large])
         .sheetGrabber()
         .sensoryFeedback(.selection, trigger: day)
+        .fullScreenCover(item: $openEntry) { entry in
+            EntryCover(entry: entry) { show(nil) }
+        }
+    }
+
+    /// With no animation of the cover's own: the slide is the push inside it.
+    private func show(_ entry: Entry?) {
+        var transaction = Transaction()
+        transaction.disablesAnimations = true
+        withTransaction(transaction) { openEntry = entry }
     }
 
     private var header: some View {
@@ -93,7 +103,7 @@ struct DaySheet: View {
         } else {
             ForEach(dayEntries) { entry in
                 Button {
-                    onOpen(entry)
+                    show(entry)
                 } label: {
                     EntryRow(entry: entry, dateStyle: .none)
                         .surfaceCard()
@@ -111,6 +121,39 @@ struct DaySheet: View {
         // direction has to be in place before the day changes.
         DispatchQueue.main.async {
             withAnimation(.snappy) { day = next }
+        }
+    }
+}
+
+/// An entry opened from the day sheet: the full editor, pushed onto an empty stack in a clear cover,
+/// so it slides in from the right over the sheet, which stays where it is.
+private struct EntryCover: View {
+    let entry: Entry
+    let onClose: () -> Void
+
+    @Environment(\.modelContext) private var context
+    @Environment(AppRouter.self) private var router
+    @State private var path: [Entry] = []
+
+    var body: some View {
+        NavigationStack(path: $path) {
+            Color.clear
+                .toolbar(.hidden, for: .navigationBar)
+                .containerBackground(.clear, for: .navigation)
+                .navigationDestination(for: Entry.self) { entry in
+                    EntryEditorView(entry: entry)
+                        // Not on the path emptying, which is as the slide back starts.
+                        .onDisappear {
+                            guard path.isEmpty else { return }
+                            Entry.deleteBlankEntries(in: context, keeping: router.openEntries)
+                            onClose()
+                        }
+                }
+        }
+        .presentationBackground(.clear)
+        .onAppear {
+            // On the next turn, to animate.
+            Task { path = [entry] }
         }
     }
 }

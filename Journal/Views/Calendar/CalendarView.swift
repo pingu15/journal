@@ -5,12 +5,9 @@ import SwiftUI
 /// rounded square — sand when written, or its cover photo. Only the months near the screen are
 /// built. Tapping a day opens `DaySheet`.
 struct CalendarView: View {
-    @Environment(\.modelContext) private var context
-    @Environment(AppRouter.self) private var router
     @Query(filter: #Predicate<Entry> { $0.deletedAt == nil }, sort: \Entry.createdAt)
     private var entries: [Entry]
 
-    @State private var path: [Entry] = []
     @State private var width: CGFloat = 0
     @State private var position = ScrollPosition()
     /// The months built: those in view and a screen's worth either side (indexes into `weeks`).
@@ -33,7 +30,7 @@ struct CalendarView: View {
     var body: some View {
         let days = dayIndex
 
-        NavigationStack(path: $path) {
+        NavigationStack {
             // The weekday row sits above the scroll rather than in its safe-area inset: as an
             // inset, the opening scroll position put this month's title under it.
             VStack(spacing: 0) {
@@ -101,20 +98,10 @@ struct CalendarView: View {
                     SettingsButton()
                 }
             }
-            .navigationDestination(for: Entry.self) { entry in
-                EntryEditorView(entry: entry)
-            }
         }
-        // Hidden from the stack, not the editor, so it returns as soon as the editor starts closing.
-        .toolbar(path.isEmpty ? .visible : .hidden, for: .tabBar)
         .sensoryFeedback(.selection, trigger: openDay?.day)
         .sheet(item: $openDay) { selection in
-            DaySheet(day: selection.day, entries: entries) { entry in open(entry) }
-        }
-        .onChange(of: path) { _, path in
-            if path.isEmpty {
-                Entry.deleteBlankEntries(in: context, keeping: router.openEntries)
-            }
+            DaySheet(day: selection.day, entries: entries)
         }
     }
 
@@ -139,15 +126,6 @@ struct CalendarView: View {
     private func showThisMonth() {
         let top = layout(width: width).top(Self.weeks.index(of: .now))
         withAnimation(.snappy) { position.scrollTo(y: top) }
-    }
-
-    /// Opens an entry from the day sheet, once the sheet is out of the way.
-    private func open(_ entry: Entry) {
-        openDay = nil
-        Task {
-            try? await Task.sleep(for: .milliseconds(350))
-            path.append(entry)
-        }
     }
 
     // MARK: - Data
