@@ -44,10 +44,19 @@ struct EntryMetaLine: View {
 
     var body: some View {
         let parts = [entry.createdAt.formatted(date: .omitted, time: .shortened), entry.placeName]
-        Text(parts.compactMap(\.self).joined(separator: " · "))
-            .lineLimit(1)
-            .font(Typography.caption)
-            .foregroundStyle(Theme.secondaryText)
+        HStack(spacing: 0) {
+            Text(parts.compactMap(\.self).joined(separator: " · "))
+                .lineLimit(1)
+            // The weather stays whole; a long place name gives way first.
+            if let weather = entry.weather {
+                Text(" · \(Image(systemName: weather.symbol)) \(weather.formattedTemperature)")
+                    .fixedSize()
+                    .accessibilityLabel("Weather: \(weather.formattedTemperature), \(weather.condition)")
+            }
+        }
+        .font(Typography.caption)
+        .foregroundStyle(Theme.secondaryText)
+        .accessibilityElement(children: .combine)
     }
 }
 
