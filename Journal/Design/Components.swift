@@ -125,9 +125,10 @@ extension View {
             .background(Theme.surface, in: .rect(cornerRadius: Radius.card))
     }
 
-    /// A sheet's content, with no drag indicator and the page behind it darkened (`SheetBackdrop`).
-    func sheetBackdrop() -> some View {
-        presentationDragIndicator(.hidden)
+    /// A sheet's content, with the page behind it darkened (`SheetBackdrop`) and, unless asked for, no
+    /// drag indicator.
+    func sheetBackdrop(dragIndicator: Visibility = .hidden) -> some View {
+        presentationDragIndicator(dragIndicator)
             .background { SheetBackdrop() }
     }
 
@@ -385,9 +386,9 @@ private struct PageTitle: ViewModifier {
     }
 }
 
-/// A popup listing entries (a calendar day, a group on the map): a scrolling page under a
-/// `SheetHeader`, so they're all the same width and spacing. Its detents and `sheetGrabber()` go on
-/// the sheet's outermost view (a map group's page is the root of a navigation stack).
+/// A popup listing entries (a group on the map): a scrolling page under a `SheetHeader`. Its detents
+/// and `sheetGrabber()` go on the sheet's outermost view (a map group's page is the root of a
+/// navigation stack).
 struct SheetPage<Header: View, Content: View>: View {
     @ViewBuilder let header: Header
     @ViewBuilder let content: Content
@@ -420,7 +421,7 @@ struct SheetHeader: View {
             MetaLabel(label)
         }
         .frame(maxWidth: .infinity)
-        // Clear of the day sheet's arrows, in every popup so titles wrap alike.
+        // Clear of the sheet's corners.
         .padding(.horizontal, 44)
     }
 }
@@ -450,7 +451,7 @@ struct SheetEntryRows: View {
     }
 }
 
-/// The short bar at the top of the page's card and of every sheet, showing that it drags.
+/// The short bar at the top of the page's card and of the map's group sheet, showing that it drags.
 struct Grabber: View {
     var body: some View {
         Capsule()

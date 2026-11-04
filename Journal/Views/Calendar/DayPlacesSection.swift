@@ -1,12 +1,12 @@
 import MapKit
 import SwiftUI
 
-/// The day sheet's Places card: where the user spent time that day (`DayPlaces`), on a map and then
-/// each stay in turn with how long it lasted. Opened from an entry, tapping a stay offers its place,
-/// or its place and the time the user got there, for the entry, and the place chosen gets the halo on
-/// the map; from the calendar, it starts an entry there. Tracking is off until it's turned on, here
-/// or in Settings.
-struct DayPlacesCard: View {
+/// The day sheet's Places section: where the user spent time that day (`DayPlaces`), on a map and
+/// then each stay in turn with how long it lasted. Opened from an entry, tapping a stay offers its
+/// place, or its place and the time the user got there, for the entry, and the place chosen gets the
+/// halo on the map; from the calendar, it starts an entry there. Tracking is off until it's turned on,
+/// here or in Settings.
+struct DayPlacesSection: View {
     let day: Date
     let action: Action
 
@@ -25,7 +25,7 @@ struct DayPlacesCard: View {
     @State private var stays: [Stay]
     @State private var selected: Stay.ID?
     /// A stay tapped from an entry, while it's asked whether to take its time too.
-    @State private var choosing: Stay?
+    @State private var choosing: Stay.ID?
     @State private var names: [Int: String] = [:]
     /// A picture of the map rather than a map: a live one per day was most of the work of sliding to
     /// another day, and this one is never touched.
@@ -44,7 +44,7 @@ struct DayPlacesCard: View {
     init(day: Date, current: (CLLocation, Date)? = nil, action: Action) {
         self.day = day
         self.action = action
-        // Here, not on appear, like the photos: the card slides in whole, its map too when the day was
+        // Here, not on appear, like the photos: the day slides in whole, its map too when the day was
         // drawn ahead.
         let places = DayPlaces.places(on: day)
         let stays = places
@@ -76,32 +76,37 @@ struct DayPlacesCard: View {
     }
 
     var body: some View {
-        VStack(alignment: .leading, spacing: Spacing.s) {
-            MetaLabel("Places", systemImage: "mappin")
+        Section {
             if !places.isEmpty {
                 map
-                list
+                ForEach(stays) { stay in
+                    row(stay)
+                }
             } else if !tracking {
-                turnOnButton
+                Button {
+                    Task { authorized = await PlaceTracker.shared.enable() }
+                } label: {
+                    Label("Track the Places You Go", systemImage: "mappin.and.ellipse")
+                }
             } else if !authorized {
-                accessOffNote
+                Button {
+                    if let url = URL(string: UIApplication.openSettingsURLString) { openURL(url) }
+                } label: {
+                    Text("Location access is off for Journal. ") + Text("Open Settings").underline()
+                }
+                .font(Typography.note)
+                .foregroundStyle(Theme.secondaryText)
             } else {
                 Text("No places from this day.")
                     .font(Typography.note)
                     .foregroundStyle(Theme.secondaryText)
-                    .padding(.vertical, Spacing.xs)
             }
-        }
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .surfaceCard()
-        .task(id: day) {
-            for place in places where names[place.id] == nil {
-                let name = await PlaceNames.name(for: place.coordinate)
-                withAnimation(.easeOut(duration: 0.2)) { names[place.id] = name }
-            }
+        } header: {
+            MetaLabel("Places", systemImage: "mappin")
         }
     }
 
+    /// The section's first row, edge to edge.
     private var map: some View {
         Theme.hairline
             .opacity(snapshot == nil ? 0.5 : 0)
@@ -122,8 +127,6 @@ struct DayPlacesCard: View {
                         .transition(.opacity)
                 }
             }
-            // Like the photos below.
-            .clipShape(.rect(cornerRadius: 6, style: .continuous))
             .onGeometryChange(for: CGFloat.self, of: \.size.width) { width in
                 DayMapSnapshots.width = width
                 mapWidth = width
@@ -135,35 +138,14 @@ struct DayPlacesCard: View {
                     withAnimation(.easeOut(duration: 0.2)) { snapshot = drawn }
                 }
             }
-            .accessibilityHidden(true)
-    }
-
-    private var list: some View {
-        VStack(alignment: .leading, spacing: 0) {
-            ForEach(stays) { stay in
-                Button {
-                    tap(stay)
-                } label: {
-                    row(stay, isFirst: stay.id == stays.first?.id, isLast: stay.id == stays.last?.id)
-                }
-                .buttonStyle(.borderless)
-                .accessibilityAddTraits(stay.id == selected ? .isSelected : [])
-                .accessibilityHint(isNewEntry ? "Starts an entry here, at the time you got there" : "Sets this as the entry's place")
-                if stay.id != stays.last?.id {
-                    Rectangle().fill(Theme.hairline).frame(height: 1)
+            .task(id: day) {
+                for place in places where names[place.id] == nil {
+                    let name = await PlaceNames.name(for: place.coordinate)
+                    withAnimation(.easeOut(duration: 0.2)) { names[place.id] = name }
                 }
             }
-        }
-        .confirmationDialog(
-            "Add to Entry",
-            isPresented: Binding(get: { choosing != nil }, set: { if !$0 { choosing = nil } }),
-            titleVisibility: .hidden,
-            presenting: choosing
-        ) { stay in
-            Button("Location Only") { setPlace(of: stay, withTime: false) }
-            Button("Location and Time") { setPlace(of: stay, withTime: true) }
-            Button("Cancel", role: .cancel) {}
-        }
+            .listRowInsets(EdgeInsets())
+            .accessibilityHidden(true)
     }
 
     private var isNewEntry: Bool {
@@ -173,7 +155,7 @@ struct DayPlacesCard: View {
     private func tap(_ stay: Stay) {
         switch action {
         case .setPlace:
-            choosing = stay
+            choosing = stay.id
         case .newEntry(let start):
             Task { start(await PlaceNames.name(for: stay.place.coordinate), stay.place.coordinate, stay.interval.start) }
         }
@@ -187,64 +169,50 @@ struct DayPlacesCard: View {
         }
     }
 
-    /// The first starts `Spacing.m` below the map and the last ends at the card's own padding, so the
-    /// list sits in the card like the photos do.
-    private func row(_ stay: Stay, isFirst: Bool, isLast: Bool) -> some View {
+    private func row(_ stay: Stay) -> some View {
         let name = names[stay.place.id]
-        return HStack(spacing: Spacing.s) {
-            VStack(alignment: .leading, spacing: 2) {
-                Text(name ?? "Somewhere nearby")
-                    .font(Typography.body)
-                    .foregroundStyle(Theme.primaryText)
-                    .lineLimit(1)
-                    .redacted(reason: name == nil ? .placeholder : [])
-                Text((stay.interval.start..<stay.interval.end).formatted(.interval.hour().minute()))
-                    .font(Typography.caption)
+        return Button {
+            tap(stay)
+        } label: {
+            HStack(spacing: Spacing.s) {
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(name ?? "Somewhere nearby")
+                        .font(Typography.body)
+                        .foregroundStyle(Theme.primaryText)
+                        .lineLimit(1)
+                        .redacted(reason: name == nil ? .placeholder : [])
+                    Text((stay.interval.start..<stay.interval.end).formatted(.interval.hour().minute()))
+                        .font(Typography.caption)
+                        .foregroundStyle(Theme.secondaryText)
+                }
+                Spacer(minLength: Spacing.s)
+                Text(Duration.seconds(stay.interval.duration).formatted(.units(allowed: [.hours, .minutes], width: .abbreviated)))
+                    .font(Typography.detail)
                     .foregroundStyle(Theme.secondaryText)
             }
-            Spacer(minLength: Spacing.s)
-            Text(Duration.seconds(stay.interval.duration).formatted(.units(allowed: [.hours, .minutes], width: .abbreviated)))
-                .font(Typography.detail)
-                .foregroundStyle(Theme.secondaryText)
+            .contentShape(.rect)
+            .accessibilityElement(children: .combine)
         }
-        .padding(.top, isFirst ? Spacing.s : Spacing.s + 2)
-        .padding(.bottom, isLast ? 0 : Spacing.s + 2)
-        .contentShape(.rect)
-        .accessibilityElement(children: .combine)
-    }
-
-    private var turnOnButton: some View {
-        Button {
-            Task { authorized = await PlaceTracker.shared.enable() }
-        } label: {
-            Label("Track the Places You Go", systemImage: "mappin.and.ellipse")
-                .font(Typography.action)
-                .foregroundStyle(Theme.onAccent)
-                .padding(.horizontal, Spacing.m)
-                .padding(.vertical, Spacing.s + 2)
-                .background(Theme.accent, in: .capsule)
+        .accessibilityAddTraits(stay.id == selected ? .isSelected : [])
+        .accessibilityHint(isNewEntry ? "Starts an entry here, at the time you got there" : "Sets this as the entry's place")
+        // On each row, so it comes from the row tapped.
+        .confirmationDialog(
+            "Add to Entry",
+            isPresented: Binding(get: { choosing == stay.id }, set: { if !$0 { choosing = nil } }),
+            titleVisibility: .hidden
+        ) {
+            Button("Location Only") { setPlace(of: stay, withTime: false) }
+            Button("Location and Time") { setPlace(of: stay, withTime: true) }
+            Button("Cancel", role: .cancel) {}
         }
-        .buttonStyle(.borderless)
-    }
-
-    private var accessOffNote: some View {
-        Button {
-            if let url = URL(string: UIApplication.openSettingsURLString) { openURL(url) }
-        } label: {
-            Text("Location access is off for Journal. ") + Text("Open Settings").underline()
-        }
-        .font(Typography.note)
-        .foregroundStyle(Theme.secondaryText)
-        .multilineTextAlignment(.leading)
-        .buttonStyle(.borderless)
     }
 }
 
-/// Pictures of the day sheet's maps, drawn off the main thread at the card's width and in the current
+/// Pictures of the day sheet's maps, drawn off the main thread at the section's width and in the current
 /// appearance, kept per set of places so a day drawn ahead (the sheet's neighbours) slides in whole.
 enum DayMapSnapshots {
     static let height: CGFloat = 170
-    /// The card's, as last laid out: what a day is drawn ahead at.
+    /// The section's, as last laid out: what a day is drawn ahead at.
     static var width: CGFloat = 0
     static var style: UIUserInterfaceStyle = .unspecified
 
@@ -280,7 +248,7 @@ enum DayMapSnapshots {
         return snapshot
     }
 
-    /// Draws `day`'s map ahead, once the card has been laid out.
+    /// Draws `day`'s map ahead, once the section has been laid out.
     static func preload(on day: Date) async {
         _ = await snapshot(of: DayPlaces.places(on: day))
     }

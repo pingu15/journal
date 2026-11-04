@@ -2,9 +2,9 @@ import Photos
 import SwiftData
 import SwiftUI
 
-/// A day from the calendar, in a sheet that swipes down to close: the date with arrows to the day
-/// before and after, that day's entries, the places the user spent time, then the photos taken
-/// that day from the photo library. Also opened from an entry (the editor's View Day), which is then
+/// A day from the calendar, in a sheet that swipes down to close: the date in the bar with arrows to
+/// the day before and after, then a list of that day's entries, the places the user spent time, and
+/// the photos taken that day from the photo library. Also opened from an entry (the editor's View Day), which is then
 /// left out of the list, and a place tapped becomes its place.
 struct DaySheet: View {
     let entries: [Entry]
@@ -31,25 +31,36 @@ struct DaySheet: View {
     }
 
     var body: some View {
-        SheetPage {
-            header
-        } content: {
+        NavigationStack {
             slidingDay {
-                VStack(spacing: Spacing.m) {
+                List {
                     entriesSection
-                    DayPlacesCard(day: day, current: openedFrom.flatMap { entry in
+                    DayPlacesSection(day: day, current: openedFrom.flatMap { entry in
                         entry.location.map { ($0, entry.createdAt) }
                     }, action: placeAction)
-                    VStack(alignment: .leading, spacing: Spacing.s) {
-                        MetaLabel("Photos", systemImage: "photo.on.rectangle")
+                    Section {
                         DayPhotos(day: day)
+                    } header: {
+                        MetaLabel("Photos", systemImage: "photo.on.rectangle")
                     }
-                    .surfaceCard()
+                }
+                .scrollContentBackground(.hidden)
+                .listSectionSpacing(Spacing.m)
+            }
+            .background(Theme.background)
+            .dayTitle(day)
+            .toolbar {
+                ToolbarItem(placement: .topBarLeading) {
+                    Button("Previous Day", systemImage: "chevron.left") { shift(by: -1) }
+                }
+                ToolbarItem(placement: .topBarTrailing) {
+                    Button("Next Day", systemImage: "chevron.right") { shift(by: 1) }
                 }
             }
         }
+        .tint(Theme.primaryText)
         .presentationDetents([.medium, .large])
-        .sheetGrabber()
+        .sheetBackdrop(dragIndicator: .visible)
         .sensoryFeedback(.selection, trigger: day)
         // The days either side, so their photos and places are already there as they slide in.
         .task(id: day) {
@@ -65,7 +76,7 @@ struct DaySheet: View {
         }
     }
 
-    private var placeAction: DayPlacesCard.Action {
+    private var placeAction: DayPlacesSection.Action {
         guard let entry = openedFrom else { return .newEntry(startEntry) }
         return .setPlace { name, coordinate, time in
             entry.setPlace(name: name, coordinate: coordinate)
@@ -91,47 +102,16 @@ struct DaySheet: View {
         withTransaction(transaction) { openEntry = entry }
     }
 
-    private var header: some View {
-        slidingDay {
-            SheetHeader(
-                title: day.formatted(.dateTime.month(.wide).day().year()),
-                label: day.formatted(.dateTime.weekday(.wide))
-            )
-        }
-        .overlay(alignment: .leading) {
-            arrow("Previous Day", "chevron.left", by: -1)
-        }
-        .overlay(alignment: .trailing) {
-            arrow("Next Day", "chevron.right", by: 1)
-        }
-    }
-
-    /// Part of the page that belongs to the day, sliding across the sheet when the day changes. It
-    /// moves with the page's margins inside it, out to the sheet's edges: a move goes by the view's
-    /// own width, which would otherwise leave the cards' ends showing until they're removed.
+    /// The day's list, sliding across the sheet when the day changes (the sheet's edges clip it).
     private func slidingDay<Content: View>(@ViewBuilder _ content: () -> Content) -> some View {
         ZStack(alignment: .top) {
             content()
-                .padding(.horizontal, Spacing.m + 4)
                 .id(day)
                 .transition(.asymmetric(
                     insertion: .move(edge: movingForward ? .trailing : .leading),
                     removal: .move(edge: movingForward ? .leading : .trailing)
                 ))
         }
-        // Only at the sides: the height changes as it goes, which would cut off the taller day.
-        .mask { Color.black.padding(.vertical, -2000) }
-        .padding(.horizontal, -(Spacing.m + 4))
-    }
-
-    private func arrow(_ label: String, _ symbol: String, by days: Int) -> some View {
-        Button(label, systemImage: symbol) { shift(by: days) }
-            .labelStyle(.iconOnly)
-            .font(Typography.action)
-            .foregroundStyle(Theme.primaryText)
-            .buttonStyle(.borderless)
-            .frame(width: 44, height: 44)
-            .contentShape(.rect)
     }
 
     @ViewBuilder
@@ -139,22 +119,24 @@ struct DaySheet: View {
         let dayEntries = entries.filter { calendar.isDate($0.createdAt, inSameDayAs: day) && $0 != openedFrom }
         let isOpenedFromDay = openedFrom.map { calendar.isDate($0.createdAt, inSameDayAs: day) } ?? false
 
-        if dayEntries.isEmpty {
-            Text(isOpenedFromDay ? "Nothing else written on this day." : "Nothing written on this day.")
-                .font(Typography.note)
-                .foregroundStyle(Theme.secondaryText)
-                .surfaceCard()
-        } else {
-            ForEach(dayEntries) { entry in
-                Button {
-                    show(entry)
-                } label: {
-                    EntryRow(entry: entry, dateStyle: .none)
-                        .surfaceCard()
-                        .contentShape(.rect)
+        Section {
+            if dayEntries.isEmpty {
+                Text(isOpenedFromDay ? "Nothing else written on this day." : "Nothing written on this day.")
+                    .font(Typography.note)
+                    .foregroundStyle(Theme.secondaryText)
+            } else {
+                ForEach(dayEntries) { entry in
+                    Button {
+                        show(entry)
+                    } label: {
+                        EntryRow(entry: entry, dateStyle: .none)
+                            .padding(.vertical, Spacing.xs)
+                            .contentShape(.rect)
+                    }
                 }
-                .buttonStyle(.borderless)
             }
+        } header: {
+            MetaLabel("Entries", systemImage: "book")
         }
     }
 
@@ -165,6 +147,22 @@ struct DaySheet: View {
         // direction has to be in place before the day changes.
         DispatchQueue.main.async {
             withAnimation(.snappy) { day = next }
+        }
+    }
+}
+
+private extension View {
+    /// The date ("October 28, 2026") over its weekday; before iOS 26, which has no subtitle, both in
+    /// one line.
+    @ViewBuilder
+    func dayTitle(_ day: Date) -> some View {
+        if #available(iOS 26.0, *) {
+            navigationTitle(day.formatted(.dateTime.month(.wide).day().year()))
+                .navigationSubtitle(day.formatted(.dateTime.weekday(.wide)))
+                .navigationBarTitleDisplayMode(.inline)
+        } else {
+            navigationTitle(day.formatted(.dateTime.weekday(.abbreviated).month(.abbreviated).day().year()))
+                .navigationBarTitleDisplayMode(.inline)
         }
     }
 }
@@ -232,13 +230,7 @@ private struct DayPhotos: View {
                     }
                 } label: {
                     Label("Show Photos From Your Library", systemImage: "photo.on.rectangle")
-                        .font(Typography.action)
-                        .foregroundStyle(Theme.onAccent)
-                        .padding(.horizontal, Spacing.m)
-                        .padding(.vertical, Spacing.s + 2)
-                        .background(Theme.accent, in: .capsule)
                 }
-                .buttonStyle(.borderless)
             case .denied, .restricted:
                 Button {
                     if let url = URL(string: UIApplication.openSettingsURLString) { openURL(url) }
@@ -248,13 +240,11 @@ private struct DayPhotos: View {
                 .font(Typography.note)
                 .foregroundStyle(Theme.secondaryText)
                 .multilineTextAlignment(.leading)
-                .buttonStyle(.borderless)
             default:
                 if assets.isEmpty {
                     Text("No photos from this day.")
                         .font(Typography.note)
                         .foregroundStyle(Theme.secondaryText)
-                        .padding(.vertical, Spacing.xs)
                 } else {
                     LazyVGrid(columns: columns, spacing: 4) {
                         ForEach(assets, id: \.localIdentifier) { asset in
