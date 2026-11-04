@@ -96,8 +96,6 @@ struct PhotoViewer<ID: Hashable>: View {
                     .accessibilityLabel("More")
                 }
             }
-            .foregroundStyle(.white)
-            .tint(.white)
             // Always over a black backdrop, so the glass is the dark kind.
             .environment(\.colorScheme, .dark)
             .padding(.horizontal, Spacing.m)
@@ -137,6 +135,9 @@ private struct GlassIcon: View {
     var body: some View {
         Image(systemName: symbol)
             .font(Typography.action)
+            // White here only: set on the bar, it reached the menu's items too, so a disabled one
+            // kept a white icon beside its dimmed label.
+            .foregroundStyle(.white)
             .frame(width: 44, height: 44)
             .glassBackground(in: .circle)
             .contentShape(.circle)
