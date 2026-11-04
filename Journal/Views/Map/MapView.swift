@@ -125,20 +125,28 @@ private struct PlaceEntriesSheet: View {
 
     var body: some View {
         NavigationStack(path: $path) {
-            SheetPage {
-                SheetHeader(title: title, label: entries.count == 1 ? "1 entry" : "\(entries.count) entries")
-            } content: {
-                SheetEntryRows(entries: entries, onOpen: open(_:))
+            // Laid out like the day sheet: the place in the bar over an inset-grouped list.
+            List {
+                Section {
+                    ForEach(entries) { entry in
+                        SheetEntryRow(entry: entry, dateStyle: .dayAndMonth) { open(entry) }
+                    }
+                } header: {
+                    MetaLabel("Entries", systemImage: "book")
+                }
             }
-            .toolbar(.hidden, for: .navigationBar)
+            .scrollContentBackground(.hidden)
+            .background(Theme.background)
+            .sheetTitle(title, subtitle: entries.count == 1 ? "1 entry" : "\(entries.count) entries")
             .navigationDestination(for: Entry.self) { entry in
                 EntryEditorView(entry: entry)
             }
         }
+        .tint(Theme.primaryText)
         .presentationDetents(path.isEmpty ? [.medium, .large] : [.large], selection: $detent)
         // A pull at the top of the text shouldn't take the entry away.
         .interactiveDismissDisabled(!path.isEmpty)
-        .sheetGrabber()
+        .sheetBackdrop(dragIndicator: .visible)
         .onChange(of: path) { _, path in
             if path.isEmpty {
                 Task { detent = listDetent } // On the next turn, for the same reason as in `open`.

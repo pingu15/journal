@@ -132,18 +132,6 @@ extension View {
             .background { SheetBackdrop() }
     }
 
-    /// A `sheetBackdrop()` with the same `Grabber` as the page's card in place of the system's indicator.
-    func sheetGrabber() -> some View {
-        sheetBackdrop()
-            .overlay(alignment: .top) {
-                // The sheet drags itself; this only shows that it does.
-                Grabber()
-                    .ignoresSafeArea(edges: .top)
-                    .allowsHitTesting(false)
-                    .accessibilityHidden(true)
-            }
-    }
-
     /// Content scrolls out at the top edge as is, without iOS 26's soft fade there.
     @ViewBuilder
     func hidesTopScrollEdgeEffect() -> some View {
@@ -386,72 +374,40 @@ private struct PageTitle: ViewModifier {
     }
 }
 
-/// A popup listing entries (a group on the map): a scrolling page under a `SheetHeader`. Its detents
-/// and `sheetGrabber()` go on the sheet's outermost view (a map group's page is the root of a
-/// navigation stack).
-struct SheetPage<Header: View, Content: View>: View {
-    @ViewBuilder let header: Header
-    @ViewBuilder let content: Content
-
-    var body: some View {
-        ScrollView {
-            VStack(alignment: .leading, spacing: Spacing.l) {
-                header
-                content
-            }
-            .padding(.horizontal, Spacing.m + 4)
-            .padding(.vertical, Spacing.l)
-        }
-        .scrollIndicators(.hidden)
-        .background(Theme.background)
-    }
-}
-
-/// A popup's bold, centered title with a small label under it.
-struct SheetHeader: View {
-    let title: String
-    let label: String
-
-    var body: some View {
-        VStack(spacing: Spacing.xs) {
-            Text(title)
-                .font(Typography.title)
-                .foregroundStyle(Theme.primaryText)
-                .multilineTextAlignment(.center)
-            MetaLabel(label)
-        }
-        .frame(maxWidth: .infinity)
-        // Clear of the sheet's corners.
-        .padding(.horizontal, 44)
-    }
-}
-
-/// A map group's entries, as tappable rows with a hairline between them. Highlighted like the
-/// journal's rows: from hairline to hairline, across the sheet's full width.
-struct SheetEntryRows: View {
-    let entries: [Entry]
-    let onOpen: (Entry) -> Void
-
-    var body: some View {
-        VStack(alignment: .leading, spacing: 0) {
-            ForEach(entries) { entry in
-                Button {
-                    onOpen(entry)
-                } label: {
-                    EntryRow(entry: entry, dateStyle: .dayAndMonth)
-                        .entryRowPadding()
-                }
-                .buttonStyle(SwipeRowButtonStyle())
-                .padding(.horizontal, -EntriesView.contentInset)
-                if entry.id != entries.last?.id {
-                    Rectangle().fill(Theme.hairline).frame(height: 1)
-                }
-            }
+/// A popup's title in its bar, with a line under it ("October 28, 2026" over "Friday"; a map group's
+/// place over its count) — the same in every sheet that lists entries. Before iOS 26, which has no
+/// subtitle, the title alone.
+extension View {
+    @ViewBuilder
+    func sheetTitle(_ title: String, subtitle: String) -> some View {
+        if #available(iOS 26.0, *) {
+            navigationTitle(title)
+                .navigationSubtitle(subtitle)
+                .navigationBarTitleDisplayMode(.inline)
+        } else {
+            navigationTitle(title)
+                .navigationBarTitleDisplayMode(.inline)
         }
     }
 }
 
-/// The short bar at the top of the page's card and of the map's group sheet, showing that it drags.
+/// An entry as a row of a popup's inset-grouped list (the day sheet, a map group): highlighted while
+/// touched like any list row.
+struct SheetEntryRow: View {
+    let entry: Entry
+    var dateStyle: EntryRow.DateStyle = .none
+    let action: () -> Void
+
+    var body: some View {
+        Button(action: action) {
+            EntryRow(entry: entry, dateStyle: dateStyle)
+                .padding(.vertical, Spacing.xs)
+                .contentShape(.rect)
+        }
+    }
+}
+
+/// The short bar at the top of the page's card, showing that it drags.
 struct Grabber: View {
     var body: some View {
         Capsule()

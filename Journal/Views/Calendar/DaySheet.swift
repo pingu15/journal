@@ -48,7 +48,10 @@ struct DaySheet: View {
                 .listSectionSpacing(Spacing.m)
             }
             .background(Theme.background)
-            .dayTitle(day)
+            .sheetTitle(
+                day.formatted(.dateTime.month(.wide).day().year()),
+                subtitle: day.formatted(.dateTime.weekday(.wide))
+            )
             .toolbar {
                 ToolbarItem(placement: .topBarLeading) {
                     Button("Previous Day", systemImage: "chevron.left") { shift(by: -1) }
@@ -126,13 +129,7 @@ struct DaySheet: View {
                     .foregroundStyle(Theme.secondaryText)
             } else {
                 ForEach(dayEntries) { entry in
-                    Button {
-                        show(entry)
-                    } label: {
-                        EntryRow(entry: entry, dateStyle: .none)
-                            .padding(.vertical, Spacing.xs)
-                            .contentShape(.rect)
-                    }
+                    SheetEntryRow(entry: entry) { show(entry) }
                 }
             }
         } header: {
@@ -147,22 +144,6 @@ struct DaySheet: View {
         // direction has to be in place before the day changes.
         DispatchQueue.main.async {
             withAnimation(.snappy) { day = next }
-        }
-    }
-}
-
-private extension View {
-    /// The date ("October 28, 2026") over its weekday; before iOS 26, which has no subtitle, both in
-    /// one line.
-    @ViewBuilder
-    func dayTitle(_ day: Date) -> some View {
-        if #available(iOS 26.0, *) {
-            navigationTitle(day.formatted(.dateTime.month(.wide).day().year()))
-                .navigationSubtitle(day.formatted(.dateTime.weekday(.wide)))
-                .navigationBarTitleDisplayMode(.inline)
-        } else {
-            navigationTitle(day.formatted(.dateTime.weekday(.abbreviated).month(.abbreviated).day().year()))
-                .navigationBarTitleDisplayMode(.inline)
         }
     }
 }
