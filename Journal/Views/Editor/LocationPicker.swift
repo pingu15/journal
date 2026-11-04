@@ -135,7 +135,7 @@ struct LocationPicker: View {
             Section {
                 Button(action: useCurrentLocation) {
                     HStack {
-                        Label("Current Location", systemImage: "location.fill")
+                        Label("Current Location", systemImage: "location")
                         Spacer()
                         if isLocating { ProgressView() }
                     }
@@ -156,6 +156,8 @@ struct LocationPicker: View {
                     } label: {
                         Text("Location access is off for Journal. ") + Text("Open Settings").underline()
                     }
+                    // A button takes the body size; set like a footer.
+                    .font(.footnote)
                     .foregroundStyle(Theme.secondaryText)
                     .buttonStyle(.borderless)
                 } else if let errorMessage {
@@ -177,7 +179,7 @@ struct LocationPicker: View {
                                     .foregroundStyle(Theme.primaryText)
                                 if !suggestion.subtitle.isEmpty {
                                     Text(suggestion.subtitle)
-                                        .font(Typography.note)
+                                        .font(Typography.detail)
                                         .foregroundStyle(Theme.secondaryText)
                                 }
                             }
@@ -188,7 +190,7 @@ struct LocationPicker: View {
                         .disabled(resolvingID != nil)
                     }
                 } header: {
-                    MetaLabel("Places")
+                    MetaLabel("Places", systemImage: "mappin")
                 }
             }
         }
