@@ -135,20 +135,7 @@ struct EntriesView: View {
         List {
             topMarker
 
-            if entries.isEmpty {
-                ContentUnavailableView {
-                    Text("A blank page")
-                        .font(Typography.title)
-                        .foregroundStyle(Theme.primaryText)
-                } description: {
-                    Text("Write a few lines about today.")
-                        .font(Typography.note)
-                        .foregroundStyle(Theme.secondaryText)
-                }
-                .padding(.top, 140)
-                .listRowBackground(Color.clear)
-                .listRowSeparator(.hidden)
-            } else if sections.isEmpty {
+            if !entries.isEmpty && sections.isEmpty {
                 ContentUnavailableView.search(text: searchText)
                     .listRowBackground(Color.clear)
                     .listRowSeparator(.hidden)
@@ -171,6 +158,11 @@ struct EntriesView: View {
         .pinnedSectionLabels(labelledSections.map { ($0.id, $0.title) }, tops: labelTops)
         .onScrollPhaseChange { _, phase in
             if phase == .interacting { swipedOpen = nil }
+        }
+        .overlay {
+            if entries.isEmpty {
+                EmptyState(title: "A blank page", systemImage: "book", message: "Write a few lines about today.")
+            }
         }
     }
 
@@ -521,16 +513,11 @@ private struct TrashList<Header: View>: View {
         .overlay {
             // Centered on the screen rather than placed in the list.
             if entries.isEmpty {
-                VStack(spacing: Spacing.m) {
-                    Image(systemName: "trash")
-                        .font(Typography.icon)
-                    Text("Deleted entries stay here for \(Entry.trashRetentionDays) days.")
-                        .font(Typography.note)
-                        .multilineTextAlignment(.center)
-                }
-                .foregroundStyle(Theme.secondaryText)
-                .padding(.horizontal, Spacing.l)
-                .allowsHitTesting(false)
+                EmptyState(
+                    title: "Nothing deleted",
+                    systemImage: "trash",
+                    message: "Deleted entries stay here for \(Entry.trashRetentionDays) days."
+                )
             }
         }
     }

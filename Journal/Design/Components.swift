@@ -450,6 +450,35 @@ struct LargePageTitle: View {
     }
 }
 
+/// What a page shows with nothing in it (the journal, Insights, Recently Deleted): an icon, a short
+/// title and a note, centered in the page's card. Put it in an overlay, so it's centered whatever the
+/// list or scroll view under it holds.
+struct EmptyState: View {
+    let title: String
+    let systemImage: String
+    let message: String
+
+    var body: some View {
+        ContentUnavailableView {
+            Label {
+                Text(title)
+                    .font(Typography.title)
+                    .foregroundStyle(Theme.primaryText)
+            } icon: {
+                Image(systemName: systemImage)
+                    .foregroundStyle(Theme.secondaryText)
+            }
+        } description: {
+            Text(message)
+                .font(Typography.note)
+                .foregroundStyle(Theme.secondaryText)
+        }
+        // Clear of the floating tab bar below.
+        .padding(.bottom, Spacing.l)
+        .allowsHitTesting(false)
+    }
+}
+
 /// Gear button that opens Settings; shared by every tab.
 struct SettingsButton: View {
     @State private var showing = false

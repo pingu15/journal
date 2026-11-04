@@ -8,18 +8,7 @@ struct InsightsView: View {
     var body: some View {
         NavigationStack {
             ScrollView {
-                if entries.isEmpty {
-                    ContentUnavailableView {
-                        Text("Nothing to see yet")
-                            .font(Typography.title)
-                            .foregroundStyle(Theme.primaryText)
-                    } description: {
-                        Text("Insights appear as you write.")
-                            .font(Typography.note)
-                            .foregroundStyle(Theme.secondaryText)
-                    }
-                    .padding(.top, 120)
-                } else {
+                if !entries.isEmpty {
                     let stats = JournalStats(entries: entries)
                     // As far above the heading as the journal's month labels sit below a separator.
                     VStack(alignment: .leading, spacing: Spacing.l) {
@@ -32,6 +21,11 @@ struct InsightsView: View {
                     // Starts where the journal's first month label does.
                     .padding(.top, Spacing.l)
                     .padding(.bottom, Spacing.l)
+                }
+            }
+            .overlay {
+                if entries.isEmpty {
+                    EmptyState(title: "Nothing to see yet", systemImage: "chart.bar", message: "Insights appear as you write.")
                 }
             }
             .pageTitle()
