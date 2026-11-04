@@ -181,8 +181,9 @@ struct DayPlacesSection: View {
                         .foregroundStyle(Theme.primaryText)
                         .lineLimit(1)
                         .redacted(reason: name == nil ? .placeholder : [])
+                    // A row's second line, as in Set Location; the duration beside it matches.
                     Text((stay.interval.start..<stay.interval.end).formatted(.interval.hour().minute()))
-                        .font(Typography.caption)
+                        .font(Typography.detail)
                         .foregroundStyle(Theme.secondaryText)
                 }
                 Spacer(minLength: Spacing.s)
