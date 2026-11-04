@@ -28,7 +28,8 @@ struct MetaLabel: View {
     }
 }
 
-/// The sand capsule used for the one primary action on a screen.
+/// The sand capsule for the one primary action on a screen (the lock screen's Unlock), shrinking a
+/// little while pressed.
 struct AccentButtonStyle: ButtonStyle {
     func makeBody(configuration: Configuration) -> some View {
         configuration.label

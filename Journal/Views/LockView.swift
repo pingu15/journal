@@ -17,16 +17,10 @@ struct LockView: View {
                     .font(Typography.pageTitle)
                     .foregroundStyle(Theme.primaryText)
                 Spacer()
-                Button {
+                Button("Unlock with \(lock.biometryName)") {
                     Task { await lock.unlock() }
-                } label: {
-                    Text("Unlock with \(lock.biometryName)")
-                        .font(Typography.action)
-                        .padding(.horizontal, Spacing.l)
-                        .padding(.vertical, Spacing.m - 2)
-                        .foregroundStyle(Theme.onAccent)
-                        .background(Theme.accent, in: .capsule)
                 }
+                .buttonStyle(.accent)
                 .padding(.bottom, Spacing.l)
             }
         }
