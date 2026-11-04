@@ -32,7 +32,7 @@ struct SettingsView: View {
                             }
                         }
                 } header: {
-                    Text("Journal name")
+                    Text("Journal Name")
                 } footer: {
                     Text("Shown at the top of your journal.")
                 }
@@ -52,7 +52,7 @@ struct SettingsView: View {
                 }
 
                 Section {
-                    Toggle("Daily reminder", systemImage: "bell", isOn: reminderBinding)
+                    Toggle("Daily Reminder", systemImage: "bell", isOn: reminderBinding)
                         .tint(Theme.accent)
                     if reminderEnabled {
                         DatePicker(selection: reminderTime, displayedComponents: .hourAndMinute) {
@@ -68,6 +68,8 @@ struct SettingsView: View {
                         } label: {
                             Text("Notifications are off. ") + Text("Open Settings").underline()
                         }
+                        // A button takes the body size; set like the other footers.
+                        .font(.footnote)
                         .foregroundStyle(Theme.secondaryText)
                         .multilineTextAlignment(.leading)
                         .frame(maxWidth: .infinity, alignment: .leading)
@@ -76,9 +78,9 @@ struct SettingsView: View {
                 }
 
                 Section {
-                    Toggle("Add current location", systemImage: "location", isOn: autoTagBinding)
+                    Toggle("Add Current Location", systemImage: "location", isOn: autoTagBinding)
                         .tint(Theme.accent)
-                    Toggle("Track places", systemImage: "mappin.and.ellipse", isOn: trackPlacesBinding)
+                    Toggle("Track Places", systemImage: "mappin.and.ellipse", isOn: trackPlacesBinding)
                         .tint(Theme.accent)
                 } header: {
                     Text("Location")
@@ -89,6 +91,8 @@ struct SettingsView: View {
                         } label: {
                             Text("Location access is off for Journal. ") + Text("Open Settings").underline()
                         }
+                        // A button takes the body size; set like the other footers.
+                        .font(.footnote)
                         .foregroundStyle(Theme.secondaryText)
                         .multilineTextAlignment(.leading)
                         .frame(maxWidth: .infinity, alignment: .leading)
