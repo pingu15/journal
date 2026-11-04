@@ -131,7 +131,8 @@ struct EntryMap: UIViewRepresentable {
             while let current = view, !(current is EntryDotView) {
                 view = current.superview
             }
-            if let annotation = (view as? EntryDotView)?.annotation {
+            if let dot = view as? EntryDotView, let annotation = dot.annotation {
+                dot.pulse()
                 open(annotation)
             }
         }
@@ -225,6 +226,18 @@ private final class EntryDotView: MKAnnotationView {
     }
 
     required init?(coder: NSCoder) { fatalError("init(coder:) has not been implemented") }
+
+    /// Dips and springs back, as a pressed button would: its taps don't come through the view itself
+    /// (`isEnabled` is off), so this stands in for a pressed state.
+    func pulse() {
+        UIView.animate(withDuration: 0.08, delay: 0, options: [.curveEaseOut, .allowUserInteraction]) {
+            self.transform = CGAffineTransform(scaleX: 0.85, y: 0.85)
+        } completion: { _ in
+            UIView.animate(springDuration: 0.3, bounce: 0.3) {
+                self.transform = .identity
+            }
+        }
+    }
 
     override func accessibilityActivate() -> Bool {
         onActivate?()
