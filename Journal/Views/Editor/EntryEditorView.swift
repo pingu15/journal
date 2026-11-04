@@ -99,14 +99,14 @@ struct EntryEditorView: View {
         }
         .sheet(isPresented: $editingDate, onDismiss: { Task { await refreshWeather() } }) {
             DateEditSheet(date: $entry.createdAt)
-                .sheetGrabber()
+                .sheetBackdrop()
         }
         .sheet(isPresented: $editingLocation) {
             LocationPicker(entry: entry) {
                 autoPlaced = false
                 Task { await refreshWeather() }
             }
-            .sheetGrabber()
+            .sheetBackdrop()
         }
         .sheet(isPresented: $viewingDay) {
             EntryDaySheet(entry: entry) {
