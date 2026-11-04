@@ -32,7 +32,7 @@ struct EntriesView: View {
     private static let topID = "top"
     /// How far in from the screen's edges row separators and month labels start and end. Rows' text
     /// and swipe buttons end there too.
-    static let contentInset = Spacing.m + Spacing.xs
+    static let contentInset = Spacing.content
     /// Above and below each row's content, as the list would give it, but inside the row so that its
     /// highlight reaches from separator to separator. The sides too: it spans the screen.
     static let rowInset: CGFloat = 15

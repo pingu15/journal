@@ -115,6 +115,9 @@ enum Spacing {
     static let l: CGFloat = 24
     /// Horizontal margin for reading/writing surfaces.
     static let page: CGFloat = 24
+    /// How far in from the screen's edges a page's lists and grids sit: the journal's rows and
+    /// labels, the Calendar's days, the Insights tiles, a popup's content.
+    static let content: CGFloat = 20
 }
 
 extension Color {

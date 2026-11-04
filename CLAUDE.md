@@ -26,6 +26,7 @@ A premium, minimal, editorial journaling app. Native iOS, Swift + SwiftUI, **iPh
 - Toggles and selection checkmarks are sand (`Theme.accent`). The app-wide tint is primary text, so swipe actions set their own: delete is `Theme.destructive` (red), Restore uses sand.
 - Popups that list things are all laid out like Set Location: a bar title and an inset-grouped `List` on `Theme.background` with `MetaLabel` section headers, each with an icon. The day sheet and the map's group popup (`PlaceEntriesSheet`) title their bar with `sheetTitle(_:subtitle:)` (the date over its weekday; the place over its count) and list entries as `SheetEntryRow`s (`Design/Components.swift`). Every sheet, Entry Date included, sits on `Theme.background`, not the system's grey.
 - Deleting: moving an entry to Recently Deleted never asks (it can be restored), from the list's swipe and context menu or the editor's ⋯ menu; deleting permanently, or deleting a photo, asks in an alert with Cancel ("Delete this entry?" / "Delete this photo?"). The swipe and context menu both say Delete.
+- `Spacing.content` (20) is how far in from the screen's edges pages' lists and grids sit: the journal's rows, labels and separators (`EntriesView.contentInset`), the Calendar's days and its weekday line, the Insights tiles.
 - Stone on paper is low contrast: use it only for secondary/meta text, never for body copy.
 - Always support Dynamic Type and dark mode.
 

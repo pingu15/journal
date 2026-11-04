@@ -25,7 +25,7 @@ struct CalendarView: View {
     private let calendar = Calendar.current
     private static let weeks = MonthWeeks(monthsEachWay: 6000)
     private let gap: CGFloat = 3
-    private let inset = Spacing.m + 4
+    private let inset = Spacing.content
 
     var body: some View {
         let days = dayIndex
@@ -41,7 +41,9 @@ struct CalendarView: View {
                     // The line below sits at the height of the journal's first one.
                     .padding(.bottom, Spacing.m)
                     .overlay(alignment: .bottom) {
+                        // Inset like the journal's lines, not edge to edge.
                         Rectangle().fill(Theme.hairline).frame(height: 1)
+                            .padding(.horizontal, inset)
                     }
 
                 ScrollView {

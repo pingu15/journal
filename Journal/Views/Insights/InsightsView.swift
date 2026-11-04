@@ -28,7 +28,7 @@ struct InsightsView: View {
                             ActivityHeatmap(wordsByDay: stats.wordsByDay)
                         }
                     }
-                    .padding(.horizontal, Spacing.m + 4)
+                    .padding(.horizontal, Spacing.content)
                     // Starts where the journal's first month label does.
                     .padding(.top, Spacing.l)
                     .padding(.bottom, Spacing.l)
