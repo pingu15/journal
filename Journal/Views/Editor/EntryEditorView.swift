@@ -275,7 +275,7 @@ struct EntryHeader: View {
             .buttonStyle(.borderless)
             .accessibilityHint("Changes the entry's date")
 
-            HStack(spacing: Spacing.s) {
+            HStack(spacing: 0) {
                 Button(action: onEditLocation) {
                     Text(entry.placeName ?? "Add location")
                         .lineLimit(1)
@@ -283,10 +283,9 @@ struct EntryHeader: View {
                 .buttonStyle(.borderless)
 
                 if let weather = entry.weather {
-                    Text("·")
-                    // Icon and temperature only; the condition is still spoken by VoiceOver.
-                    Label(weather.formattedTemperature, systemImage: weather.symbol)
-                        .lineLimit(1)
+                    // Spaced like the lists' meta line; the condition is still spoken by VoiceOver.
+                    Text(" · \(Image(systemName: weather.symbol)) \(weather.formattedTemperature)")
+                        .fixedSize()
                         .accessibilityLabel("Weather: \(weather.formattedTemperature), \(weather.condition)")
                 }
             }
