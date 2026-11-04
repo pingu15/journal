@@ -1052,7 +1052,7 @@ struct MarkdownToolbar: View {
             // Regular's do the bottom.
             .padding(.top, Spacing.s + 3)
             .padding(.bottom, Spacing.s)
-            .frame(width: 236)
+            .frame(width: 184)
             .presentationCompactAdaptation(.popover)
         }
     }
