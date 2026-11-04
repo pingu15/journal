@@ -245,7 +245,7 @@ struct EntriesView: View {
                 RowSwipeAction(title: "Share", symbol: "square.and.arrow.up", tint: Theme.accent, removesRow: false) {
                     Task { await ShareSheet.present(entry.shareText) }
                 },
-                RowSwipeAction(title: "Trash", accessibilityTitle: "Delete", symbol: "trash", tint: Theme.destructive) {
+                RowSwipeAction(title: "Delete", symbol: "trash", tint: Theme.destructive) {
                     moveToTrash(entry)
                 },
             ]
@@ -482,6 +482,8 @@ private struct TrashList<Header: View>: View {
     @State private var labelTops = LabelTops()
     /// The row swiped open to show its buttons, if any.
     @State private var swipedOpen: PersistentIdentifier?
+    /// Asked about before it goes: unlike moving an entry here, this can't be undone.
+    @State private var deleting: Entry?
 
     /// The one pinned label's key: labels are keyed by date, for the journal's months.
     private static var labelID: Date { .distantPast }
@@ -505,6 +507,16 @@ private struct TrashList<Header: View>: View {
         .pinnedSectionLabels(entries.isEmpty ? [] : [(Self.labelID, count)], tops: labelTops)
         .onScrollPhaseChange { _, phase in
             if phase == .interacting { swipedOpen = nil }
+        }
+        // Worded like the photo viewer's: the same question for the same kind of delete.
+        .alert("Delete this entry?", isPresented: Binding(
+            get: { deleting != nil },
+            set: { if !$0 { deleting = nil } }
+        ), presenting: deleting) { entry in
+            Button("Cancel", role: .cancel) {}
+            Button("Delete", role: .destructive) { deletePermanently(entry) }
+        } message: { _ in
+            Text("It will be deleted permanently. This can't be undone.")
         }
         .overlay {
             // Centered on the screen rather than placed in the list.
@@ -541,8 +553,9 @@ private struct TrashList<Header: View>: View {
                 RowSwipeAction(title: "Restore", symbol: "arrow.uturn.backward", tint: Theme.accent) {
                     restore(entry)
                 },
-                RowSwipeAction(title: "Delete", accessibilityTitle: "Delete Permanently", symbol: "trash", tint: Theme.destructive) {
-                    deletePermanently(entry)
+                // Leaves the row in place while it asks.
+                RowSwipeAction(title: "Delete", accessibilityTitle: "Delete Permanently", symbol: "trash", tint: Theme.destructive, removesRow: false) {
+                    deleting = entry
                 },
             ]
         )
@@ -554,7 +567,7 @@ private struct TrashList<Header: View>: View {
                     restore(entry)
                 }
                 Button("Delete Permanently", systemImage: "trash", role: .destructive) {
-                    deletePermanently(entry)
+                    deleting = entry
                 }
             }
         }

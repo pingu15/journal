@@ -11,7 +11,6 @@ struct EntryEditorView: View {
     @Environment(AppRouter.self) private var router
 
     @State private var editor = MarkdownEditorController()
-    @State private var confirmingDelete = false
     @State private var isTrashed = false
     @State private var editingDate = false
     @State private var editingLocation = false
@@ -72,9 +71,8 @@ struct EntryEditorView: View {
                     Section {
                         Button("View Day", systemImage: "calendar") { viewingDay = true }
                         Button("Share", systemImage: "square.and.arrow.up", action: sharePDF)
-                        Button("Delete Entry", systemImage: "trash", role: .destructive) {
-                            confirmingDelete = true
-                        }
+                        // Straight to Recently Deleted, as from the list: it can be restored there.
+                        Button("Delete Entry", systemImage: "trash", role: .destructive, action: moveToTrash)
                     }
                     Section {
                         Text("\(entry.wordCount) words · \(entry.readingMinutes) min read")
@@ -123,16 +121,6 @@ struct EntryEditorView: View {
                 onDelete: { editor.removeImage($0) }
             )
         }
-        .confirmationDialog("Delete this entry?", isPresented: $confirmingDelete, titleVisibility: .visible) {
-            Button("Delete", role: .destructive) {
-                isTrashed = true
-                entry.moveToTrash()
-                try? context.save()
-                dismiss()
-            }
-        } message: {
-            Text("You can restore it from Recently Deleted for \(Entry.trashRetentionDays) days.")
-        }
         .onAppear {
             router.openEntries.insert(entry.persistentModelID)
             entry.embedLoosePhotos()
@@ -159,6 +147,13 @@ struct EntryEditorView: View {
             }
             try? context.save()
         }
+    }
+
+    private func moveToTrash() {
+        isTrashed = true
+        entry.moveToTrash()
+        try? context.save()
+        dismiss()
     }
 
     /// Shares the entry as a PDF.
