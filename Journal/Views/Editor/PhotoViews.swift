@@ -320,6 +320,8 @@ struct DateEditSheet: View {
                 .fixedSize(horizontal: false, vertical: true)
                 .onGeometryChange(for: CGFloat.self, of: { $0.size.height }) { pickerHeight = $0 }
                 .frame(maxHeight: .infinity, alignment: .top)
+                // The app's background, like every other sheet, not the system's grey.
+                .background(Theme.background)
                 .navigationTitle("Entry Date")
                 .navigationBarTitleDisplayMode(.inline)
                 .toolbar {

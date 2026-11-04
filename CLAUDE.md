@@ -24,7 +24,7 @@ A premium, minimal, editorial journaling app. Native iOS, Swift + SwiftUI, **iPh
 - Empty-state and explanatory notes ("Nothing written on this day.", "Deleted entries stay here…", empty-tab descriptions, "No location set") all use `Typography.note` (footnote sans) in secondary text.
 - Plain buttons (text, links, rows, cards, icons) use `.buttonStyle(.borderless)`, so they dim while touched like any iOS button. Glass buttons keep `.plain`: their interactive glass already responds.
 - Toggles and selection checkmarks are sand (`Theme.accent`). The app-wide tint is primary text, so swipe actions set their own: delete is `Theme.destructive` (red), Restore uses sand.
-- Popups that list things are all laid out like Set Location: a bar title and an inset-grouped `List` on `Theme.background` with `MetaLabel` section headers, each with an icon. The day sheet and the map's group popup (`PlaceEntriesSheet`) title their bar with `sheetTitle(_:subtitle:)` (the date over its weekday; the place over its count) and list entries as `SheetEntryRow`s (`Design/Components.swift`).
+- Popups that list things are all laid out like Set Location: a bar title and an inset-grouped `List` on `Theme.background` with `MetaLabel` section headers, each with an icon. The day sheet and the map's group popup (`PlaceEntriesSheet`) title their bar with `sheetTitle(_:subtitle:)` (the date over its weekday; the place over its count) and list entries as `SheetEntryRow`s (`Design/Components.swift`). Every sheet, Entry Date included, sits on `Theme.background`, not the system's grey.
 - Stone on paper is low contrast: use it only for secondary/meta text, never for body copy.
 - Always support Dynamic Type and dark mode.
 
