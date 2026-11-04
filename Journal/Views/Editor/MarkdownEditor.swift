@@ -96,9 +96,11 @@ struct MarkdownEditor<Header: View>: UIViewRepresentable {
         var lastMarkdown = ""
         /// Characters changed since the last restyle (post-edit coordinates).
         var pendingStyleRange: NSRange?
-        /// A word the keyboard is replacing (autocorrect, a suggestion), with the formatting it had,
-        /// so the replacement keeps it instead of falling back to plain text.
-        private var pendingReplacement: (range: NSRange, inline: InlineStyle, link: Any?)?
+        /// A word the keyboard is replacing (autocorrect, a suggestion), with the formatting it had
+        /// and its paragraph's style, so the replacement keeps them instead of falling back to plain
+        /// text. The paragraph's style is read from its first character, so a replaced first word
+        /// would otherwise turn a whole title to body text.
+        private var pendingReplacement: (range: NSRange, inline: InlineStyle, link: Any?, block: BlockStyle?)?
 
         init(parent: MarkdownEditor) {
             self.parent = parent
@@ -155,6 +157,13 @@ struct MarkdownEditor<Header: View>: UIViewRepresentable {
                     if let link = replacement.link {
                         storage.addAttribute(.linkURL, value: link, range: replacement.range)
                     }
+                    let paragraph = (storage.string as NSString).paragraphRange(for: replacement.range)
+                    if let block = replacement.block {
+                        storage.addAttribute(.blockStyle, value: block.rawValue, range: paragraph)
+                    } else {
+                        storage.removeAttribute(.blockStyle, range: paragraph)
+                    }
+                    pendingStyleRange = pendingStyleRange.map { NSUnionRange($0, paragraph) } ?? paragraph
                 }
             }
             // Restyling during IME composition would break the marked text; the range is kept
@@ -186,7 +195,8 @@ struct MarkdownEditor<Header: View>: UIViewRepresentable {
                 pendingReplacement = (
                     NSRange(location: range.location, length: (text as NSString).length),
                     storage.inlineStyle(at: range.location),
-                    storage.attribute(.linkURL, at: range.location, effectiveRange: nil)
+                    storage.attribute(.linkURL, at: range.location, effectiveRange: nil),
+                    storage.blockStyle(at: (storage.string as NSString).paragraphRange(for: range).location)
                 )
             }
             guard text == "\n", range.length == 0, !isProcessing,
