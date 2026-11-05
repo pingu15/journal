@@ -29,22 +29,94 @@ struct MetaLabel: View {
 }
 
 /// The sand capsule for the one primary action on a screen (the lock screen's Unlock), shrinking a
-/// little while pressed.
-struct AccentButtonStyle: ButtonStyle {
+/// little when pressed.
+struct AccentButtonStyle: PrimitiveButtonStyle {
     func makeBody(configuration: Configuration) -> some View {
-        configuration.label
-            .font(Typography.action)
-            .padding(.horizontal, Spacing.l)
-            .padding(.vertical, Spacing.m - 2)
-            .foregroundStyle(Theme.onAccent)
-            .background(Theme.accent, in: .capsule)
-            .scaleEffect(configuration.isPressed ? 0.96 : 1)
-            .animation(.spring(duration: 0.25), value: configuration.isPressed)
+        TapPressButton(configuration: configuration, scale: 0.96) {
+            configuration.label
+                .font(Typography.action)
+                .padding(.horizontal, Spacing.l)
+                .padding(.vertical, Spacing.m - 2)
+                .foregroundStyle(Theme.onAccent)
+                .background(Theme.accent, in: .capsule)
+        }
     }
 }
 
-extension ButtonStyle where Self == AccentButtonStyle {
+extension PrimitiveButtonStyle where Self == AccentButtonStyle {
     static var accent: AccentButtonStyle { AccentButtonStyle() }
+}
+
+/// A button that shrinks a little when pressed and springs back, like a key. A quick tap's press
+/// barely shows before what it does takes over the screen, so a tap shows it for a moment
+/// (`duration`) and its action goes ahead after that.
+struct TapPressStyle: PrimitiveButtonStyle {
+    var scale: CGFloat = 0.92
+
+    /// How long a tap's press shows before its action.
+    static var duration: Duration { .milliseconds(110) }
+
+    func makeBody(configuration: Configuration) -> some View {
+        TapPressButton(configuration: configuration, scale: scale) { configuration.label }
+    }
+}
+
+private struct TapPressButton<Label: View>: View {
+    let configuration: PrimitiveButtonStyleConfiguration
+    let scale: CGFloat
+    @ViewBuilder let label: Label
+
+    @State private var taps = 0
+    @State private var isActing = false
+
+    var body: some View {
+        Button {
+            guard !isActing else { return }
+            taps += 1
+            isActing = true
+            Task {
+                try? await Task.sleep(for: TapPressStyle.duration)
+                isActing = false
+                configuration.trigger()
+            }
+        } label: {
+            label
+        }
+        .buttonStyle(HeldPressStyle(scale: scale, taps: taps))
+    }
+}
+
+/// Shrinks while pressed, and for a moment after each tap (`taps`).
+private struct HeldPressStyle: ButtonStyle {
+    let scale: CGFloat
+    let taps: Int
+
+    func makeBody(configuration: Configuration) -> some View {
+        HeldPress(label: configuration.label, isPressed: configuration.isPressed, scale: scale, taps: taps)
+    }
+}
+
+private struct HeldPress<Label: View>: View {
+    let label: Label
+    let isPressed: Bool
+    let scale: CGFloat
+    let taps: Int
+
+    @State private var showsTap = false
+
+    var body: some View {
+        let isShrunk = isPressed || showsTap
+        label
+            .scaleEffect(isShrunk ? scale : 1)
+            .animation(.spring(duration: 0.25, bounce: 0.3), value: isShrunk)
+            .onChange(of: taps) {
+                showsTap = true
+                Task {
+                    try? await Task.sleep(for: TapPressStyle.duration)
+                    showsTap = false
+                }
+            }
+    }
 }
 
 /// The entry's time and place, as one quiet line ("3:57 PM · Mission District"; tags already show
@@ -599,16 +671,8 @@ struct NewEntryButton: View {
                 .shadow(color: .black.opacity(0.14), radius: 14, y: 6)
                 .contentShape(.circle)
         }
-        .buttonStyle(PressScaleStyle())
+        .buttonStyle(TapPressStyle())
         .accessibilityLabel("New entry")
-    }
-}
-
-private struct PressScaleStyle: ButtonStyle {
-    func makeBody(configuration: Configuration) -> some View {
-        configuration.label
-            .scaleEffect(configuration.isPressed ? 0.92 : 1)
-            .animation(.spring(duration: 0.25), value: configuration.isPressed)
     }
 }
 
