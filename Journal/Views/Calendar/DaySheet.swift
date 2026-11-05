@@ -54,8 +54,9 @@ struct DaySheet: View {
             .safeAreaInset(edge: .top, spacing: 0) {
                 MetaLabel(day.formatted(.dateTime.weekday(.wide)))
                     .frame(maxWidth: .infinity)
-                    // Tucked up toward the title, into the bar's own space below it.
-                    .padding(.top, -Spacing.s)
+                    // Right under the title, into the bar's own space below it, then clear of the list.
+                    .padding(.top, -Spacing.m)
+                    .padding(.bottom, Spacing.s)
                     .accessibilityHidden(true)
             }
             .sheetTitle(day.formatted(.dateTime.month(.wide).day().year()))
