@@ -94,7 +94,7 @@ private struct MediaTile: View {
                     Text(date.formatted(.dateTime.day(.twoDigits)))
                         .font(Typography.mediaDay)
                         .monospacedDigit()
-                    Text(date.formatted(.dateTime.month(.abbreviated).year()))
+                    Text(date.formatted(.dateTime.month(.wide).year()))
                         .font(Typography.mediaMonth)
                 }
                 .foregroundStyle(.white.opacity(0.85))
