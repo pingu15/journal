@@ -38,6 +38,8 @@ struct PhotoViewer<ID: Hashable>: View {
     @State private var confirmingDelete = false
     /// How far a swipe-down has pulled the photo toward closing (0–1); fades the backdrop and buttons.
     @State private var dismissProgress: CGFloat = 0
+    /// A video's own controls are up: the close and ⋯ buttons step aside for them.
+    @State private var videoControlsShown = false
 
     init(
         photos: [ViewerPhoto<ID>],
@@ -62,7 +64,7 @@ struct PhotoViewer<ID: Hashable>: View {
             TabView(selection: $selection) {
                 ForEach(photos) { photo in
                     if let video = photo.video {
-                        VideoPage(url: video, isCurrent: selection == photo.id)
+                        VideoPage(url: video, isCurrent: selection == photo.id, controlsShown: $videoControlsShown)
                             .tag(photo.id)
                     } else {
                     FullImage(load: photo.load, onDragDown: { progress in
@@ -110,7 +112,9 @@ struct PhotoViewer<ID: Hashable>: View {
             // Always over a black backdrop, so the glass is the dark kind.
             .environment(\.colorScheme, .dark)
             .padding(.horizontal, Spacing.m)
-            .opacity(1 - min(1, dismissProgress * 3))
+            .opacity(videoControlsShown && isVideo ? 0 : 1 - min(1, dismissProgress * 3))
+            .allowsHitTesting(!(videoControlsShown && isVideo))
+            .animation(.easeOut(duration: 0.2), value: videoControlsShown)
         }
         // An alert rather than a confirmation dialog: the dialog's glass took on the photo's colors
         // and was hard to read, and had no Cancel.
@@ -143,25 +147,60 @@ struct PhotoViewer<ID: Hashable>: View {
     }
 }
 
-/// A video, playing with the system's controls while it's the page shown, paused when swiped away.
+/// A video in iOS's own player, without its AirPlay button, playing while it's the page shown and
+/// paused when swiped away. The player's controls sit where the viewer's close and ⋯ buttons do, so
+/// a tap that brings them up also reports it (`controlsShown`), and the buttons step aside until
+/// they go: by themselves a few seconds later while it plays, as the player's do, or on the next tap.
 private struct VideoPage: View {
     let url: () -> URL?
     let isCurrent: Bool
+    @Binding var controlsShown: Bool
 
     @State private var player: AVPlayer?
+    @State private var hideTask: Task<Void, Never>?
+
+    /// How long the player's controls stay up while it plays.
+    private static let controlsLinger: Duration = .seconds(3)
 
     var body: some View {
         VideoPlayer(player: player)
             .ignoresSafeArea()
+            // Alongside the player's own tap, which shows or hides its controls.
+            .simultaneousGesture(TapGesture().onEnded { toggleControls() })
             .task {
                 guard player == nil, let url = url() else { return }
-                player = AVPlayer(url: url)
-                if isCurrent { player?.play() }
+                let player = AVPlayer(url: url)
+                // No AirPlay button.
+                player.allowsExternalPlayback = false
+                self.player = player
+                if isCurrent { player.play() }
             }
             .onChange(of: isCurrent) { _, current in
-                if current { player?.play() } else { player?.pause() }
+                if current {
+                    player?.play()
+                } else {
+                    player?.pause()
+                    hideTask?.cancel()
+                    controlsShown = false
+                }
             }
-            .onDisappear { player?.pause() }
+            .onDisappear {
+                player?.pause()
+                hideTask?.cancel()
+                controlsShown = false
+            }
+    }
+
+    private func toggleControls() {
+        hideTask?.cancel()
+        controlsShown.toggle()
+        guard controlsShown else { return }
+        hideTask = Task {
+            try? await Task.sleep(for: Self.controlsLinger)
+            // Paused, the player keeps its controls up.
+            guard !Task.isCancelled, player?.timeControlStatus != .paused else { return }
+            controlsShown = false
+        }
     }
 }
 
