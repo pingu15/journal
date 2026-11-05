@@ -64,10 +64,10 @@ struct RootView: View {
             } label: {
                 TabIcon(name: "Map", symbol: "map")
             }
-            Tab(value: .insights) {
-                InsightsView()
+            Tab(value: .media) {
+                MediaView()
             } label: {
-                TabIcon(name: "Insights", symbol: "chart.bar.xaxis")
+                TabIcon(name: "Media", symbol: "photo.on.rectangle")
             }
         }
         .tint(Theme.primaryText)

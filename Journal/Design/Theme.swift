@@ -94,6 +94,9 @@ enum Typography {
 
     // Numbers.
     static let dayNumber = Font.system(.title2, design: .serif)
+    /// The date over a photo in Media: its day, with the month and year below (`mediaMonth`).
+    static let mediaDay = Font.system(.title3).weight(.semibold)
+    static let mediaMonth = Font.system(.caption2).weight(.semibold)
     static let calendarDay = Font.system(.callout).weight(.semibold)
     static let statNumber = Font.system(size: 40, weight: .regular, design: .serif)
     static let largeStatNumber = Font.system(size: 52, weight: .regular, design: .serif)

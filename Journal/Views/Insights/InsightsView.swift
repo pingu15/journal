@@ -1,16 +1,17 @@
 import SwiftData
 import SwiftUI
 
+/// The journal's numbers and writing activity, in a sheet from the journal's top-left button.
 struct InsightsView: View {
     @Query(filter: #Predicate<Entry> { $0.deletedAt == nil }, sort: \Entry.createdAt, order: .reverse)
     private var entries: [Entry]
+    @Environment(\.dismiss) private var dismiss
 
     var body: some View {
         NavigationStack {
             ScrollView {
                 if !entries.isEmpty {
                     let stats = JournalStats(entries: entries)
-                    // As far above the heading as the journal's month labels sit below a separator.
                     VStack(alignment: .leading, spacing: Spacing.l) {
                         StatGrid(stats: stats)
                         InsightSection(title: "Writing activity") {
@@ -18,8 +19,7 @@ struct InsightsView: View {
                         }
                     }
                     .padding(.horizontal, Spacing.content)
-                    // Starts where the journal's first month label does.
-                    .padding(.top, Spacing.l)
+                    .padding(.top, Spacing.m)
                     .padding(.bottom, Spacing.l)
                 }
             }
@@ -28,13 +28,15 @@ struct InsightsView: View {
                     EmptyState(title: "Nothing to see yet", systemImage: "chart.bar", message: "Insights appear as you write.")
                 }
             }
-            .pageTitle()
+            .background(Theme.background)
+            .sheetTitle("Insights")
             .toolbar {
-                ToolbarItem(placement: .topBarTrailing) {
-                    SettingsButton()
+                ToolbarItem(placement: .confirmationAction) {
+                    Button("Done") { dismiss() }
                 }
             }
         }
+        .tint(Theme.primaryText)
     }
 }
 
