@@ -383,34 +383,11 @@ private struct PageTitle: ViewModifier {
     }
 }
 
-/// A popup's title in its bar, in the system's own bar title size, with an optional line under it
-/// ("October 28, 2026" over "Friday"). Drawn as the bar's principal item when there's a second line:
-/// the system's subtitle shrinks the title.
+/// A popup's title in its bar: the system's own inline title, one line, exactly as Settings has it.
 extension View {
-    @ViewBuilder
-    func sheetTitle(_ title: String, subtitle: String? = nil) -> some View {
-        if let subtitle {
-            navigationTitle(title)
-                .navigationBarTitleDisplayMode(.inline)
-                .toolbar {
-                    ToolbarItem(placement: .principal) {
-                        VStack(spacing: 0) {
-                            Text(title)
-                                .font(Typography.barTitle)
-                                .foregroundStyle(Theme.primaryText)
-                            Text(subtitle)
-                                .font(Typography.barSubtitle)
-                                .foregroundStyle(Theme.secondaryText)
-                        }
-                        .lineLimit(1)
-                        .accessibilityElement(children: .combine)
-                        .accessibilityAddTraits(.isHeader)
-                    }
-                }
-        } else {
-            navigationTitle(title)
-                .navigationBarTitleDisplayMode(.inline)
-        }
+    func sheetTitle(_ title: String) -> some View {
+        navigationTitle(title)
+            .navigationBarTitleDisplayMode(.inline)
     }
 }
 
