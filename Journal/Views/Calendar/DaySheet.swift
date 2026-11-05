@@ -100,7 +100,7 @@ struct DaySheet: View {
         .task(id: day) {
             for offset in [1, -1] {
                 guard let neighbor = calendar.date(byAdding: .day, value: offset, to: day) else { continue }
-                await PhotoLibrary.preloadThumbnails(on: neighbor, side: AssetThumbnail.side)
+                await PhotoLibrary.preloadThumbnails(on: neighbor, side: AssetThumbnail.side, limit: DayPhotos.shown)
                 await DayMapSnapshots.preload(on: neighbor)
                 await PlaceNames.preload(on: neighbor)
             }
@@ -244,16 +244,21 @@ struct EntryCover: View {
     }
 }
 
-/// The photos the user took on a day, from their library (asks for access the first time).
+/// The photos the user took on a day, from their library (asks for access the first time): edge to
+/// edge across the section, one alone; two side by side; three or more as one on the left and two
+/// stacked on the right, the last with "+N" for those not shown.
 private struct DayPhotos: View {
     let day: Date
+
+    /// The most shown at once.
+    static let shown = 3
+    private static let height: CGFloat = 220
+    private static let gap: CGFloat = 2
 
     @Environment(\.openURL) private var openURL
     @State private var status = PhotoLibrary.status
     @State private var assets: [PHAsset]
     @State private var viewing: ViewedPhoto?
-
-    private let columns = [GridItem(.adaptive(minimum: 96), spacing: 4)]
 
     init(day: Date) {
         self.day = day
@@ -261,6 +266,8 @@ private struct DayPhotos: View {
         // takes a path of its own.
         _assets = State(initialValue: PhotoLibrary.photos(on: day))
     }
+
+    private var showsGrid: Bool { PhotoLibrary.canRead && !assets.isEmpty }
 
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
@@ -289,24 +296,66 @@ private struct DayPhotos: View {
                         .font(Typography.note)
                         .foregroundStyle(Theme.secondaryText)
                 } else {
-                    LazyVGrid(columns: columns, spacing: 4) {
-                        ForEach(assets, id: \.localIdentifier) { asset in
-                            Button {
-                                viewing = ViewedPhoto(id: asset.localIdentifier)
-                            } label: {
-                                AssetThumbnail(asset: asset)
-                            }
-                            .buttonStyle(.borderless)
-                        }
-                    }
+                    grid
                 }
             }
         }
         .frame(maxWidth: .infinity, alignment: .leading)
+        // The grid runs edge to edge, like the Places map.
+        .listRowInsets(showsGrid ? EdgeInsets() : nil)
         // Like an entry's photos, swiping between the day's.
         .fullScreenCover(item: $viewing) { photo in
             PhotoViewer(photos: assets.map(ViewerPhoto.init), initialID: photo.id)
         }
+    }
+
+    @ViewBuilder
+    private var grid: some View {
+        let gap = Self.gap
+        Group {
+            switch assets.count {
+            case 1:
+                tile(0)
+            case 2:
+                HStack(spacing: gap) {
+                    tile(0)
+                    tile(1)
+                }
+            default:
+                HStack(spacing: gap) {
+                    tile(0)
+                    VStack(spacing: gap) {
+                        tile(1)
+                        tile(2, more: assets.count - Self.shown)
+                    }
+                }
+            }
+        }
+        .frame(height: Self.height)
+    }
+
+    /// The photo at `index`, filling its space; `more` photos not shown are counted in its corner.
+    private func tile(_ index: Int, more: Int = 0) -> some View {
+        let asset = assets[index]
+        return Button {
+            viewing = ViewedPhoto(id: asset.localIdentifier)
+        } label: {
+            AssetThumbnail(asset: asset)
+                .overlay(alignment: .bottomTrailing) {
+                    if more > 0 {
+                        Text("+\(more)")
+                            .font(Typography.caption.weight(.semibold))
+                            .foregroundStyle(.white)
+                            .padding(.horizontal, Spacing.s)
+                            .padding(.vertical, Spacing.xs)
+                            .background(.black.opacity(0.55), in: .capsule)
+                            // Clear of the section's rounded corner.
+                            .padding(Spacing.m)
+                            .accessibilityLabel("\(more) more")
+                    }
+                }
+        }
+        .buttonStyle(.borderless)
     }
 }
 
@@ -315,7 +364,8 @@ private struct ViewedPhoto: Identifiable {
 }
 
 private struct AssetThumbnail: View {
-    static let side: CGFloat = 120
+    /// Large enough for the grid's widest tile, a lone photo across the section.
+    static let side: CGFloat = 400
 
     let asset: PHAsset
     @State private var image: UIImage?
@@ -328,7 +378,7 @@ private struct AssetThumbnail: View {
 
     var body: some View {
         Color.primary.opacity(0.06)
-            .aspectRatio(1, contentMode: .fit)
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
             .overlay {
                 if let image {
                     Image(uiImage: image)
@@ -337,7 +387,8 @@ private struct AssetThumbnail: View {
                         .transition(.opacity)
                 }
             }
-            .clipShape(.rect(cornerRadius: 6, style: .continuous))
+            .clipped()
+            .contentShape(.rect)
             .task(id: asset.localIdentifier) {
                 guard image == nil else { return }
                 let thumbnail = await PhotoLibrary.thumbnail(for: asset, side: Self.side)
