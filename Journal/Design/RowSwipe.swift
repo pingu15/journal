@@ -36,20 +36,51 @@ extension EnvironmentValues {
 }
 
 /// A row softly highlighted while it's touched, and, if it can be swiped, on through a swipe, which
-/// cancels the touch, until it closes again.
+/// cancels the touch, until it closes again. A press also shrinks it a little, like a button's.
 struct SwipeRowButtonStyle: ButtonStyle {
-    @Environment(\.rowIsSwiped) private var isSwiped
-
     func makeBody(configuration: Configuration) -> some View {
-        let isHighlighted = configuration.isPressed || isSwiped
+        PressableRow(label: configuration.label, isPressed: configuration.isPressed)
+    }
+}
 
-        configuration.label
+private struct PressableRow<Label: View>: View {
+    let label: Label
+    let isPressed: Bool
+
+    @Environment(\.rowIsSwiped) private var isSwiped
+    /// The press as shown: held a moment after a quick tap, which a list delivers as a press and a
+    /// release together, so it still shows.
+    @State private var showsPress = false
+    @State private var pressStart = Date.distantPast
+
+    /// The least time a press is shown for.
+    private static var minimumPress: TimeInterval { 0.12 }
+
+    var body: some View {
+        let isHighlighted = showsPress || isSwiped
+
+        label
             .contentShape(.rect)
             .background {
                 RoundedRectangle(cornerRadius: Radius.row, style: .continuous)
                     .fill(Theme.surface)
                     .opacity(isHighlighted ? 1 : 0)
                     .animation(.easeOut(duration: 0.15), value: isHighlighted)
+            }
+            .scaleEffect(showsPress && !isSwiped ? 0.98 : 1)
+            .animation(.spring(duration: 0.25, bounce: 0.3), value: showsPress && !isSwiped)
+            .onChange(of: isPressed) { _, isPressed in
+                if isPressed {
+                    pressStart = .now
+                    showsPress = true
+                } else {
+                    let left = Self.minimumPress - Date.now.timeIntervalSince(pressStart)
+                    guard left > 0 else { showsPress = false; return }
+                    Task {
+                        try? await Task.sleep(for: .seconds(left))
+                        if !self.isPressed { showsPress = false }
+                    }
+                }
             }
     }
 }
