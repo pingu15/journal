@@ -274,7 +274,6 @@ private struct DayPhotos: View {
         VStack(alignment: .leading, spacing: 0) {
             switch status {
             case .notDetermined:
-                // iOS's Settings has no switch for Journal until it has asked once.
                 AccessOffNote("Photo access") {
                     Task {
                         status = await PhotoLibrary.requestAccess()
@@ -282,6 +281,7 @@ private struct DayPhotos: View {
                     }
                 }
             case .denied, .restricted:
+                // Refused before: iOS won't ask again, so its Settings it is.
                 AccessOffNote("Photo access") { openURL(.appSettings) }
             default:
                 if assets.isEmpty {

@@ -468,8 +468,8 @@ extension View {
 /// An entry as a row of a popup's inset-grouped list (the day sheet, a map group): highlighted while
 /// touched like any list row.
 /// A day sheet section's note when it can't show anything yet ("Photo access is off for Journal.
-/// Open Settings"), worded like Settings' own. `action` opens iOS's Settings, or first asks, where
-/// iOS has no switch to show until Journal has asked.
+/// Grant Access"). `action` asks for access in place; only once it has been refused (iOS asks just
+/// once) does it open iOS's Settings instead.
 struct AccessOffNote: View {
     let subject: String
     let action: () -> Void
@@ -481,7 +481,7 @@ struct AccessOffNote: View {
 
     var body: some View {
         Button(action: action) {
-            Text("\(subject) is off for Journal. ") + Text("Open Settings").underline()
+            Text("\(subject) is off for Journal. ") + Text("Grant Access").underline()
         }
         .font(Typography.note)
         .foregroundStyle(Theme.secondaryText)

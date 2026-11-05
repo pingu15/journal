@@ -91,7 +91,12 @@ struct DayPlacesSection: View {
                     }
                 }
             } else if !authorized {
-                AccessOffNote("Location access") { openURL(.appSettings) }
+                AccessOffNote("Location access") {
+                    Task {
+                        authorized = await PlaceTracker.shared.enable()
+                        if !authorized { openURL(.appSettings) }
+                    }
+                }
             } else {
                 Text("No places from this day.")
                     .font(Typography.note)

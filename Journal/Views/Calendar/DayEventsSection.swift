@@ -21,7 +21,6 @@ struct DayEventsSection: View {
         Section {
             switch status {
             case .notDetermined:
-                // iOS's Settings has no switch for Journal until it has asked once.
                 AccessOffNote("Calendar access") {
                     Task {
                         _ = await CalendarEvents.requestAccess()
@@ -40,6 +39,7 @@ struct DayEventsSection: View {
                     }
                 }
             default:
+                // Refused before: iOS won't ask again, so its Settings it is.
                 AccessOffNote("Calendar access") { openURL(.appSettings) }
             }
         } header: {
