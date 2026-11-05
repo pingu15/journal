@@ -146,7 +146,7 @@ private struct PlaceEntriesSheet: View {
         .presentationDetents(path.isEmpty ? [.medium, .large] : [.large], selection: $detent)
         // A pull at the top of the text shouldn't take the entry away.
         .interactiveDismissDisabled(!path.isEmpty)
-        .sheetBackdrop(dragIndicator: .visible)
+        .sheetBackdrop(grabber: true)
         .onChange(of: path) { _, path in
             if path.isEmpty {
                 Task { detent = listDetent } // On the next turn, for the same reason as in `open`.

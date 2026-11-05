@@ -126,10 +126,18 @@ extension View {
             .background(Theme.surface, in: .rect(cornerRadius: Radius.card))
     }
 
-    /// A sheet's content, with the page behind it darkened (`SheetBackdrop`) and, unless asked for, no
-    /// drag indicator.
-    func sheetBackdrop(dragIndicator: Visibility = .hidden) -> some View {
-        presentationDragIndicator(dragIndicator)
+    /// A sheet's content, with the page behind it darkened (`SheetBackdrop`). Sheets that resize show
+    /// the pages' own `Grabber` (not the system's drag indicator), as far down from the sheet's top as
+    /// it sits below a page card's.
+    func sheetBackdrop(grabber: Bool = false) -> some View {
+        presentationDragIndicator(.hidden)
+            .overlay(alignment: .top) {
+                if grabber {
+                    Grabber()
+                        .allowsHitTesting(false)
+                        .accessibilityHidden(true)
+                }
+            }
             .background { SheetBackdrop() }
     }
 
@@ -375,16 +383,30 @@ private struct PageTitle: ViewModifier {
     }
 }
 
-/// A popup's title in its bar, with a line under it ("October 28, 2026" over "Friday"; a map group's
-/// place over its count) — the same in every sheet that lists entries. Before iOS 26, which has no
-/// subtitle, the title alone.
+/// A popup's title in its bar, in the system's own bar title size, with an optional line under it
+/// ("October 28, 2026" over "Friday"). Drawn as the bar's principal item when there's a second line:
+/// the system's subtitle shrinks the title.
 extension View {
     @ViewBuilder
-    func sheetTitle(_ title: String, subtitle: String) -> some View {
-        if #available(iOS 26.0, *) {
+    func sheetTitle(_ title: String, subtitle: String? = nil) -> some View {
+        if let subtitle {
             navigationTitle(title)
-                .navigationSubtitle(subtitle)
                 .navigationBarTitleDisplayMode(.inline)
+                .toolbar {
+                    ToolbarItem(placement: .principal) {
+                        VStack(spacing: 0) {
+                            Text(title)
+                                .font(Typography.barTitle)
+                                .foregroundStyle(Theme.primaryText)
+                            Text(subtitle)
+                                .font(Typography.barSubtitle)
+                                .foregroundStyle(Theme.secondaryText)
+                        }
+                        .lineLimit(1)
+                        .accessibilityElement(children: .combine)
+                        .accessibilityAddTraits(.isHeader)
+                    }
+                }
         } else {
             navigationTitle(title)
                 .navigationBarTitleDisplayMode(.inline)

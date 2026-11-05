@@ -65,7 +65,7 @@ struct DaySheet: View {
         }
         .tint(Theme.primaryText)
         .presentationDetents([.medium, .large])
-        .sheetBackdrop(dragIndicator: .visible)
+        .sheetBackdrop(grabber: true)
         .sensoryFeedback(.selection, trigger: day)
         // The days either side, so their photos and places are already there as they slide in.
         .task(id: day) {

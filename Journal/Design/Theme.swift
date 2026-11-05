@@ -69,6 +69,9 @@ enum Typography {
     /// Popup titles (not sheets' bars, which keep the system's) and empty states.
     static let title = Font.system(.title2).weight(.bold)
     static let entryTitle = Font.system(.title3).weight(.semibold)
+    /// A sheet's bar title drawn by hand (with a line under it): the system's own size.
+    static let barTitle = Font.system(.headline)
+    static let barSubtitle = Font.system(.footnote)
 
     // Text.
     static let body = Font.system(.body)
