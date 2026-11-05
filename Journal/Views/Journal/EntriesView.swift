@@ -146,7 +146,7 @@ struct EntriesView: View {
             // the rows, as the next one came up.
             ForEach(labelledSections, id: \.id) { section in
                 Section {
-                    SectionLabel(section.title) { top in
+                    SectionLabel(section.title, isFirst: section.id == labelledSections.first?.id) { top in
                         labelTops.report(top, for: section.id)
                     }
                     ForEach(section.entries) { entry in
@@ -333,7 +333,7 @@ struct EntryMonthList: View {
         List {
             ForEach(months, id: \.month) { month in
                 Section {
-                    SectionLabel(month.title) { top in
+                    SectionLabel(month.title, isFirst: month.month == months.first?.month) { top in
                         labelTops.report(top, for: month.month)
                     }
                     ForEach(month.entries) { entry in
@@ -353,17 +353,19 @@ struct EntryMonthList: View {
 /// A month or "On this day" label, as a row of its own.
 private struct SectionLabel: View {
     let text: String
+    let isFirst: Bool
     /// Reports the label's top on screen as it scrolls (no coordinate space reaches into a list's
     /// rows from the list: a named one doesn't, and `.scrollView` is the screen's).
     let onTopChange: (CGFloat) -> Void
 
-    init(_ text: String, onTopChange: @escaping (CGFloat) -> Void) {
+    init(_ text: String, isFirst: Bool, onTopChange: @escaping (CGFloat) -> Void) {
         self.text = text
+        self.isFirst = isFirst
         self.onTopChange = onTopChange
     }
 
     var body: some View {
-        SectionLabelContent(text: text)
+        SectionLabelContent(text: text, isFirst: isFirst)
             .onGeometryChange(for: CGFloat.self) { proxy in
                 proxy.frame(in: .global).minY
             } action: { top in
@@ -381,17 +383,25 @@ private struct SectionLabel: View {
 /// place, and it scrolls away under the copy with the rows.
 private struct SectionLabelContent: View {
     let text: String
+    /// The list's first label, which has no line above it.
+    var isFirst = false
     var isPinned = false
 
-    /// Above and below the text alike, so it's centered between the line above (or the card's top)
-    /// and its own: their sum keeps that line where the Calendar's and Insights' line up with it.
+    /// Above and below a label between two lines alike, so it's centered between them.
     static let padding = (Spacing.l + Spacing.m) / 2
+
+    /// Above the text. The first label keeps more room under the card's top (and the grabber), and
+    /// the pinned copy always has that much, so a label's text sits as far down when pinned.
+    static func top(isFirst: Bool) -> CGFloat { isFirst ? Spacing.l : padding }
+
+    /// Below the text. The first label's line stays where the Calendar's and Insights' match it.
+    static func bottom(isFirst: Bool) -> CGFloat { isFirst ? Spacing.m : padding }
 
     var body: some View {
         MetaLabel(text)
             .frame(maxWidth: .infinity, alignment: .leading)
-            .padding(.top, Self.padding)
-            .padding(.bottom, isPinned ? Self.padding - 1 : Self.padding)
+            .padding(.top, isPinned ? Spacing.l : Self.top(isFirst: isFirst))
+            .padding(.bottom, Self.bottom(isFirst: isFirst) - (isPinned ? 1 : 0))
             .overlay(alignment: .bottom) {
                 if !isPinned {
                     Rectangle()
@@ -510,10 +520,13 @@ private struct PinnedSectionLabel: View {
     @State private var height: CGFloat = 0
 
     var body: some View {
-        // The last section whose label has reached the top.
-        if let index = sections.lastIndex(where: { (labelTops.tops[$0.id] ?? .infinity) <= 0 }) {
+        // The last section whose label's text has reached its pinned place (a label below the first
+        // has less room above it, so it's pinned a little before its row reaches the top).
+        if let index = sections.indices.last(where: { index in
+            (labelTops.tops[sections[index].id] ?? .infinity) <= Spacing.l - SectionLabelContent.top(isFirst: index == 0)
+        }) {
             let nextTop = sections.indices.contains(index + 1) ? labelTops.tops[sections[index + 1].id] : nil
-            SectionLabelContent(text: sections[index].title, isPinned: true)
+            SectionLabelContent(text: sections[index].title, isFirst: index == 0, isPinned: true)
                 .onGeometryChange(for: CGFloat.self, of: \.size.height) { height = $0 }
                 .offset(y: min(0, (nextTop ?? .infinity) - height))
                 // Drags go through to the list beneath.
@@ -545,7 +558,7 @@ private struct TrashList<Header: View>: View {
 
             if !entries.isEmpty {
                 Section {
-                    SectionLabel(count) { top in
+                    SectionLabel(count, isFirst: true) { top in
                         labelTops.report(top, for: Self.labelID)
                     }
                     ForEach(entries) { entry in
