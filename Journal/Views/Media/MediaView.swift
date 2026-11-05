@@ -12,7 +12,8 @@ struct MediaView: View {
 
     @State private var path: [Entry] = []
 
-    private static let gap = Spacing.s
+    /// A hairline between photos, which otherwise run edge to edge.
+    private static let gap: CGFloat = 1
     private let columns = [GridItem(.flexible(), spacing: gap), GridItem(.flexible(), spacing: gap)]
 
     /// Each entry's photos in the order they appear in it.
@@ -33,11 +34,11 @@ struct MediaView: View {
                         .buttonStyle(TapPressStyle(scale: 0.97))
                     }
                 }
-                .padding(.horizontal, Spacing.content)
-                // Starts where the journal's first month label does.
+                // Clear of the grabber at the card's top.
                 .padding(.top, Spacing.l)
-                .padding(.bottom, Spacing.l)
             }
+            // Room for the floating tab bar below the last row, as the journal leaves.
+            .contentMargins(.bottom, 96, for: .scrollContent)
             .overlay {
                 if media.isEmpty {
                     EmptyState(title: "No photos yet", systemImage: "photo.on.rectangle", message: "Photos you add to entries appear here.")
@@ -63,8 +64,8 @@ struct MediaView: View {
     }
 }
 
-/// A photo cropped to a square, with its entry's date in the bottom-right corner on a translucent
-/// backing: the day large, the month and year small below it.
+/// A photo cropped to a square, with its entry's date in the bottom-right corner in translucent white:
+/// the day large and always two digits, the month and year small below it, both right-aligned.
 private struct MediaTile: View {
     let photo: Attachment
     let date: Date
@@ -87,19 +88,19 @@ private struct MediaTile: View {
                         .scaledToFill()
                 }
             }
-            .clipShape(.rect(cornerRadius: Radius.row, style: .continuous))
+            .clipped()
             .overlay(alignment: .bottomTrailing) {
-                VStack(spacing: 0) {
-                    Text(date.formatted(.dateTime.day()))
+                VStack(alignment: .trailing, spacing: 0) {
+                    Text(date.formatted(.dateTime.day(.twoDigits)))
                         .font(Typography.mediaDay)
+                        .monospacedDigit()
                     Text(date.formatted(.dateTime.month(.abbreviated).year()))
                         .font(Typography.mediaMonth)
                 }
-                .foregroundStyle(.white)
-                .padding(.horizontal, Spacing.s)
-                .padding(.vertical, Spacing.xs)
-                .background(.black.opacity(0.35), in: .rect(cornerRadius: Radius.row - Spacing.xs, style: .continuous))
-                .padding(Spacing.s)
+                .foregroundStyle(.white.opacity(0.85))
+                // Readable on a light photo without a backing.
+                .shadow(color: .black.opacity(0.35), radius: 4)
+                .padding(Spacing.m)
             }
             .contentShape(.rect)
             // The list thumbnail first, then a sharper one, drawn off the main thread.
