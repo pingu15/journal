@@ -102,7 +102,7 @@ struct DayPlacesSection: View {
                     .foregroundStyle(Theme.secondaryText)
             }
         } header: {
-            MetaLabel("Places", systemImage: "mappin")
+            MetaLabel("Places", systemImage: "mappin.circle")
         }
     }
 
