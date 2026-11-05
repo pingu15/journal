@@ -591,14 +591,17 @@ struct SettingsButton: View {
     }
 }
 
-/// A search field that grows sideways out of the bar's search button, a close button coming in at the
-/// far end. Drawn over the page, `belowNotch()`: it starts as a circle exactly over the button, which
-/// goes with the bar, and settles at the top of the card as the card rises to full screen, and on
-/// closing it shrinks back onto the button as the card comes down.
+/// A search field that grows sideways out of the bar's search button (wherever it is in the bar,
+/// `buttonFrame`) to the page's left edge, a close button coming in at the far end. Drawn over the
+/// page, `belowNotch()`: it starts as a circle exactly over the button, which goes with the bar, and
+/// settles at the top of the card as the card rises to full screen, and on closing it shrinks back
+/// onto the button as the card comes down.
 struct ExpandingSearchBar: View {
     @Binding var text: String
     var isFocused: FocusState<Bool>.Binding
     let prompt: String
+    /// The bar's search button, on screen.
+    var buttonFrame: CGRect = .zero
     /// Called as the field starts to shrink, when the card should start down.
     let onClosing: () -> Void
     /// Called once the field has shrunk back into the button.
@@ -646,6 +649,8 @@ struct ExpandingSearchBar: View {
                 // Keeps the placeholder inside the capsule while it widens.
                 .clipShape(.capsule)
                 .glassBackground(in: .capsule)
+                // Over the button until it grows.
+                .offset(x: expanded ? 0 : max(buttonFrame.midX - size / 2 - geometry.frame(in: .global).minX, 0))
 
                 if expanded {
                     Button("Close Search", systemImage: "xmark", action: close)

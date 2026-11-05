@@ -23,6 +23,8 @@ struct EntriesView: View {
     @FocusState private var isSearching: Bool
     @State private var filter = JournalFilter.all
     @State private var newEntryCount = 0
+    /// Where the bar's search button is, for the field to grow out of.
+    @State private var searchButtonFrame: CGRect = .zero
     @State private var labelTops = LabelTops()
     /// The row swiped open to show its delete button, if any.
     @State private var swipedOpen: PersistentIdentifier?
@@ -60,6 +62,7 @@ struct EntriesView: View {
                         text: $searchText,
                         isFocused: $isSearching,
                         prompt: "Search by text or date",
+                        buttonFrame: searchButtonFrame,
                         onClosing: closingSearch,
                         onClose: closeSearch
                     )
@@ -103,8 +106,9 @@ struct EntriesView: View {
     /// These stay while searching, when the bar is hidden: taken out, they'd fly off on their own.
     @ToolbarContentBuilder
     private var toolbarContent: some ToolbarContent {
-        ToolbarItem(placement: .topBarLeading) {
+        ToolbarItem(placement: .topBarTrailing) {
             Button("Search", systemImage: "magnifyingglass", action: openSearch)
+                .onGeometryChange(for: CGRect.self) { $0.frame(in: .global) } action: { searchButtonFrame = $0 }
                 .disabled(filter == .all && entries.isEmpty)
                 .id(searchButtonID)
         }
