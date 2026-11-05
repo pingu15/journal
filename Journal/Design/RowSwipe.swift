@@ -36,7 +36,8 @@ extension EnvironmentValues {
 }
 
 /// A row softly highlighted while it's touched, and, if it can be swiped, on through a swipe, which
-/// cancels the touch, until it closes again. A press also shrinks it a little, like a button's.
+/// cancels the touch, until it closes again. A press also shrinks it a little, like a button's; a quick
+/// tap only does that, the highlight is for a touch held.
 struct SwipeRowButtonStyle: ButtonStyle {
     func makeBody(configuration: Configuration) -> some View {
         PressableRow(label: configuration.label, isPressed: configuration.isPressed)
@@ -57,7 +58,8 @@ private struct PressableRow<Label: View>: View {
     private static var minimumPress: TimeInterval { 0.12 }
 
     var body: some View {
-        let isHighlighted = showsPress || isSwiped
+        // The real press, not the one held for a quick tap.
+        let isHighlighted = isPressed || isSwiped
 
         label
             .contentShape(.rect)
