@@ -3,8 +3,8 @@ import SwiftData
 import SwiftUI
 
 /// A day from the calendar, in a sheet that swipes down to close: the date in the bar with arrows to
-/// the day before and after, then a list of that day's entries, the places the user spent time, and
-/// the photos taken that day from the photo library. Also opened from an entry (the editor's View Day), which is then
+/// the day before and after, then a list of that day's entries, the places the user spent time, the
+/// events in their calendar, and the photos taken that day from the photo library. Also opened from an entry (the editor's View Day), which is then
 /// left out of the list, and a place tapped becomes its place.
 struct DaySheet: View {
     let entries: [Entry]
@@ -42,6 +42,7 @@ struct DaySheet: View {
                     DayPlacesSection(day: day, current: openedFrom.flatMap { entry in
                         entry.location.map { ($0, entry.createdAt) }
                     }, action: placeAction)
+                    DayEventsSection(day: day)
                     Section {
                         DayPhotos(day: day)
                     } header: {
