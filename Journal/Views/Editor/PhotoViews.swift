@@ -150,9 +150,14 @@ private struct VideoPage: View {
 
     @State private var player: AVPlayer?
 
+    /// The close and ⋯ buttons' row, with room below it.
+    private static let buttonRow: CGFloat = 44 + Spacing.m
+
     var body: some View {
         VideoPlayer(player: player)
-            .ignoresSafeArea()
+            // Below the close and ⋯ buttons, so the player's own controls along its top aren't
+            // under them; as much off the bottom, so the video stays centered.
+            .padding(.vertical, Self.buttonRow)
             .task {
                 guard player == nil, let url = url() else { return }
                 player = AVPlayer(url: url)
