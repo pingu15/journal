@@ -26,7 +26,8 @@ struct MediaView: View {
 
     var body: some View {
         NavigationStack(path: $path) {
-            ScrollView {
+            // The filter stays put; only the photos scroll, under it.
+            VStack(spacing: 0) {
                 Picker("Show", selection: $filter) {
                     ForEach(MediaFilter.allCases) { Text($0.title).tag($0) }
                 }
@@ -35,20 +36,21 @@ struct MediaView: View {
                 // Clear of the grabber at the card's top.
                 .padding(.top, Spacing.l)
                 .padding(.bottom, Spacing.m)
-
-                LazyVGrid(columns: columns, spacing: Self.gap) {
-                    ForEach(media, id: \.photo.identifier) { item in
-                        Button {
-                            path.append(item.entry)
-                        } label: {
-                            MediaTile(photo: item.photo, date: item.entry.createdAt)
+                ScrollView {
+                    LazyVGrid(columns: columns, spacing: Self.gap) {
+                        ForEach(media, id: \.photo.identifier) { item in
+                            Button {
+                                path.append(item.entry)
+                            } label: {
+                                MediaTile(photo: item.photo, date: item.entry.createdAt)
+                            }
+                            .buttonStyle(TapPressStyle(scale: 0.97))
                         }
-                        .buttonStyle(TapPressStyle(scale: 0.97))
                     }
                 }
+                // Room for the floating tab bar below the last row, as the journal leaves.
+                .contentMargins(.bottom, 96, for: .scrollContent)
             }
-            // Room for the floating tab bar below the last row, as the journal leaves.
-            .contentMargins(.bottom, 96, for: .scrollContent)
             .overlay {
                 if media.isEmpty {
                     EmptyState(title: filter.emptyTitle, systemImage: filter.symbol, message: filter.emptyMessage)
