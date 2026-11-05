@@ -383,11 +383,15 @@ private struct SectionLabelContent: View {
     let text: String
     var isPinned = false
 
+    /// Above and below the text alike, so it's centered between the line above (or the card's top)
+    /// and its own: their sum keeps that line where the Calendar's and Insights' line up with it.
+    static let padding = (Spacing.l + Spacing.m) / 2
+
     var body: some View {
         MetaLabel(text)
             .frame(maxWidth: .infinity, alignment: .leading)
-            .padding(.top, Spacing.l)
-            .padding(.bottom, isPinned ? Spacing.m - 1 : Spacing.m)
+            .padding(.top, Self.padding)
+            .padding(.bottom, isPinned ? Self.padding - 1 : Self.padding)
             .overlay(alignment: .bottom) {
                 if !isPinned {
                     Rectangle()
