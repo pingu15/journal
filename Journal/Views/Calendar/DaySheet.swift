@@ -46,6 +46,8 @@ struct DaySheet: View {
                 }
                 .scrollContentBackground(.hidden)
                 .listSectionSpacing(Spacing.m)
+                // Everything in it dims while touched, like the app's other buttons.
+                .buttonStyle(.borderless)
             }
             .background(Theme.background)
             .sheetTitle(
