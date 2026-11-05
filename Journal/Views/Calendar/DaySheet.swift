@@ -42,7 +42,7 @@ struct DaySheet: View {
                     DayPlacesSection(day: day, current: openedFrom.flatMap { entry in
                         entry.location.map { ($0, entry.createdAt) }
                     }, action: placeAction)
-                    DayEventsSection(day: day)
+                    DayEventsSection(day: day, action: eventAction)
                     Section {
                         DayPhotos(day: day)
                     } header: {
@@ -127,11 +127,31 @@ struct DaySheet: View {
         }
     }
 
+    private var eventAction: DayEventsSection.Action {
+        guard let entry = openedFrom else {
+            return .newEntry { place, time in startEntry(at: time, place: place.map { ($0.name, $0.coordinate) }) }
+        }
+        return .setOnEntry { place, time in
+            if let place { entry.setPlace(name: place.name, coordinate: place.coordinate) }
+            if let time {
+                entry.createdAt = time
+                entry.clearWeather()
+            }
+            onSetPlace()
+            dismiss()
+        }
+    }
+
     /// An entry at a place the user spent time, dated when they got there, opened over the sheet. Its
     /// place is provisional, so it's discarded if nothing else is added (`EntryEditorView`).
     private func startEntry(name: String, coordinate: CLLocationCoordinate2D, time: Date) {
+        startEntry(at: time, place: (name, coordinate))
+    }
+
+    /// Also for an event, which may have no place.
+    private func startEntry(at time: Date, place: (name: String, coordinate: CLLocationCoordinate2D)?) {
         let entry = Entry.create(in: context, at: time)
-        entry.setPlace(name: name, coordinate: coordinate)
+        if let place { entry.setPlace(name: place.name, coordinate: place.coordinate) }
         startedEntry = entry.persistentModelID
         show(entry)
     }
