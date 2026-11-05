@@ -40,6 +40,11 @@ final class LocationService: NSObject, CLLocationManagerDelegate {
         if isAuthorized { manager.requestLocation() }
     }
 
+    /// Whether iOS will still show its prompt: it hasn't been asked yet.
+    var canAsk: Bool {
+        manager.authorizationStatus == .notDetermined
+    }
+
     /// Asks for permission if it hasn't been asked yet; true when location is allowed.
     func requestAuthorization() async -> Bool {
         if manager.authorizationStatus == .notDetermined {

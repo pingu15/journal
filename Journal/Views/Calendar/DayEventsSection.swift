@@ -21,7 +21,7 @@ struct DayEventsSection: View {
         Section {
             switch status {
             case .notDetermined:
-                AccessOffNote("Calendar access") {
+                AccessOffNote("Calendar access", canAsk: true) {
                     Task {
                         _ = await CalendarEvents.requestAccess()
                         status = CalendarEvents.status
@@ -40,7 +40,7 @@ struct DayEventsSection: View {
                 }
             default:
                 // Refused before: iOS won't ask again, so its Settings it is.
-                AccessOffNote("Calendar access") { openURL(.appSettings) }
+                AccessOffNote("Calendar access", canAsk: false) { openURL(.appSettings) }
             }
         } header: {
             MetaLabel("Events", systemImage: "calendar")

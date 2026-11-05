@@ -467,25 +467,34 @@ extension View {
 
 /// An entry as a row of a popup's inset-grouped list (the day sheet, a map group): highlighted while
 /// touched like any list row.
-/// A day sheet section's note when it can't show anything yet ("Photo access is off for Journal.
-/// Grant Access"). `action` asks for access in place; only once it has been refused (iOS asks just
-/// once) does it open iOS's Settings instead.
+/// A day sheet section's note when it can't show anything yet: "Photo access is off for Journal.
+/// Grant Access" while Journal hasn't asked (`canAsk`: the action asks in place), "Open Settings"
+/// once it has, as iOS asks only once (the action opens iOS's Settings).
 struct AccessOffNote: View {
     let subject: String
+    let canAsk: Bool
     let action: () -> Void
 
-    init(_ subject: String, action: @escaping () -> Void) {
+    init(_ subject: String, canAsk: Bool, action: @escaping () -> Void) {
         self.subject = subject
+        self.canAsk = canAsk
         self.action = action
     }
 
     var body: some View {
         Button(action: action) {
-            Text("\(subject) is off for Journal. ") + Text("Grant Access").underline()
+            Text("\(subject) is off for Journal. ") + Text(AccessLink.title(canAsk: canAsk)).underline()
         }
         .font(Typography.note)
         .foregroundStyle(Theme.secondaryText)
         .multilineTextAlignment(.leading)
+    }
+}
+
+/// The link at the end of a note saying some access is off.
+enum AccessLink {
+    static func title(canAsk: Bool) -> String {
+        canAsk ? "Grant Access" : "Open Settings"
     }
 }
 

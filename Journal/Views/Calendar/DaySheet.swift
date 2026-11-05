@@ -274,7 +274,7 @@ private struct DayPhotos: View {
         VStack(alignment: .leading, spacing: 0) {
             switch status {
             case .notDetermined:
-                AccessOffNote("Photo access") {
+                AccessOffNote("Photo access", canAsk: true) {
                     Task {
                         status = await PhotoLibrary.requestAccess()
                         assets = PhotoLibrary.photos(on: day)
@@ -282,7 +282,7 @@ private struct DayPhotos: View {
                 }
             case .denied, .restricted:
                 // Refused before: iOS won't ask again, so its Settings it is.
-                AccessOffNote("Photo access") { openURL(.appSettings) }
+                AccessOffNote("Photo access", canAsk: false) { openURL(.appSettings) }
             default:
                 if assets.isEmpty {
                     Text("No photos from this day.")

@@ -82,19 +82,15 @@ struct DayPlacesSection: View {
                 ForEach(stays) { stay in
                     row(stay)
                 }
-            } else if !tracking {
-                // Turns tracking on (as Settings' switch does), asking for location the first time.
-                AccessOffNote("Place tracking") {
-                    Task {
-                        authorized = await PlaceTracker.shared.enable()
-                        if !authorized { openURL(.appSettings) }
-                    }
-                }
-            } else if !authorized {
-                AccessOffNote("Location access") {
-                    Task {
-                        authorized = await PlaceTracker.shared.enable()
-                        if !authorized { openURL(.appSettings) }
+            } else if !tracking || !authorized {
+                // Turns tracking on (as Settings' switch does), asking for location if it hasn't yet;
+                // refused before, only iOS's Settings can allow it.
+                let canAsk = LocationService.shared.canAsk || authorized
+                AccessOffNote(tracking ? "Location access" : "Place tracking", canAsk: canAsk) {
+                    if canAsk {
+                        Task { authorized = await PlaceTracker.shared.enable() }
+                    } else {
+                        openURL(.appSettings)
                     }
                 }
             } else {

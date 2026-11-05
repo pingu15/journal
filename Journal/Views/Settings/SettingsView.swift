@@ -15,6 +15,8 @@ struct SettingsView: View {
     @AppStorage(LocationService.autoTagKey) private var autoTagLocation = false
     @AppStorage(PlaceTracker.enabledKey) private var trackPlaces = false
     @State private var notificationsDenied = false
+    /// Notifications haven't been asked for yet, so the note can ask rather than send the user away.
+    @State private var notificationsCanAsk = false
     @State private var locationDenied = false
 
     var body: some View {
@@ -64,9 +66,13 @@ struct SettingsView: View {
                 } footer: {
                     if notificationsDenied {
                         Button {
-                            if let url = URL(string: UIApplication.openSettingsURLString) { openURL(url) }
+                            if notificationsCanAsk {
+                                Task { await askForNotifications() }
+                            } else if let url = URL(string: UIApplication.openSettingsURLString) {
+                                openURL(url)
+                            }
                         } label: {
-                            Text("Notifications are off. ") + Text("Open Settings").underline()
+                            Text("Notifications are off. ") + Text(AccessLink.title(canAsk: notificationsCanAsk)).underline()
                         }
                         // A button takes the body size; set like the other footers.
                         .font(.footnote)
@@ -134,6 +140,7 @@ struct SettingsView: View {
             .task(id: scenePhase) {
                 guard scenePhase == .active else { return }
                 notificationsDenied = reminderEnabled ? !(await ReminderScheduler.isAllowed()) : false
+                notificationsCanAsk = await ReminderScheduler.canAsk()
             }
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
@@ -173,13 +180,17 @@ struct SettingsView: View {
             // On whatever iOS says; with notifications off, the note says so and it's scheduled
             // once they're on (`ReminderScheduler.refresh`).
             withAnimation { reminderEnabled = true }
-            Task {
-                let allowed = await ReminderScheduler.requestAuthorization()
-                notificationsDenied = !allowed
-                if allowed {
-                    await ReminderScheduler.schedule(minutesAfterMidnight: reminderMinutes)
-                }
-            }
+            Task { await askForNotifications() }
+        }
+    }
+
+    /// Asks iOS (it shows its prompt only the first time) and schedules the reminder if allowed.
+    private func askForNotifications() async {
+        let allowed = await ReminderScheduler.requestAuthorization()
+        notificationsDenied = !allowed
+        notificationsCanAsk = await ReminderScheduler.canAsk()
+        if allowed {
+            await ReminderScheduler.schedule(minutesAfterMidnight: reminderMinutes)
         }
     }
 

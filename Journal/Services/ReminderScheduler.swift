@@ -17,6 +17,11 @@ enum ReminderScheduler {
         }
     }
 
+    /// Whether iOS will still show its prompt: it hasn't been asked yet.
+    static func canAsk() async -> Bool {
+        await UNUserNotificationCenter.current().notificationSettings().authorizationStatus == .notDetermined
+    }
+
     /// Whether iOS lets the app show notifications at all.
     static func isAllowed() async -> Bool {
         let status = await UNUserNotificationCenter.current().notificationSettings().authorizationStatus
