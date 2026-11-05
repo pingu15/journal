@@ -3,7 +3,8 @@ import SwiftData
 import SwiftUI
 
 /// Every photo and video in the journal, newest entry first, two to a row as squares, each with its
-/// entry's date in the corner. Tapping one opens its entry.
+/// entry's date in the corner, under a filter for all of them, photos or videos. Tapping one opens
+/// its entry.
 struct MediaView: View {
     @Environment(\.modelContext) private var context
     @Environment(AppRouter.self) private var router
@@ -11,6 +12,7 @@ struct MediaView: View {
     private var entries: [Entry]
 
     @State private var path: [Entry] = []
+    @State private var filter = MediaFilter.all
 
     /// A hairline between photos, which otherwise run edge to edge.
     private static let gap: CGFloat = 1
@@ -19,11 +21,21 @@ struct MediaView: View {
     /// Each entry's photos and videos in the order they appear in it, as the filter allows.
     private var media: [(entry: Entry, photo: Attachment)] {
         entries.flatMap { entry in entry.photos.map { (entry, $0) } }
+            .filter { filter.includes($0.photo) }
     }
 
     var body: some View {
         NavigationStack(path: $path) {
             ScrollView {
+                Picker("Show", selection: $filter) {
+                    ForEach(MediaFilter.allCases) { Text($0.title).tag($0) }
+                }
+                .pickerStyle(.segmented)
+                .padding(.horizontal, Spacing.content)
+                // Clear of the grabber at the card's top.
+                .padding(.top, Spacing.l)
+                .padding(.bottom, Spacing.m)
+
                 LazyVGrid(columns: columns, spacing: Self.gap) {
                     ForEach(media, id: \.photo.identifier) { item in
                         Button {
@@ -34,14 +46,12 @@ struct MediaView: View {
                         .buttonStyle(TapPressStyle(scale: 0.97))
                     }
                 }
-                // Clear of the grabber at the card's top.
-                .padding(.top, Spacing.l)
             }
             // Room for the floating tab bar below the last row, as the journal leaves.
             .contentMargins(.bottom, 96, for: .scrollContent)
             .overlay {
                 if media.isEmpty {
-                    EmptyState(title: "Nothing here yet", systemImage: "photo.on.rectangle", message: "Photos and videos you add to entries appear here.")
+                    EmptyState(title: filter.emptyTitle, systemImage: filter.symbol, message: filter.emptyMessage)
                 }
             }
             .pageTitle()
@@ -157,3 +167,45 @@ private enum MediaImages {
     }
 }
 
+/// What Media shows.
+private enum MediaFilter: String, CaseIterable, Identifiable {
+    case all, photos, videos
+
+    var id: Self { self }
+
+    var title: String {
+        switch self {
+        case .all: "All"
+        case .photos: "Photos"
+        case .videos: "Videos"
+        }
+    }
+
+    func includes(_ attachment: Attachment) -> Bool {
+        switch self {
+        case .all: true
+        case .photos: !attachment.isVideo
+        case .videos: attachment.isVideo
+        }
+    }
+
+    var symbol: String {
+        self == .videos ? "video" : "photo.on.rectangle"
+    }
+
+    var emptyTitle: String {
+        switch self {
+        case .all: "Nothing here yet"
+        case .photos: "No photos yet"
+        case .videos: "No videos yet"
+        }
+    }
+
+    var emptyMessage: String {
+        switch self {
+        case .all: "Photos and videos you add to entries appear here."
+        case .photos: "Photos you add to entries appear here."
+        case .videos: "Videos you add to entries appear here."
+        }
+    }
+}
