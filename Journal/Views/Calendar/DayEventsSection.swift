@@ -2,7 +2,7 @@ import EventKit
 import SwiftUI
 
 /// The day sheet's Events section: the day's events from the user's calendars, laid out like the
-/// Places section's stays (name, then times, with how long beside them). Calendar access is asked
+/// Places section's stays (its title, then its location, with its times beside them). Calendar access is asked
 /// for from a row the first time.
 struct DayEventsSection: View {
     let day: Date
@@ -47,6 +47,7 @@ struct DayEventsSection: View {
         }
     }
 
+    /// Its title over its location (when it has one), with its times beside them.
     private func row(_ event: EKEvent) -> some View {
         HStack(spacing: Spacing.s) {
             VStack(alignment: .leading, spacing: 2) {
@@ -54,18 +55,28 @@ struct DayEventsSection: View {
                     .font(Typography.body)
                     .foregroundStyle(Theme.primaryText)
                     .lineLimit(1)
-                Text(times(of: event))
-                    .font(Typography.detail)
-                    .foregroundStyle(Theme.secondaryText)
+                if let location = location(of: event) {
+                    Text(location)
+                        .font(Typography.detail)
+                        .foregroundStyle(Theme.secondaryText)
+                        .lineLimit(1)
+                }
             }
             Spacer(minLength: Spacing.s)
-            if !event.isAllDay {
-                Text(Duration.seconds(event.endDate.timeIntervalSince(event.startDate)).formatted(.units(allowed: [.hours, .minutes], width: .abbreviated)))
-                    .font(Typography.detail)
-                    .foregroundStyle(Theme.secondaryText)
-            }
+            Text(times(of: event))
+                .font(Typography.detail)
+                .foregroundStyle(Theme.secondaryText)
+                .layoutPriority(1)
         }
         .accessibilityElement(children: .combine)
+    }
+
+    /// Its first line: a location is often a name over a full address.
+    private func location(of event: EKEvent) -> String? {
+        let line = event.location?.split(whereSeparator: \.isNewline).first.map {
+            $0.trimmingCharacters(in: .whitespaces)
+        }
+        return line?.isEmpty == false ? line : nil
     }
 
     private func times(of event: EKEvent) -> String {
