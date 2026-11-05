@@ -19,6 +19,8 @@ struct EntryEditorView: View {
     @State private var choosingPhotos = false
     @State private var pickerItems: [PhotosPickerItem] = []
     @State private var viewingPhoto: PhotoSelection?
+    /// Videos being added: re-encoding one takes a while, so a note says so meanwhile.
+    @State private var addingVideos = 0
     @State private var isEditing = false
     @AppStorage(LocationService.autoTagKey) private var autoTagLocation = false
     /// The place was added automatically, not chosen; an entry with nothing else is still discarded.
@@ -63,6 +65,22 @@ struct EntryEditorView: View {
             }
         }
         .animation(.easeOut(duration: 0.2), value: isEditing)
+        .overlay(alignment: .top) {
+            if addingVideos > 0 {
+                HStack(spacing: Spacing.s) {
+                    ProgressView()
+                    Text(addingVideos == 1 ? "Adding video…" : "Adding \(addingVideos) videos…")
+                        .font(Typography.note)
+                        .foregroundStyle(Theme.primaryText)
+                }
+                .padding(.horizontal, Spacing.m)
+                .padding(.vertical, Spacing.s)
+                .glassBackground(in: .capsule)
+                .padding(.top, Spacing.s)
+                .transition(.opacity.combined(with: .move(edge: .top)))
+            }
+        }
+        .animation(.snappy, value: addingVideos)
         .background(Theme.background.ignoresSafeArea())
         .navigationBarTitleDisplayMode(.inline)
         .hidesBackButtonMenu()
@@ -92,7 +110,7 @@ struct EntryEditorView: View {
                 }
             }
         }
-        .photosPicker(isPresented: $choosingPhotos, selection: $pickerItems, maxSelectionCount: 10, matching: .images)
+        .photosPicker(isPresented: $choosingPhotos, selection: $pickerItems, maxSelectionCount: 10, matching: .any(of: [.images, .videos]))
         .onChange(of: pickerItems) { _, items in
             guard !items.isEmpty else { return }
             Task { await importPhotos(items) }
@@ -167,19 +185,50 @@ struct EntryEditorView: View {
     }
 
     private func image(for id: UUID) -> UIImage? {
-        guard let data = (entry.attachments ?? []).first(where: { $0.identifier == id })?.imageData else { return nil }
-        return UIImage(data: data)
+        guard let attachment = (entry.attachments ?? []).first(where: { $0.identifier == id }) else { return nil }
+        return Self.picture(of: attachment)
     }
 
+    /// What the text shows for a photo or video: a video's first frame carries a play button.
+    private static func picture(of attachment: Attachment) -> UIImage? {
+        guard let image = attachment.imageData.flatMap(UIImage.init(data:)) else { return nil }
+        return attachment.isVideo ? VideoProcessing.badged(image, duration: attachment.videoDuration) : image
+    }
+
+    /// Photos and videos from the library, in the order picked.
     private func importPhotos(_ items: [PhotosPickerItem]) async {
         pickerItems = []
-        var data: [Data] = []
+        var inserted: [(id: UUID, image: UIImage)] = []
         for item in items {
-            if let loaded = try? await item.loadTransferable(type: Data.self) {
-                data.append(loaded)
+            let attachment: Attachment?
+            if item.supportedContentTypes.contains(where: { $0.conforms(to: .movie) }) {
+                attachment = await importVideo(item)
+            } else if let data = try? await item.loadTransferable(type: Data.self),
+                      let prepared = await ImageProcessing.prepare(data) {
+                attachment = Attachment(imageData: prepared.full, thumbnailData: prepared.thumbnail)
+            } else {
+                attachment = nil
+            }
+            guard let attachment else { continue }
+            context.insert(attachment)
+            attachment.entry = entry
+            if let image = Self.picture(of: attachment) {
+                inserted.append((attachment.identifier, image))
             }
         }
-        await importImageData(data)
+        editor.insertImages(inserted)
+    }
+
+    private func importVideo(_ item: PhotosPickerItem) async -> Attachment? {
+        addingVideos += 1
+        defer { addingVideos -= 1 }
+        guard let movie = try? await item.loadTransferable(type: PickedMovie.self),
+              let prepared = await VideoProcessing.prepare(movie.url)
+        else { return nil }
+        let attachment = Attachment(imageData: prepared.poster.full, thumbnailData: prepared.poster.thumbnail)
+        attachment.videoData = prepared.video
+        attachment.videoDuration = prepared.duration
+        return attachment
     }
 
     private func importImageData(_ images: [Data]) async {
@@ -202,15 +251,14 @@ struct EntryEditorView: View {
         let alreadyInText = Markdown.imageIDs(in: entry.text).contains(id)
         let source: Attachment?
         if let own = (entry.attachments ?? []).first(where: { $0.identifier == id }), !alreadyInText {
-            return own.imageData.flatMap(UIImage.init(data:)).map { (id, $0) }
+            return Self.picture(of: own).map { (id, $0) }
         } else if let own = (entry.attachments ?? []).first(where: { $0.identifier == id }) {
             source = own
         } else {
             let descriptor = FetchDescriptor<Attachment>(predicate: #Predicate { $0.identifier == id })
             source = try? context.fetch(descriptor).first
         }
-        guard let source, let data = source.imageData, let image = UIImage(data: data) else { return nil }
-        let copy = Attachment(imageData: data, thumbnailData: source.thumbnailData ?? data)
+        guard let copy = source?.duplicate(), let image = Self.picture(of: copy) else { return nil }
         context.insert(copy)
         copy.entry = entry
         return (copy.identifier, image)

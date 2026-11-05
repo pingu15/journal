@@ -1,15 +1,21 @@
+import AVKit
 import Photos
 import SwiftUI
 
-/// A photo the viewer shows: one of an entry's, or one from the photo library.
+/// A photo the viewer shows: one of an entry's, or one from the photo library. An entry's video
+/// (`video`) plays in its place.
 struct ViewerPhoto<ID: Hashable>: Identifiable {
     let id: ID
+    var video: (() -> URL?)? = nil
     let load: () async -> UIImage?
 }
 
 extension ViewerPhoto where ID == UUID {
     init(_ attachment: Attachment) {
-        self.init(id: attachment.identifier) { attachment.imageData.flatMap(UIImage.init(data:)) }
+        self.init(
+            id: attachment.identifier,
+            video: attachment.isVideo ? { VideoProcessing.playableURL(for: attachment) } : nil
+        ) { attachment.imageData.flatMap(UIImage.init(data:)) }
     }
 }
 
@@ -55,6 +61,10 @@ struct PhotoViewer<ID: Hashable>: View {
 
             TabView(selection: $selection) {
                 ForEach(photos) { photo in
+                    if let video = photo.video {
+                        VideoPage(url: video, isCurrent: selection == photo.id)
+                            .tag(photo.id)
+                    } else {
                     FullImage(load: photo.load, onDragDown: { progress in
                         // A cancelled swipe springs back; bring the backdrop back with it.
                         if progress == 0 {
@@ -64,6 +74,7 @@ struct PhotoViewer<ID: Hashable>: View {
                         }
                     }) { dismiss() }
                         .tag(photo.id)
+                    }
                 }
             }
             .tabViewStyle(.page(indexDisplayMode: photos.count > 1 ? .automatic : .never))
@@ -87,7 +98,7 @@ struct PhotoViewer<ID: Hashable>: View {
                             onSetCover(selection)
                         }
                         .disabled(currentCover == selection)
-                        Button("Delete Photo", systemImage: "trash", role: .destructive) {
+                        Button(isVideo ? "Delete Video" : "Delete Photo", systemImage: "trash", role: .destructive) {
                             confirmingDelete = true
                         }
                     } label: {
@@ -103,7 +114,7 @@ struct PhotoViewer<ID: Hashable>: View {
         }
         // An alert rather than a confirmation dialog: the dialog's glass took on the photo's colors
         // and was hard to read, and had no Cancel.
-        .alert("Delete this photo?", isPresented: $confirmingDelete) {
+        .alert(isVideo ? "Delete this video?" : "Delete this photo?", isPresented: $confirmingDelete) {
             Button("Cancel", role: .cancel) {}
             Button("Delete", role: .destructive, action: deleteCurrent)
         } message: {
@@ -113,6 +124,10 @@ struct PhotoViewer<ID: Hashable>: View {
         .statusBarHidden()
         // Lets the editor (or day sheet) show through as the photo is swiped down.
         .presentationBackground(.clear)
+    }
+
+    private var isVideo: Bool {
+        photos.first { $0.id == selection }?.video != nil
     }
 
     private func deleteCurrent() {
@@ -125,6 +140,28 @@ struct PhotoViewer<ID: Hashable>: View {
         } else {
             selection = photos[min(index, photos.count - 1)].id
         }
+    }
+}
+
+/// A video, playing with the system's controls while it's the page shown, paused when swiped away.
+private struct VideoPage: View {
+    let url: () -> URL?
+    let isCurrent: Bool
+
+    @State private var player: AVPlayer?
+
+    var body: some View {
+        VideoPlayer(player: player)
+            .ignoresSafeArea()
+            .task {
+                guard player == nil, let url = url() else { return }
+                player = AVPlayer(url: url)
+                if isCurrent { player?.play() }
+            }
+            .onChange(of: isCurrent) { _, current in
+                if current { player?.play() } else { player?.pause() }
+            }
+            .onDisappear { player?.pause() }
     }
 }
 

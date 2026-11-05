@@ -2,8 +2,8 @@ import ImageIO
 import SwiftData
 import SwiftUI
 
-/// Every photo in the journal, newest entry first, two to a row as squares, each with its entry's
-/// date in the corner. Tapping one opens its entry.
+/// Every photo and video in the journal, newest entry first, two to a row as squares, each with its
+/// entry's date in the corner. Tapping one opens its entry.
 struct MediaView: View {
     @Environment(\.modelContext) private var context
     @Environment(AppRouter.self) private var router
@@ -16,7 +16,7 @@ struct MediaView: View {
     private static let gap: CGFloat = 1
     private let columns = [GridItem(.flexible(), spacing: gap), GridItem(.flexible(), spacing: gap)]
 
-    /// Each entry's photos in the order they appear in it.
+    /// Each entry's photos and videos in the order they appear in it, as the filter allows.
     private var media: [(entry: Entry, photo: Attachment)] {
         entries.flatMap { entry in entry.photos.map { (entry, $0) } }
     }
@@ -41,7 +41,7 @@ struct MediaView: View {
             .contentMargins(.bottom, 96, for: .scrollContent)
             .overlay {
                 if media.isEmpty {
-                    EmptyState(title: "No photos yet", systemImage: "photo.on.rectangle", message: "Photos you add to entries appear here.")
+                    EmptyState(title: "Nothing here yet", systemImage: "photo.on.rectangle", message: "Photos and videos you add to entries appear here.")
                 }
             }
             .pageTitle()
@@ -89,6 +89,21 @@ private struct MediaTile: View {
                 }
             }
             .clipped()
+            // A video's length, with a play mark, in the top-left corner.
+            .overlay(alignment: .topLeading) {
+                if photo.isVideo {
+                    HStack(spacing: Spacing.xs) {
+                        Image(systemName: "play.fill")
+                        if let duration = photo.videoDuration {
+                            Text(VideoProcessing.formatted(duration))
+                        }
+                    }
+                    .font(Typography.mediaMonth)
+                    .foregroundStyle(.white.opacity(0.85))
+                    .shadow(color: .black.opacity(0.35), radius: 4)
+                    .padding(Spacing.m)
+                }
+            }
             .overlay(alignment: .bottomTrailing) {
                 VStack(alignment: .trailing, spacing: 0) {
                     Text(date.formatted(.dateTime.day(.twoDigits)))
@@ -109,7 +124,7 @@ private struct MediaTile: View {
                 if let sharp = await MediaImages.load(photo.identifier, from: data) { image = sharp }
             }
             .accessibilityElement()
-            .accessibilityLabel("Photo, \(date.formatted(date: .long, time: .omitted))")
+            .accessibilityLabel("\(photo.isVideo ? "Video" : "Photo"), \(date.formatted(date: .long, time: .omitted))")
             .accessibilityAddTraits(.isButton)
     }
 }
@@ -141,3 +156,4 @@ private enum MediaImages {
         return UIImage(cgImage: cgImage)
     }
 }
+
