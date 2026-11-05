@@ -480,14 +480,18 @@ private extension View {
             .scrollDismissesKeyboard(.immediately)
             // Room for the floating tab bar and new-entry button below the last row.
             .contentMargins(.bottom, bottomMargin, for: .scrollContent)
-            // Where its content starts: below a bar it runs under (a sheet's), which is also where
-            // the pinned label is drawn, as the overlay keeps to the safe area.
-            .onGeometryChange(for: CGFloat.self) { $0.frame(in: .global).minY + $0.safeAreaInsets.top - raisedBy } action: { tops.listTop = $0 }
             .overlay {
                 // Clipped to the list, so a label pushed up out of it doesn't show above the card.
                 Color.clear
                     .overlay(alignment: .top) {
-                        PinnedSectionLabel(sections: sections, labelTops: tops)
+                        VStack(spacing: 0) {
+                            PinnedSectionLabel(sections: sections, labelTops: tops)
+                        }
+                        .frame(maxWidth: .infinity)
+                        // The list's top is where the pinned label is drawn, measured there: worked
+                        // out from the list's frame and safe area, it came out lower than the label
+                        // in a sheet at full height, so labels pinned late, leaving a gap with none.
+                        .onGeometryChange(for: CGFloat.self) { $0.frame(in: .global).minY } action: { tops.listTop = $0 }
                     }
                     // Raised with the list's content (and clipped that far up).
                     .padding(.top, -raisedBy)
