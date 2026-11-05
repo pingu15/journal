@@ -1,5 +1,6 @@
 import SwiftData
 import SwiftUI
+import UIKit
 
 @main
 struct JournalApp: App {
@@ -48,26 +49,26 @@ struct RootView: View {
 
     var body: some View {
         TabView(selection: Binding(get: { router.selectedTab }, set: { router.selectedTab = $0 })) {
-            // Icons only; the names stay as accessibility labels.
+            // Each with its name under its icon, as iOS lays them out (smaller icons, room around each).
             Tab(value: .journal) {
                 EntriesView()
             } label: {
-                TabIcon(name: "Journal", symbol: "book.closed")
+                TabLabel(name: "Journal", symbol: "book.closed")
             }
             Tab(value: .calendar) {
                 CalendarView()
             } label: {
-                TabIcon(name: "Calendar", symbol: "calendar")
-            }
-            Tab(value: .map) {
-                MapView()
-            } label: {
-                TabIcon(name: "Map", symbol: "map")
+                TabLabel(name: "Calendar", symbol: "calendar")
             }
             Tab(value: .media) {
                 MediaView()
             } label: {
-                TabIcon(name: "Media", symbol: "photo.on.rectangle")
+                TabLabel(name: "Media", symbol: "photo.on.rectangle")
+            }
+            Tab(value: .map) {
+                MapView()
+            } label: {
+                TabLabel(name: "Map", symbol: "map")
             }
         }
         .tint(Theme.primaryText)
@@ -113,12 +114,30 @@ struct RootView: View {
     }
 }
 
-private struct TabIcon: View {
+/// A tab's name under its icon. The tab bar draws every icon at one size, so the icon is drawn a
+/// size smaller inside a clear square of that size, leaving room around it.
+private struct TabLabel: View {
     let name: String
     let symbol: String
 
     var body: some View {
-        Image(systemName: symbol)
-            .accessibilityLabel(name)
+        Label {
+            Text(name)
+        } icon: {
+            Image(uiImage: Self.icon(symbol))
+        }
+    }
+
+    private static func icon(_ symbol: String) -> UIImage {
+        let configuration = UIImage.SymbolConfiguration(pointSize: 18, weight: .medium)
+        guard let glyph = UIImage(systemName: "\(symbol).fill", withConfiguration: configuration)
+            ?? UIImage(systemName: symbol, withConfiguration: configuration)
+        else { return UIImage() }
+        let side: CGFloat = 30
+        let canvas = CGSize(width: side, height: side)
+        let image = UIGraphicsImageRenderer(size: canvas).image { _ in
+            glyph.draw(at: CGPoint(x: (side - glyph.size.width) / 2, y: (side - glyph.size.height) / 2))
+        }
+        return image.withRenderingMode(.alwaysTemplate)
     }
 }
