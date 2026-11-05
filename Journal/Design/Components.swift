@@ -53,6 +53,9 @@ extension PrimitiveButtonStyle where Self == AccentButtonStyle {
 struct TapPressStyle: PrimitiveButtonStyle {
     var scale: CGFloat = 0.92
 
+    /// A whole row's: less, as it's wide.
+    static let rowScale: CGFloat = 0.97
+
     /// How long a tap's press shows before its action.
     static var duration: Duration { .milliseconds(110) }
 
@@ -476,6 +479,7 @@ struct SheetEntryRow: View {
                 .padding(.vertical, Spacing.xs)
                 .contentShape(.rect)
         }
+        .buttonStyle(TapPressStyle(scale: TapPressStyle.rowScale))
     }
 }
 

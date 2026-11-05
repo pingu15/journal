@@ -194,6 +194,8 @@ struct DayPlacesSection: View {
             .contentShape(.rect)
             .accessibilityElement(children: .combine)
         }
+        // Pressed like the entries above it.
+        .buttonStyle(TapPressStyle(scale: TapPressStyle.rowScale))
         .accessibilityAddTraits(stay.id == selected ? .isSelected : [])
         .accessibilityHint(isNewEntry ? "Starts an entry here, at the time you got there" : "Sets this as the entry's place")
         // On each row, so it comes from the row tapped.
