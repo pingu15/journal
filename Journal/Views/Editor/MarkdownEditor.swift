@@ -453,6 +453,21 @@ final class MarkdownTextView: UITextView {
     }
 
     /// Taps on the header belong to the header's controls, not the text.
+    /// The empty line at the very end of the text takes the paragraph style of the line above, so
+    /// after a photo or video (whose line is centered) the caret sat centered. It starts at the
+    /// left margin, like any empty line.
+    override func caretRect(for position: UITextPosition) -> CGRect {
+        var rect = super.caretRect(for: position)
+        let text = textStorage.string as NSString
+        let offset = self.offset(from: beginningOfDocument, to: position)
+        if offset == text.length, text.length >= 2,
+           text.character(at: text.length - 1) == 0x0A,
+           text.character(at: text.length - 2) == 0xFFFC {
+            rect.origin.x = textContainerInset.left + textContainer.lineFragmentPadding
+        }
+        return rect
+    }
+
     override func gestureRecognizerShouldBegin(_ gestureRecognizer: UIGestureRecognizer) -> Bool {
         if gestureRecognizer !== panGestureRecognizer,
            headerHost.view.frame.contains(gestureRecognizer.location(in: self)) {
