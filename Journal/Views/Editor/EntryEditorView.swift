@@ -12,6 +12,7 @@ struct EntryEditorView: View {
 
     @State private var editor = MarkdownEditorController()
     @State private var isTrashed = false
+    @State private var confirmingDelete = false
     @State private var editingDate = false
     @State private var editingLocation = false
     @State private var viewingDay = false
@@ -65,14 +66,15 @@ struct EntryEditorView: View {
         .background(Theme.background.ignoresSafeArea())
         .navigationBarTitleDisplayMode(.inline)
         .hidesBackButtonMenu()
+        .deleteEntryAlert(isPresented: $confirmingDelete, action: moveToTrash)
         .toolbar {
             ToolbarItem(placement: .topBarTrailing) {
                 Menu("More", systemImage: "ellipsis") {
                     Section {
                         Button("View Day", systemImage: "calendar") { viewingDay = true }
                         Button("Share", systemImage: "square.and.arrow.up", action: sharePDF)
-                        // Straight to Recently Deleted, as from the list: it can be restored there.
-                        Button("Delete Entry", systemImage: "trash", role: .destructive, action: moveToTrash)
+                        // Asks first, as from the list.
+                        Button("Delete Entry", systemImage: "trash", role: .destructive) { confirmingDelete = true }
                     }
                     Section {
                         Text("\(entry.wordCount) words · \(entry.readingMinutes) min read")

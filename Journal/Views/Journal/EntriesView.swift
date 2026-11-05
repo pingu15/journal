@@ -269,6 +269,7 @@ struct JournalEntryRow: View {
 
     @Environment(\.modelContext) private var context
     @State private var taps = 0
+    @State private var confirmingDelete = false
     /// When a row last started opening its entry: a tap on another row in the moment before the
     /// entry opens is ignored, or both would open, one over the other.
     private static var openingSince = Date.distantPast
@@ -301,8 +302,9 @@ struct JournalEntryRow: View {
                 RowSwipeAction(title: "Share", symbol: "square.and.arrow.up", tint: Theme.accent, removesRow: false) {
                     Task { await ShareSheet.present(entry.shareText) }
                 },
-                RowSwipeAction(title: "Delete", symbol: "trash", tint: Theme.destructive) {
-                    moveToTrash()
+                // Leaves the row in place while it asks.
+                RowSwipeAction(title: "Delete", symbol: "trash", tint: Theme.destructive, removesRow: false) {
+                    confirmingDelete = true
                 },
             ]
         )
@@ -312,10 +314,11 @@ struct JournalEntryRow: View {
             if swipedOpen != entry.persistentModelID {
                 ShareLink(item: entry.shareText)
                 Button("Delete", systemImage: "trash", role: .destructive) {
-                    moveToTrash()
+                    confirmingDelete = true
                 }
             }
         }
+        .deleteEntryAlert(isPresented: $confirmingDelete, action: moveToTrash)
     }
 
     /// Saved in the animation too: that's what takes the row out of the list.
@@ -323,6 +326,18 @@ struct JournalEntryRow: View {
         withAnimation {
             entry.moveToTrash()
             try? context.save()
+        }
+    }
+}
+
+extension View {
+    /// Asks before an entry goes to Recently Deleted, from a list or the editor.
+    func deleteEntryAlert(isPresented: Binding<Bool>, action: @escaping () -> Void) -> some View {
+        alert("Delete this entry?", isPresented: isPresented) {
+            Button("Cancel", role: .cancel) {}
+            Button("Delete", role: .destructive, action: action)
+        } message: {
+            Text("It will stay in Recently Deleted for \(Entry.trashRetentionDays) days.")
         }
     }
 }
