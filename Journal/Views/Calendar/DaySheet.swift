@@ -274,23 +274,15 @@ private struct DayPhotos: View {
         VStack(alignment: .leading, spacing: 0) {
             switch status {
             case .notDetermined:
-                Button {
+                // iOS's Settings has no switch for Journal until it has asked once.
+                AccessOffNote("Photo access") {
                     Task {
                         status = await PhotoLibrary.requestAccess()
                         assets = PhotoLibrary.photos(on: day)
                     }
-                } label: {
-                    AccessPromptLabel("Show photos from your library", systemImage: "photo.on.rectangle")
                 }
             case .denied, .restricted:
-                Button {
-                    if let url = URL(string: UIApplication.openSettingsURLString) { openURL(url) }
-                } label: {
-                    Text("Photo access is off for Journal. ") + Text("Open Settings").underline()
-                }
-                .font(Typography.note)
-                .foregroundStyle(Theme.secondaryText)
-                .multilineTextAlignment(.leading)
+                AccessOffNote("Photo access") { openURL(.appSettings) }
             default:
                 if assets.isEmpty {
                     Text("No photos from this day.")

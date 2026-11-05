@@ -21,14 +21,13 @@ struct DayEventsSection: View {
         Section {
             switch status {
             case .notDetermined:
-                Button {
+                // iOS's Settings has no switch for Journal until it has asked once.
+                AccessOffNote("Calendar access") {
                     Task {
                         _ = await CalendarEvents.requestAccess()
                         status = CalendarEvents.status
                         events = CalendarEvents.events(on: day)
                     }
-                } label: {
-                    AccessPromptLabel("Show events from your calendar", systemImage: "calendar")
                 }
             case .fullAccess:
                 if events.isEmpty {
@@ -41,14 +40,7 @@ struct DayEventsSection: View {
                     }
                 }
             default:
-                Button {
-                    if let url = URL(string: UIApplication.openSettingsURLString) { openURL(url) }
-                } label: {
-                    Text("Calendar access is off for Journal. ") + Text("Open Settings").underline()
-                }
-                .font(Typography.note)
-                .foregroundStyle(Theme.secondaryText)
-                .multilineTextAlignment(.leading)
+                AccessOffNote("Calendar access") { openURL(.appSettings) }
             }
         } header: {
             MetaLabel("Events", systemImage: "calendar")

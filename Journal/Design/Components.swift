@@ -467,23 +467,31 @@ extension View {
 
 /// An entry as a row of a popup's inset-grouped list (the day sheet, a map group): highlighted while
 /// touched like any list row.
-/// A day sheet section's one-row request for access (Places, Events, Photos): set like the section's
-/// notes ("No photos from this day."), so it's no taller than one, in primary text so it reads as
-/// something to tap.
-struct AccessPromptLabel: View {
-    let title: String
-    let systemImage: String
+/// A day sheet section's note when it can't show anything yet ("Photo access is off for Journal.
+/// Open Settings"), worded like Settings' own. `action` opens iOS's Settings, or first asks, where
+/// iOS has no switch to show until Journal has asked.
+struct AccessOffNote: View {
+    let subject: String
+    let action: () -> Void
 
-    init(_ title: String, systemImage: String) {
-        self.title = title
-        self.systemImage = systemImage
+    init(_ subject: String, action: @escaping () -> Void) {
+        self.subject = subject
+        self.action = action
     }
 
     var body: some View {
-        Label(title, systemImage: systemImage)
-            .font(Typography.note)
-            .foregroundStyle(Theme.primaryText)
+        Button(action: action) {
+            Text("\(subject) is off for Journal. ") + Text("Open Settings").underline()
+        }
+        .font(Typography.note)
+        .foregroundStyle(Theme.secondaryText)
+        .multilineTextAlignment(.leading)
     }
+}
+
+extension URL {
+    /// Journal's page in iOS's Settings.
+    static let appSettings = URL(string: UIApplication.openSettingsURLString)!
 }
 
 struct SheetEntryRow: View {

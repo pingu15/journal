@@ -83,19 +83,15 @@ struct DayPlacesSection: View {
                     row(stay)
                 }
             } else if !tracking {
-                Button {
-                    Task { authorized = await PlaceTracker.shared.enable() }
-                } label: {
-                    AccessPromptLabel("Track the places you go", systemImage: "mappin.and.ellipse")
+                // Turns tracking on (as Settings' switch does), asking for location the first time.
+                AccessOffNote("Place tracking") {
+                    Task {
+                        authorized = await PlaceTracker.shared.enable()
+                        if !authorized { openURL(.appSettings) }
+                    }
                 }
             } else if !authorized {
-                Button {
-                    if let url = URL(string: UIApplication.openSettingsURLString) { openURL(url) }
-                } label: {
-                    Text("Location access is off for Journal. ") + Text("Open Settings").underline()
-                }
-                .font(Typography.note)
-                .foregroundStyle(Theme.secondaryText)
+                AccessOffNote("Location access") { openURL(.appSettings) }
             } else {
                 Text("No places from this day.")
                     .font(Typography.note)
