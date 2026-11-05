@@ -120,9 +120,9 @@ private struct PlaceEntriesSheet: View {
 
     var body: some View {
         NavigationStack {
-            // Its month labels `Spacing.m` closer to the title: with nothing between them, a label's
-            // usual room above it read as a gap.
-            EntryMonthList(entries: entries, raisedBy: Spacing.m) { show($0) }
+            // Its month labels closer to the title: with nothing between them, a label's usual room
+            // above it read as a gap.
+            EntryMonthList(entries: entries, raisedBy: Spacing.m + Spacing.xs) { show($0) }
                 .background(Theme.background)
                 .sheetTitle(title)
                 // Solid, so rows pass cleanly under it and the pinned month label just below it.
@@ -131,6 +131,8 @@ private struct PlaceEntriesSheet: View {
         }
         .tint(Theme.primaryText)
         .presentationDetents([.medium, .large])
+        // The list scrolls at either height; only the grabber resizes the sheet.
+        .presentationContentInteraction(.scrolls)
         .sheetBackdrop(grabber: true)
         .fullScreenCover(item: $openEntry) { entry in
             EntryCover(entry: entry) { show(nil) }
