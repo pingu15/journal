@@ -268,20 +268,31 @@ struct JournalEntryRow: View {
     let open: () -> Void
 
     @Environment(\.modelContext) private var context
+    @State private var taps = 0
+    /// When a row last started opening its entry: a tap on another row in the moment before the
+    /// entry opens is ignored, or both would open, one over the other.
+    private static var openingSince = Date.distantPast
 
     var body: some View {
         Button {
             // A tap while a row is swiped open just closes it.
             if swipedOpen != nil {
                 swipedOpen = nil
-            } else {
-                open()
+            } else if Date.now.timeIntervalSince(Self.openingSince) > 0.5 {
+                // The press shows first, then the entry opens.
+                taps += 1
+                Self.openingSince = .now
+                Task {
+                    try? await Task.sleep(for: SwipeRowButtonStyle.tapDuration)
+                    open()
+                }
             }
         } label: {
             EntryRow(entry: entry, dateStyle: dateStyle)
                 .entryRowPadding()
         }
         .buttonStyle(SwipeRowButtonStyle())
+        .environment(\.rowTaps, taps)
         .rowSwipeActions(
             id: entry.persistentModelID,
             openRow: $swipedOpen,

@@ -35,13 +35,17 @@ extension EnvironmentValues {
     @Entry var rowIsSwiped = false
 }
 
-/// A row softly highlighted while it's touched, and, if it can be swiped, on through a swipe, which
-/// cancels the touch, until it closes again. A press also shrinks it a little, like a button's; a quick
-/// tap only does that, the highlight is for a touch held.
+/// A row softly highlighted while it's held, and, if it can be swiped, on through a swipe, which
+/// cancels the touch, until it closes again. A tap shrinks it a little and springs it back, like a
+/// button: set `rowTaps` (`tapped`), as a list delivers a quick tap's press and release together,
+/// which never shows as a press.
 struct SwipeRowButtonStyle: ButtonStyle {
     func makeBody(configuration: Configuration) -> some View {
         PressableRow(label: configuration.label, isPressed: configuration.isPressed)
     }
+
+    /// How long a tap's press shows before what it does (opening the entry) goes ahead.
+    static var tapDuration: Duration { .milliseconds(110) }
 }
 
 private struct PressableRow<Label: View>: View {
@@ -49,17 +53,12 @@ private struct PressableRow<Label: View>: View {
     let isPressed: Bool
 
     @Environment(\.rowIsSwiped) private var isSwiped
-    /// The press as shown: held a moment after a quick tap, which a list delivers as a press and a
-    /// release together, so it still shows.
-    @State private var showsPress = false
-    @State private var pressStart = Date.distantPast
-
-    /// The least time a press is shown for.
-    private static var minimumPress: TimeInterval { 0.12 }
+    @Environment(\.rowTaps) private var taps
+    @State private var showsTap = false
 
     var body: some View {
-        // The real press, not the one held for a quick tap.
         let isHighlighted = isPressed || isSwiped
+        let isShrunk = (isPressed || showsTap) && !isSwiped
 
         label
             .contentShape(.rect)
@@ -69,22 +68,21 @@ private struct PressableRow<Label: View>: View {
                     .opacity(isHighlighted ? 1 : 0)
                     .animation(.easeOut(duration: 0.15), value: isHighlighted)
             }
-            .scaleEffect(showsPress && !isSwiped ? 0.98 : 1)
-            .animation(.spring(duration: 0.25, bounce: 0.3), value: showsPress && !isSwiped)
-            .onChange(of: isPressed) { _, isPressed in
-                if isPressed {
-                    pressStart = .now
-                    showsPress = true
-                } else {
-                    let left = Self.minimumPress - Date.now.timeIntervalSince(pressStart)
-                    guard left > 0 else { showsPress = false; return }
-                    Task {
-                        try? await Task.sleep(for: .seconds(left))
-                        if !self.isPressed { showsPress = false }
-                    }
+            .scaleEffect(isShrunk ? 0.97 : 1)
+            .animation(.spring(duration: 0.25, bounce: 0.3), value: isShrunk)
+            .onChange(of: taps) {
+                showsTap = true
+                Task {
+                    try? await Task.sleep(for: SwipeRowButtonStyle.tapDuration)
+                    showsTap = false
                 }
             }
     }
+}
+
+extension EnvironmentValues {
+    /// Counts taps on the row around this, each shown as a press (`SwipeRowButtonStyle`).
+    @Entry var rowTaps = 0
 }
 
 private struct RowSwipe<ID: Hashable>: ViewModifier {
