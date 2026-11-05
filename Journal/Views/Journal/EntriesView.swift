@@ -320,6 +320,9 @@ struct JournalEntryRow: View {
 /// label pinned, rows that swipe open.
 struct EntryMonthList: View {
     let entries: [Entry]
+    /// How far its content (and the pinned label) starts above where the list would put it: up
+    /// under a solid bar, eating into the room above the first label.
+    var raisedBy: CGFloat = 0
     let open: (Entry) -> Void
 
     @State private var labelTops = LabelTops()
@@ -339,7 +342,8 @@ struct EntryMonthList: View {
                 }
             }
         }
-        .pinnedSectionLabels(months.map { ($0.month, $0.title) }, tops: labelTops, bottomMargin: Spacing.l)
+        .contentMargins(.top, -raisedBy, for: .scrollContent)
+        .pinnedSectionLabels(months.map { ($0.month, $0.title) }, tops: labelTops, bottomMargin: Spacing.l, raisedBy: raisedBy)
         .onScrollPhaseChange { _, phase in
             if phase == .interacting { swipedOpen = nil }
         }
@@ -430,7 +434,7 @@ extension View {
 
 private extension View {
     /// A list of sections led by `SectionLabel`s, with the top section's label pinned over it.
-    func pinnedSectionLabels(_ sections: [(id: Date, title: String)], tops: LabelTops, bottomMargin: CGFloat = 96) -> some View {
+    func pinnedSectionLabels(_ sections: [(id: Date, title: String)], tops: LabelTops, bottomMargin: CGFloat = 96, raisedBy: CGFloat = 0) -> some View {
         listStyle(.plain)
             // Rows pass under the pinned label with a clean edge, not iOS 26's soft fade.
             .hidesTopScrollEdgeEffect()
@@ -442,13 +446,15 @@ private extension View {
             .contentMargins(.bottom, bottomMargin, for: .scrollContent)
             // Where its content starts: below a bar it runs under (a sheet's), which is also where
             // the pinned label is drawn, as the overlay keeps to the safe area.
-            .onGeometryChange(for: CGFloat.self) { $0.frame(in: .global).minY + $0.safeAreaInsets.top } action: { tops.listTop = $0 }
+            .onGeometryChange(for: CGFloat.self) { $0.frame(in: .global).minY + $0.safeAreaInsets.top - raisedBy } action: { tops.listTop = $0 }
             .overlay {
                 // Clipped to the list, so a label pushed up out of it doesn't show above the card.
                 Color.clear
                     .overlay(alignment: .top) {
                         PinnedSectionLabel(sections: sections, labelTops: tops)
                     }
+                    // Raised with the list's content (and clipped that far up).
+                    .padding(.top, -raisedBy)
                     .clipped()
             }
     }

@@ -120,7 +120,9 @@ private struct PlaceEntriesSheet: View {
 
     var body: some View {
         NavigationStack {
-            EntryMonthList(entries: entries) { show($0) }
+            // Its month labels `Spacing.m` closer to the title: with nothing between them, a label's
+            // usual room above it read as a gap.
+            EntryMonthList(entries: entries, raisedBy: Spacing.m) { show($0) }
                 .background(Theme.background)
                 .sheetTitle(title)
                 // Solid, so rows pass cleanly under it and the pinned month label just below it.
