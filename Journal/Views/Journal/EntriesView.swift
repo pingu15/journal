@@ -215,50 +215,9 @@ struct EntriesView: View {
         withAnimation(.easeOut(duration: 0.15)) { searchBarShown = false }
     }
 
-    /// A plain button rather than a NavigationLink, so rows carry no disclosure chevron.
     private func row(for entry: Entry, dateStyle: EntryRow.DateStyle = .day) -> some View {
-        Button {
-            // A tap while a row is swiped open just closes it.
-            if swipedOpen != nil {
-                swipedOpen = nil
-            } else {
-                router.journalPath.append(entry)
-            }
-        } label: {
-            EntryRow(entry: entry, dateStyle: dateStyle)
-                .entryRowPadding()
-        }
-        .buttonStyle(SwipeRowButtonStyle())
-        .rowSwipeActions(
-            id: entry.persistentModelID,
-            openRow: $swipedOpen,
-            trailingInset: Self.contentInset,
-            actions: [
-                RowSwipeAction(title: "Share", symbol: "square.and.arrow.up", tint: Theme.accent, removesRow: false) {
-                    Task { await ShareSheet.present(entry.shareText) }
-                },
-                RowSwipeAction(title: "Delete", symbol: "trash", tint: Theme.destructive) {
-                    moveToTrash(entry)
-                },
-            ]
-        )
-        .entryListRow()
-        // A list's context menu covers the whole row, so none while its buttons are showing.
-        .contextMenu {
-            if swipedOpen != entry.persistentModelID {
-                ShareLink(item: entry.shareText)
-                Button("Delete", systemImage: "trash", role: .destructive) {
-                    moveToTrash(entry)
-                }
-            }
-        }
-    }
-
-    /// Saved in the animation too: that's what takes the row out of the list.
-    private func moveToTrash(_ entry: Entry) {
-        withAnimation {
-            entry.moveToTrash()
-            try? context.save()
+        JournalEntryRow(entry: entry, dateStyle: dateStyle, swipedOpen: $swipedOpen) {
+            router.journalPath.append(entry)
         }
     }
 
@@ -297,6 +256,93 @@ struct EntriesView: View {
         let entry = Entry.create(in: context)
         newEntryCount += 1
         router.journalPath.append(entry)
+    }
+}
+
+/// An entry's row in a journal-style list: a plain button rather than a NavigationLink, so it carries
+/// no disclosure chevron, swiping open to Share and Delete, with the same in its context menu.
+struct JournalEntryRow: View {
+    let entry: Entry
+    var dateStyle: EntryRow.DateStyle = .day
+    @Binding var swipedOpen: PersistentIdentifier?
+    let open: () -> Void
+
+    @Environment(\.modelContext) private var context
+
+    var body: some View {
+        Button {
+            // A tap while a row is swiped open just closes it.
+            if swipedOpen != nil {
+                swipedOpen = nil
+            } else {
+                open()
+            }
+        } label: {
+            EntryRow(entry: entry, dateStyle: dateStyle)
+                .entryRowPadding()
+        }
+        .buttonStyle(SwipeRowButtonStyle())
+        .rowSwipeActions(
+            id: entry.persistentModelID,
+            openRow: $swipedOpen,
+            trailingInset: EntriesView.contentInset,
+            actions: [
+                RowSwipeAction(title: "Share", symbol: "square.and.arrow.up", tint: Theme.accent, removesRow: false) {
+                    Task { await ShareSheet.present(entry.shareText) }
+                },
+                RowSwipeAction(title: "Delete", symbol: "trash", tint: Theme.destructive) {
+                    moveToTrash()
+                },
+            ]
+        )
+        .entryListRow()
+        // A list's context menu covers the whole row, so none while its buttons are showing.
+        .contextMenu {
+            if swipedOpen != entry.persistentModelID {
+                ShareLink(item: entry.shareText)
+                Button("Delete", systemImage: "trash", role: .destructive) {
+                    moveToTrash()
+                }
+            }
+        }
+    }
+
+    /// Saved in the animation too: that's what takes the row out of the list.
+    private func moveToTrash() {
+        withAnimation {
+            entry.moveToTrash()
+            try? context.save()
+        }
+    }
+}
+
+/// Entries under month labels, laid out like the journal (the map's group sheet): the top month's
+/// label pinned, rows that swipe open.
+struct EntryMonthList: View {
+    let entries: [Entry]
+    let open: (Entry) -> Void
+
+    @State private var labelTops = LabelTops()
+    @State private var swipedOpen: PersistentIdentifier?
+
+    var body: some View {
+        let months = EntryMonth.grouping(entries)
+        List {
+            ForEach(months, id: \.month) { month in
+                Section {
+                    SectionLabel(month.title) { top in
+                        labelTops.report(top, for: month.month)
+                    }
+                    ForEach(month.entries) { entry in
+                        JournalEntryRow(entry: entry, swipedOpen: $swipedOpen) { open(entry) }
+                    }
+                }
+            }
+        }
+        .pinnedSectionLabels(months.map { ($0.month, $0.title) }, tops: labelTops, bottomMargin: Spacing.l)
+        .onScrollPhaseChange { _, phase in
+            if phase == .interacting { swipedOpen = nil }
+        }
     }
 }
 
@@ -384,7 +430,7 @@ extension View {
 
 private extension View {
     /// A list of sections led by `SectionLabel`s, with the top section's label pinned over it.
-    func pinnedSectionLabels(_ sections: [(id: Date, title: String)], tops: LabelTops) -> some View {
+    func pinnedSectionLabels(_ sections: [(id: Date, title: String)], tops: LabelTops, bottomMargin: CGFloat = 96) -> some View {
         listStyle(.plain)
             // Rows pass under the pinned label with a clean edge, not iOS 26's soft fade.
             .hidesTopScrollEdgeEffect()
@@ -393,7 +439,7 @@ private extension View {
             .scrollContentBackground(.hidden)
             .scrollDismissesKeyboard(.immediately)
             // Room for the floating tab bar and new-entry button below the last row.
-            .contentMargins(.bottom, 96, for: .scrollContent)
+            .contentMargins(.bottom, bottomMargin, for: .scrollContent)
             .onGeometryChange(for: CGFloat.self) { $0.frame(in: .global).minY } action: { tops.listTop = $0 }
             .overlay {
                 // Clipped to the list, so a label pushed up out of it doesn't show above the card.

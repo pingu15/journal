@@ -101,18 +101,13 @@ private struct ListedEntries: Identifiable {
     let ids: Set<PersistentIdentifier>
 }
 
-/// The entries in one of the map's groups, newest first, in a sheet that swipes down to close. An
-/// entry opens inside the sheet, grown to full height, and going back returns to the list.
+/// The entries in one of the map's groups, newest first, in a sheet that swipes down to close, laid
+/// out like the journal. An entry slides in over the sheet, which stays where it is (`EntryCover`).
 private struct PlaceEntriesSheet: View {
     let entries: [Entry]
 
-    @Environment(\.modelContext) private var context
     @Environment(\.dismiss) private var dismiss
-    @Environment(AppRouter.self) private var router
-    @State private var path: [Entry] = []
-    @State private var detent: PresentationDetent = .medium
-    /// The list's size when an entry opened, to go back to.
-    @State private var listDetent: PresentationDetent = .medium
+    @State private var openEntry: Entry?
 
     /// Their place, or the most common one: a group can span several.
     private var title: String {
@@ -120,49 +115,30 @@ private struct PlaceEntriesSheet: View {
         return places.max { ($0.value.count, $1.key) < ($1.value.count, $0.key) }?.key ?? "Entries"
     }
 
-    /// Every entry was trashed or moved from the editor, which has closed.
-    private var isEmptied: Bool { path.isEmpty && entries.isEmpty }
+    /// Every entry was trashed or moved, from the list or the editor, which has closed.
+    private var isEmptied: Bool { openEntry == nil && entries.isEmpty }
 
     var body: some View {
-        NavigationStack(path: $path) {
-            // Laid out like the day sheet: the place in the bar over an inset-grouped list.
-            List {
-                Section {
-                    ForEach(entries) { entry in
-                        SheetEntryRow(entry: entry, dateStyle: .dayAndMonth) { open(entry) }
-                    }
-                } header: {
-                    MetaLabel("Entries", systemImage: "book")
-                }
-            }
-            .scrollContentBackground(.hidden)
-            .background(Theme.background)
-            .sheetTitle(title, subtitle: entries.count == 1 ? "1 entry" : "\(entries.count) entries")
-            .navigationDestination(for: Entry.self) { entry in
-                EntryEditorView(entry: entry)
-            }
+        NavigationStack {
+            EntryMonthList(entries: entries) { show($0) }
+                .background(Theme.background)
+                .sheetTitle(title)
         }
         .tint(Theme.primaryText)
-        .presentationDetents(path.isEmpty ? [.medium, .large] : [.large], selection: $detent)
-        // A pull at the top of the text shouldn't take the entry away.
-        .interactiveDismissDisabled(!path.isEmpty)
+        .presentationDetents([.medium, .large])
         .sheetBackdrop(grabber: true)
-        .onChange(of: path) { _, path in
-            if path.isEmpty {
-                Task { detent = listDetent } // On the next turn, for the same reason as in `open`.
-                Entry.deleteBlankEntries(in: context, keeping: router.openEntries)
-            }
+        .fullScreenCover(item: $openEntry) { entry in
+            EntryCover(entry: entry) { show(nil) }
         }
         .onChange(of: isEmptied) {
             if isEmptied { dismiss() }
         }
     }
 
-    private func open(_ entry: Entry) {
-        listDetent = detent
-        detent = .large
-        // On the next turn: changing the sheet's detents in the same update as the one selected
-        // leaves it where it was.
-        Task { path.append(entry) }
+    /// With no animation of the cover's own: the slide is the push inside it.
+    private func show(_ entry: Entry?) {
+        var transaction = Transaction()
+        transaction.disablesAnimations = true
+        withTransaction(transaction) { openEntry = entry }
     }
 }

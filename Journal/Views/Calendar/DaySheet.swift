@@ -150,9 +150,9 @@ struct DaySheet: View {
     }
 }
 
-/// An entry opened from the day sheet: the full editor, pushed onto an empty stack in a clear cover,
+/// An entry opened from a sheet (the day sheet, a map group's): the full editor, pushed onto an empty stack in a clear cover,
 /// so it slides in from the right over the sheet, which stays where it is.
-private struct EntryCover: View {
+struct EntryCover: View {
     let entry: Entry
     var placeIsProvisional = false
     let onClose: () -> Void
