@@ -173,6 +173,7 @@ private struct VideoPage: View {
                 // No AirPlay button.
                 player.allowsExternalPlayback = false
                 self.player = player
+                VideoAudio.begin()
                 if isCurrent { player.play() }
             }
             .onChange(of: isCurrent) { _, current in
@@ -188,6 +189,7 @@ private struct VideoPage: View {
                 player?.pause()
                 hideTask?.cancel()
                 controlsShown = false
+                VideoAudio.end()
             }
     }
 
@@ -201,6 +203,31 @@ private struct VideoPage: View {
             guard !Task.isCancelled, player?.timeControlStatus != .paused else { return }
             controlsShown = false
         }
+    }
+}
+
+/// The app's audio while a video is up: playback, as Photos does, so its sound plays with the
+/// silent switch on and the player's mute button works (with the default, ambient audio the switch
+/// silenced it and the button showed muted whatever it was set to). Counted, as pages come and go
+/// out of order while swiping between videos.
+enum VideoAudio {
+    private static var users = 0
+
+    static func begin() {
+        users += 1
+        guard users == 1 else { return }
+        let session = AVAudioSession.sharedInstance()
+        try? session.setCategory(.playback, mode: .moviePlayback)
+        try? session.setActive(true)
+    }
+
+    static func end() {
+        users = max(users - 1, 0)
+        guard users == 0 else { return }
+        let session = AVAudioSession.sharedInstance()
+        // Other apps' audio (music) picks up again.
+        try? session.setActive(false, options: .notifyOthersOnDeactivation)
+        try? session.setCategory(.ambient)
     }
 }
 
