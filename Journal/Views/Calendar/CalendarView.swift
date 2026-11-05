@@ -331,26 +331,10 @@ private struct DayCell: View {
             }
             .contentShape(shape)
         }
-        .buttonStyle(DayCellStyle(isHeld: isSelected))
+        .buttonStyle(.borderless)
         .accessibilityLabel(day.formatted(date: .complete, time: .omitted))
         .accessibilityValue(info != nil ? "Has entries" : "")
         .accessibilityAddTraits(isSelected ? .isSelected : [])
-    }
-}
-
-/// A day dims while it's pressed, as buttons do, and stays that way while its day is open in the
-/// sheet, letting go as the sheet closes.
-private struct DayCellStyle: ButtonStyle {
-    let isHeld: Bool
-
-    func makeBody(configuration: Configuration) -> some View {
-        let isDown = configuration.isPressed || isHeld
-        configuration.label
-            .opacity(isDown ? 0.5 : 1)
-            // Only letting go of the open day eases back. The tap's release comes an update before
-            // the day opens, so easing that too would start a fade that the hold lands on top of
-            // (animations add), flashing the day out.
-            .animation(isHeld ? nil : .easeOut(duration: 0.35), value: isHeld)
     }
 }
 
