@@ -123,6 +123,9 @@ private struct PlaceEntriesSheet: View {
             EntryMonthList(entries: entries) { show($0) }
                 .background(Theme.background)
                 .sheetTitle(title)
+                // Solid, so rows pass cleanly under it and the pinned month label just below it.
+                .toolbarBackground(Theme.background, for: .navigationBar)
+                .toolbarBackground(.visible, for: .navigationBar)
         }
         .tint(Theme.primaryText)
         .presentationDetents([.medium, .large])

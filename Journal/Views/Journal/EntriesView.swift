@@ -440,7 +440,9 @@ private extension View {
             .scrollDismissesKeyboard(.immediately)
             // Room for the floating tab bar and new-entry button below the last row.
             .contentMargins(.bottom, bottomMargin, for: .scrollContent)
-            .onGeometryChange(for: CGFloat.self) { $0.frame(in: .global).minY } action: { tops.listTop = $0 }
+            // Where its content starts: below a bar it runs under (a sheet's), which is also where
+            // the pinned label is drawn, as the overlay keeps to the safe area.
+            .onGeometryChange(for: CGFloat.self) { $0.frame(in: .global).minY + $0.safeAreaInsets.top } action: { tops.listTop = $0 }
             .overlay {
                 // Clipped to the list, so a label pushed up out of it doesn't show above the card.
                 Color.clear
