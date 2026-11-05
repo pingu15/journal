@@ -20,8 +20,6 @@ struct EntriesView: View {
     @State private var searchButtonID = 0
     /// What the list leaves above it for the field.
     @State private var searchRoom: CGFloat = 0
-    /// False when search opens with a query already filled in (a tapped tag), so results aren't hidden by the keyboard.
-    @State private var focusSearchOnOpen = true
     @FocusState private var isSearching: Bool
     @State private var filter = JournalFilter.all
     @State private var newEntryCount = 0
@@ -61,8 +59,7 @@ struct EntriesView: View {
                     ExpandingSearchBar(
                         text: $searchText,
                         isFocused: $isSearching,
-                        prompt: "Search by text, date, or tag",
-                        focusOnAppear: focusSearchOnOpen,
+                        prompt: "Search by text or date",
                         onClosing: closingSearch,
                         onClose: closeSearch
                     )
@@ -189,7 +186,6 @@ struct EntriesView: View {
     }
 
     private func openSearch() {
-        focusSearchOnOpen = true
         // Not in an animation: the field takes the button's place as it is, and animates from there.
         searchBarShown = true
         searchActive = true

@@ -4,18 +4,18 @@ import SwiftData
 
 enum SampleData {
     private static let texts = [
-        "Morning pages\nWoke before the alarm. The light came in sideways and for once I didn't reach for my phone. #morning",
-        "On finishing things\nStarting is easy. The **middle** is where everything quietly asks to be abandoned. #work",
-        "Walk by the river\nCold, bright. Saw a heron standing so still it looked *carved*. #outside",
-        "## Notes from the week\n- Too many meetings\n- Not enough making\n- [x] Protect the mornings\n- [ ] Call the landlord\n#work #review",
-        "Dinner with Sam\nLong conversation about moving cities. Neither of us will, probably, but it was nice to imagine. #friends",
+        "Morning pages\nWoke before the alarm. The light came in sideways and for once I didn't reach for my phone.",
+        "On finishing things\nStarting is easy. The **middle** is where everything quietly asks to be abandoned.",
+        "Walk by the river\nCold, bright. Saw a heron standing so still it looked *carved*.",
+        "## Notes from the week\n- Too many meetings\n- Not enough making\n- [x] Protect the mornings\n- [ ] Call the landlord",
+        "Dinner with Sam\nLong conversation about moving cities. Neither of us will, probably, but it was nice to imagine.",
         "Restless\nCouldn't settle into anything today. Cleaned the kitchen instead, which helped more than expected.",
-        "Small win\nShipped the thing I'd been putting off for a month. It took forty minutes. #work",
-        "Rain\nRead most of the afternoon.\n> The kind of day that doesn't ask anything of you.\n#reading",
-        "Running again\nFirst run in weeks. Slow, but the legs remembered. #health #outside",
-        "Gratitude\n1. Coffee\n2. The window seat\n3. The friend who texted out of nowhere\n#gratitude",
+        "Small win\nShipped the thing I'd been putting off for a month. It took forty minutes.",
+        "Rain\nRead most of the afternoon.\n> The kind of day that doesn't ask anything of you.",
+        "Running again\nFirst run in weeks. Slow, but the legs remembered.",
+        "Gratitude\n1. Coffee\n2. The window seat\n3. The friend who texted out of nowhere",
         "Hard day\nSaid something sharp I didn't mean. Apologised. Still turning it over.",
-        "Sunday\nFarmers market, then nothing at all. ~~Errands~~ Perfect. #weekend",
+        "Sunday\nFarmers market, then nothing at all. ~~Errands~~ Perfect.",
     ]
 
     private static let places: [(name: String, latitude: Double, longitude: Double)] = [
@@ -59,7 +59,7 @@ enum SampleData {
         }
 
         if let lastYear = calendar.date(byAdding: .year, value: -1, to: .now) {
-            let entry = Entry(text: "First entry\nStarting a journal, again. This time it's going to stick. #beginnings", createdAt: lastYear)
+            let entry = Entry(text: "First entry\nStarting a journal, again. This time it's going to stick.", createdAt: lastYear)
             context.insert(entry)
         }
     }

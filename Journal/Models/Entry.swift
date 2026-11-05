@@ -2,9 +2,8 @@ import CoreLocation
 import Foundation
 import SwiftData
 
-/// A single journal entry, stored as Markdown. The first line doubles as the title,
-/// `#hashtags` anywhere become tags, and images are embedded as `![](image:<uuid>)` tokens
-/// that point at the entry's `Attachment`s.
+/// A single journal entry, stored as Markdown. The first line doubles as the title, and images
+/// are embedded as `![](image:<uuid>)` tokens that point at the entry's `Attachment`s.
 ///
 /// Every stored property has a default, relationships are optional, and there
 /// are no unique constraints, so the model stays compatible with CloudKit sync.
@@ -95,19 +94,13 @@ extension Entry {
         max(1, Int((Double(wordCount) / 230).rounded()))
     }
 
-    /// Lowercased, de-duplicated `#tags` in the order they first appear.
-    var tags: [String] {
-        var seen = Set<String>()
-        return Markdown.tags(in: text).filter { seen.insert($0).inserted }
-    }
-
     var shareText: String {
         var header = createdAt.formatted(date: .complete, time: .shortened)
         if let placeName { header += " · \(placeName)" }
         return "\(header)\n\n\(Markdown.replacingImages(in: text, with: "[photo]"))"
     }
 
-    /// Every word of `query` must match: text, tags and place by substring; dates by whole word
+    /// Every word of `query` must match: text and place by substring; dates by whole word
     /// ("friday", "oct", "october", "6", "2025", "10/6/2025"), so "Oct 6" doesn't match Oct 16 or 2026.
     func matches(_ query: String) -> Bool {
         let words = query.lowercased().split(whereSeparator: \.isWhitespace).map(String.init)

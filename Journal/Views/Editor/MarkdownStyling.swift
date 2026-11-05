@@ -749,10 +749,6 @@ enum MarkdownStyler {
                 }
             }
         }
-
-        for match in Markdown.tagPattern.matches(in: storage.string, range: content) {
-            storage.addAttribute(.foregroundColor, value: UITheme.secondaryText, range: match.range)
-        }
     }
 
     private static let numberedLine = try! NSRegularExpression(pattern: #"^[ \t]*\d+[.)][ \t]"#)

@@ -122,8 +122,7 @@ private struct HeldPress<Label: View>: View {
     }
 }
 
-/// The entry's time and place, as one quiet line ("3:57 PM · Mission District"; tags already show
-/// in the excerpt).
+/// The entry's time and place, as one quiet line ("3:57 PM · Mission District").
 struct EntryMetaLine: View {
     let entry: Entry
 
@@ -573,7 +572,6 @@ struct ExpandingSearchBar: View {
     @Binding var text: String
     var isFocused: FocusState<Bool>.Binding
     let prompt: String
-    var focusOnAppear = true
     /// Called as the field starts to shrink, when the card should start down.
     let onClosing: () -> Void
     /// Called once the field has shrunk back into the button.
@@ -639,7 +637,6 @@ struct ExpandingSearchBar: View {
         .padding(.top, expanded ? Spacing.m : 0)
         .onAppear {
             withAnimation(.snappy) { expanded = true }
-            guard focusOnAppear else { return }
             // Once it's up: the keyboard takes long enough to load that it holds up the card's rise.
             DispatchQueue.main.asyncAfter(deadline: .now() + 0.35) {
                 if expanded { isFocused.wrappedValue = true }

@@ -8,7 +8,6 @@ nonisolated enum Markdown {
     }
 
     static let imagePattern = regex(#"!\[[^\]\n]*\]\(image:([0-9A-Fa-f-]{36})\)"#)
-    static let tagPattern = regex(#"(?<![\w#&/])#([\p{L}\p{N}_-]*[\p{L}_-][\p{L}\p{N}_-]*)"#)
 
     static func imageToken(_ id: UUID) -> String {
         "![](image:\(id.uuidString))"
@@ -25,12 +24,6 @@ nonisolated enum Markdown {
             in: text, range: NSRange(location: 0, length: (text as NSString).length),
             withTemplate: NSRegularExpression.escapedTemplate(for: replacement)
         )
-    }
-
-    static func tags(in text: String) -> [String] {
-        let ns = text as NSString
-        return tagPattern.matches(in: text, range: NSRange(location: 0, length: ns.length))
-            .map { ns.substring(with: $0.range(at: 1)).lowercased() }
     }
 
     private static let stripRules: [(NSRegularExpression, String)] = [
