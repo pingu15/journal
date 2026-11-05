@@ -143,25 +143,164 @@ struct PhotoViewer<ID: Hashable>: View {
     }
 }
 
-/// A video, playing with the system's controls while it's the page shown, paused when swiped away.
+/// A video, playing while it's the page shown, paused when swiped away. Its controls are its own —
+/// play/pause, ten seconds back and forward, and a scrubber with the times — with none of the system
+/// player's AirPlay or mute buttons. A tap shows or hides them; they hide by themselves while it plays.
 private struct VideoPage: View {
     let url: () -> URL?
     let isCurrent: Bool
 
     @State private var player: AVPlayer?
+    @State private var isPlaying = false
+    @State private var time: Double = 0
+    @State private var duration: Double = 0
+    @State private var isScrubbing = false
+    @State private var showsControls = true
+    @State private var hideTask: Task<Void, Never>?
+    @State private var observer: Any?
 
     var body: some View {
-        VideoPlayer(player: player)
-            .ignoresSafeArea()
-            .task {
-                guard player == nil, let url = url() else { return }
-                player = AVPlayer(url: url)
-                if isCurrent { player?.play() }
+        ZStack {
+            Color.black
+            if let player {
+                PlayerLayerView(player: player)
             }
-            .onChange(of: isCurrent) { _, current in
-                if current { player?.play() } else { player?.pause() }
+            if showsControls {
+                controls
+                    .transition(.opacity)
             }
-            .onDisappear { player?.pause() }
+        }
+        .ignoresSafeArea()
+        .contentShape(.rect)
+        .onTapGesture {
+            withAnimation(.easeOut(duration: 0.2)) { showsControls.toggle() }
+            scheduleHide()
+        }
+        .task {
+            guard player == nil, let url = url() else { return }
+            let player = AVPlayer(url: url)
+            player.allowsExternalPlayback = false
+            self.player = player
+            duration = (try? await player.currentItem?.asset.load(.duration).seconds) ?? 0
+            observer = player.addPeriodicTimeObserver(forInterval: CMTime(value: 1, timescale: 10), queue: .main) { now in
+                MainActor.assumeIsolated {
+                    if !isScrubbing { time = now.seconds }
+                    isPlaying = player.timeControlStatus != .paused
+                    if duration > 0, now.seconds >= duration - 0.05, player.timeControlStatus == .paused {
+                        withAnimation(.easeOut(duration: 0.2)) { showsControls = true }
+                    }
+                }
+            }
+            if isCurrent { play() }
+        }
+        .onChange(of: isCurrent) { _, current in
+            if current { play() } else { player?.pause() }
+        }
+        .onDisappear {
+            player?.pause()
+            if let observer { player?.removeTimeObserver(observer) }
+            observer = nil
+        }
+    }
+
+    private var controls: some View {
+        ZStack {
+            // Darkened a little, so the white controls read over a bright frame.
+            Color.black.opacity(0.25)
+                .allowsHitTesting(false)
+            HStack(spacing: Spacing.l * 2) {
+                controlButton("gobackward.10", label: "Back 10 Seconds", size: 26) { skip(-10) }
+                controlButton(isPlaying ? "pause.fill" : "play.fill", label: isPlaying ? "Pause" : "Play", size: 40) {
+                    isPlaying ? player?.pause() : play()
+                    isPlaying.toggle()
+                    scheduleHide()
+                }
+                controlButton("goforward.10", label: "Forward 10 Seconds", size: 26) { skip(10) }
+            }
+            VStack {
+                Spacer()
+                HStack(spacing: Spacing.s) {
+                    Text(VideoProcessing.formatted(time))
+                    Slider(value: $time, in: 0...max(duration, 0.1)) { editing in
+                        isScrubbing = editing
+                        if editing {
+                            hideTask?.cancel()
+                        } else {
+                            player?.seek(to: CMTime(seconds: time, preferredTimescale: 600), toleranceBefore: .zero, toleranceAfter: .zero)
+                            scheduleHide()
+                        }
+                    }
+                    .tint(.white)
+                    Text("-" + VideoProcessing.formatted(max(duration - time, 0)))
+                }
+                .font(Typography.caption.monospacedDigit())
+                .foregroundStyle(.white.opacity(0.85))
+                .padding(.horizontal, Spacing.l)
+                .padding(.bottom, Spacing.l * 2)
+            }
+        }
+    }
+
+    private func controlButton(_ symbol: String, label: String, size: CGFloat, action: @escaping () -> Void) -> some View {
+        Button(action: action) {
+            Image(systemName: symbol)
+                .font(.system(size: size, weight: .semibold))
+                .foregroundStyle(.white)
+                .frame(width: size + 30, height: size + 30)
+                .contentShape(.circle)
+        }
+        .buttonStyle(.plain)
+        .accessibilityLabel(label)
+    }
+
+    private func play() {
+        guard let player else { return }
+        // From the start again once it has played through.
+        if duration > 0, player.currentTime().seconds >= duration - 0.05 {
+            player.seek(to: .zero)
+        }
+        player.play()
+        isPlaying = true
+        scheduleHide()
+    }
+
+    private func skip(_ seconds: Double) {
+        guard let player else { return }
+        let target = min(max(player.currentTime().seconds + seconds, 0), duration)
+        time = target
+        player.seek(to: CMTime(seconds: target, preferredTimescale: 600))
+        scheduleHide()
+    }
+
+    /// Controls hide a moment after the last touch while the video plays.
+    private func scheduleHide() {
+        hideTask?.cancel()
+        hideTask = Task {
+            try? await Task.sleep(for: .seconds(2.5))
+            guard !Task.isCancelled, isPlaying, !isScrubbing else { return }
+            withAnimation(.easeOut(duration: 0.3)) { showsControls = false }
+        }
+    }
+}
+
+/// Just the picture, fitted to the screen.
+private struct PlayerLayerView: UIViewRepresentable {
+    let player: AVPlayer
+
+    func makeUIView(context: Context) -> PlayerView {
+        let view = PlayerView()
+        view.playerLayer.player = player
+        view.playerLayer.videoGravity = .resizeAspect
+        return view
+    }
+
+    func updateUIView(_ view: PlayerView, context: Context) {
+        view.playerLayer.player = player
+    }
+
+    final class PlayerView: UIView {
+        override static var layerClass: AnyClass { AVPlayerLayer.self }
+        var playerLayer: AVPlayerLayer { layer as! AVPlayerLayer }
     }
 }
 
