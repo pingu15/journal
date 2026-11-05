@@ -280,7 +280,7 @@ private struct DayPhotos: View {
                         assets = PhotoLibrary.photos(on: day)
                     }
                 } label: {
-                    Label("Show Photos From Your Library", systemImage: "photo.on.rectangle")
+                    AccessPromptLabel("Show photos from your library", systemImage: "photo.on.rectangle")
                 }
             case .denied, .restricted:
                 Button {

@@ -28,7 +28,7 @@ struct DayEventsSection: View {
                         events = CalendarEvents.events(on: day)
                     }
                 } label: {
-                    Label("Show Events From Your Calendar", systemImage: "calendar")
+                    AccessPromptLabel("Show events from your calendar", systemImage: "calendar")
                 }
             case .fullAccess:
                 if events.isEmpty {

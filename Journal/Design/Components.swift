@@ -467,6 +467,25 @@ extension View {
 
 /// An entry as a row of a popup's inset-grouped list (the day sheet, a map group): highlighted while
 /// touched like any list row.
+/// A day sheet section's one-row request for access (Places, Events, Photos): set like the section's
+/// notes ("No photos from this day."), so it's no taller than one, in primary text so it reads as
+/// something to tap.
+struct AccessPromptLabel: View {
+    let title: String
+    let systemImage: String
+
+    init(_ title: String, systemImage: String) {
+        self.title = title
+        self.systemImage = systemImage
+    }
+
+    var body: some View {
+        Label(title, systemImage: systemImage)
+            .font(Typography.note)
+            .foregroundStyle(Theme.primaryText)
+    }
+}
+
 struct SheetEntryRow: View {
     let entry: Entry
     var dateStyle: EntryRow.DateStyle = .none

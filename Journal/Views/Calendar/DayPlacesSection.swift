@@ -86,7 +86,7 @@ struct DayPlacesSection: View {
                 Button {
                     Task { authorized = await PlaceTracker.shared.enable() }
                 } label: {
-                    Label("Track the Places You Go", systemImage: "mappin.and.ellipse")
+                    AccessPromptLabel("Track the places you go", systemImage: "mappin.and.ellipse")
                 }
             } else if !authorized {
                 Button {
