@@ -50,7 +50,15 @@ struct DaySheet: View {
                 .buttonStyle(.borderless)
             }
             .background(Theme.background)
-            .sheetTitle(title)
+            // Under the bar rather than in it, so the title stays exactly where every popup's is.
+            .safeAreaInset(edge: .top, spacing: 0) {
+                MetaLabel(day.formatted(.dateTime.weekday(.wide)))
+                    .frame(maxWidth: .infinity)
+                    // Tucked up toward the title, into the bar's own space below it.
+                    .padding(.top, -Spacing.s)
+                    .accessibilityHidden(true)
+            }
+            .sheetTitle(day.formatted(.dateTime.month(.wide).day().year()))
             .toolbar {
                 ToolbarItem(placement: .topBarLeading) {
                     Button("Previous Day", systemImage: "chevron.left") { shift(by: -1) }
@@ -76,14 +84,6 @@ struct DaySheet: View {
         .fullScreenCover(item: $openEntry) { entry in
             EntryCover(entry: entry, placeIsProvisional: entry.persistentModelID == startedEntry) { show(nil) }
         }
-    }
-
-    /// One line, like any popup's title: "Tuesday, November 3", with the year when it isn't this one.
-    private var title: String {
-        let format = Date.FormatStyle.dateTime.weekday(.wide).month(.wide).day()
-        return calendar.isDate(day, equalTo: .now, toGranularity: .year)
-            ? day.formatted(format)
-            : day.formatted(format.year())
     }
 
     private var placeAction: DayPlacesSection.Action {
