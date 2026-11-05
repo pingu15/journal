@@ -156,6 +156,9 @@ private struct FullImage: View {
         Group {
             if let image {
                 ZoomableImage(image: image, onDragDown: onDragDown, onClose: onClose)
+                    // The whole screen, under the notch and the home indicator: a tall photo fills
+                    // its height, a wide one its width.
+                    .ignoresSafeArea()
             } else {
                 ProgressView().tint(.white)
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
