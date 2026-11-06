@@ -86,7 +86,7 @@ struct DayPlacesSection: View {
                 // Turns tracking on (as Settings' switch does), asking for location if it hasn't yet;
                 // refused before, only iOS's Settings can allow it.
                 let canAsk = LocationService.shared.canAsk || authorized
-                AccessOffNote(tracking ? "Location access" : "Place tracking", canAsk: canAsk) {
+                AccessOffNote(tracking ? "Location access" : "Visited places tracking", canAsk: canAsk) {
                     if canAsk {
                         Task { authorized = await PlaceTracker.shared.enable() }
                     } else {
