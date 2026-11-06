@@ -1,5 +1,7 @@
 # Journal
 
+**Today: Daily Journal** on the App Store (set in App Store Connect); **Today** on the home screen (`CFBundleDisplayName`, which is also what iOS's permission prompts and Siri say), with "Today Journal" and "Daily Journal" as Siri's alternative names (`INAlternativeAppNames` in the root `Info.plist`). The project, target, module and bundle ID (`com.maxsun.journal`) keep the name Journal.
+
 A premium, minimal, editorial journaling app. Native iOS, Swift + SwiftUI, **iPhone only**.
 
 ## Design direction

@@ -233,7 +233,7 @@
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = Info.plist;
-				INFOPLIST_KEY_CFBundleDisplayName = Journal;
+				INFOPLIST_KEY_CFBundleDisplayName = Today;
 				INFOPLIST_KEY_NSCalendarsFullAccessUsageDescription = "Journal shows the events from your calendar on a day alongside what you wrote.";
 				INFOPLIST_KEY_NSFaceIDUsageDescription = "Face ID keeps your journal private.";
 				INFOPLIST_KEY_NSLocationAlwaysAndWhenInUseUsageDescription = "With Track Places on, Journal notes where you spend time through the day, so each day can show the places you went. It stays on this iPhone.";
@@ -274,7 +274,7 @@
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = Info.plist;
-				INFOPLIST_KEY_CFBundleDisplayName = Journal;
+				INFOPLIST_KEY_CFBundleDisplayName = Today;
 				INFOPLIST_KEY_NSCalendarsFullAccessUsageDescription = "Journal shows the events from your calendar on a day alongside what you wrote.";
 				INFOPLIST_KEY_NSFaceIDUsageDescription = "Face ID keeps your journal private.";
 				INFOPLIST_KEY_NSLocationAlwaysAndWhenInUseUsageDescription = "With Track Places on, Journal notes where you spend time through the day, so each day can show the places you went. It stays on this iPhone.";
