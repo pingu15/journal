@@ -145,6 +145,8 @@ nonisolated struct InlineStyle: OptionSet, Hashable, Sendable {
     static let italic = InlineStyle(rawValue: 2)
     static let strikethrough = InlineStyle(rawValue: 4)
     static let code = InlineStyle(rawValue: 8)
+    /// Markdown has none of its own: stored as `<u>…</u>`, as many Markdown writers do.
+    static let underline = InlineStyle(rawValue: 16)
 }
 
 nonisolated enum BlockStyle: Int, Sendable {
@@ -318,7 +320,7 @@ nonisolated enum MarkdownDocument {
     }
 
     private enum Mark: Equatable {
-        case link(String), bold, italic, strike, code
+        case link(String), bold, italic, strike, underline, code
 
         var open: String {
             switch self {
@@ -326,6 +328,7 @@ nonisolated enum MarkdownDocument {
             case .bold: "**"
             case .italic: "*"
             case .strike: "~~"
+            case .underline: "<u>"
             case .code: "`"
             }
         }
@@ -333,6 +336,7 @@ nonisolated enum MarkdownDocument {
         var close: String {
             switch self {
             case .link(let url): "](\(url))"
+            case .underline: "</u>"
             default: open
             }
         }
@@ -349,7 +353,7 @@ nonisolated enum MarkdownDocument {
             var isSpace: Bool
             var image: UUID?
         }
-        let emphasis: InlineStyle = [.bold, .italic, .strikethrough]
+        let emphasis: InlineStyle = [.bold, .italic, .strikethrough, .underline]
 
         // Split runs into whitespace / non-whitespace pieces.
         var pieces: [Piece] = []
@@ -422,6 +426,10 @@ nonisolated enum MarkdownDocument {
                     escape = before == "~" || after == "~"
                 case "`", "[":
                     escape = true
+                case "<":
+                    // Only where it would read back as an underline tag.
+                    let rest = String(chars[min(offset, chars.count)...].prefix(3))
+                    escape = rest.hasPrefix("u>") || rest == "/u>"
                 default:
                     break
                 }
@@ -445,6 +453,7 @@ nonisolated enum MarkdownDocument {
             if piece.style.contains(.bold) { marks.append(.bold) }
             if piece.style.contains(.italic) { marks.append(.italic) }
             if piece.style.contains(.strikethrough) { marks.append(.strike) }
+            if piece.style.contains(.underline) { marks.append(.underline) }
             if piece.style.contains(.code) { marks.append(.code) }
             transition(to: marks)
             output += piece.style.contains(.code) ? piece.text : escaped(piece.text)
@@ -455,7 +464,7 @@ nonisolated enum MarkdownDocument {
 }
 
 /// Recursive inline Markdown parser: code spans, links, image tokens, and nested **bold**,
-/// *italic* and ~~strikethrough~~. Unmatched markers stay as literal text.
+/// *italic*, ~~strikethrough~~ and <u>underline</u>. Unmatched markers stay as literal text.
 nonisolated private struct InlineParser {
     let chars: [Character]
     let attachment: (UUID) -> NSTextAttachment?
@@ -509,6 +518,19 @@ nonisolated private struct InlineParser {
                 index = end
                 continue
             }
+            if !style.contains(.underline), let close = underlineOpener() {
+                flush()
+                let start = index
+                index += 3
+                let inner = NSMutableAttributedString()
+                if parse(until: close, style: style.union(.underline), link: link, into: inner), inner.length > 0 {
+                    out.append(inner)
+                } else {
+                    index = start + 3
+                    literal = "<u>"
+                }
+                continue
+            }
             if let (marker, markerStyle) = opener(style: style) {
                 flush()
                 let start = index
@@ -560,6 +582,18 @@ nonisolated private struct InlineParser {
                 probe += 1
             }
             if found { return (marker, markerStyle) }
+        }
+        return nil
+    }
+
+    /// `<u>` at the current index, followed by text and with a `</u>` after it: the closer.
+    private func underlineOpener() -> [Character]? {
+        let open = Array("<u>"), close = Array("</u>")
+        guard matches(open, at: index), index + 3 < chars.count, !chars[index + 3].isWhitespace else { return nil }
+        var probe = index + 4
+        while probe + close.count <= chars.count {
+            if matches(close, at: probe) { return close }
+            probe += 1
         }
         return nil
     }
@@ -648,6 +682,9 @@ enum MarkdownStyler {
         ]
         if inline.contains(.strikethrough) {
             attributes[.strikethroughStyle] = NSUnderlineStyle.single.rawValue
+        }
+        if inline.contains(.underline) {
+            attributes[.underlineStyle] = NSUnderlineStyle.single.rawValue
         }
         if inline.contains(.code) {
             attributes[.backgroundColor] = UITheme.surface

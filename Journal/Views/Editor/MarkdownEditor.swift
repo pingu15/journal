@@ -743,7 +743,7 @@ final class MarkdownEditorController {
 
     // MARK: Commands
 
-    /// Bold, italic, strikethrough or code: on the selection, or for what's typed next.
+    /// Bold, italic, underline, strikethrough or code: on the selection, or for what's typed next.
     func toggle(_ style: InlineStyle) {
         guard let textView = prepare() else { return }
         let selection = textView.selectedRange
@@ -1006,6 +1006,7 @@ struct MarkdownToolbar: View {
                 textStyleMenu
                 tool("Bold", "bold", isOn: controller.activeInline.contains(.bold)) { controller.toggle(.bold) }
                 tool("Italic", "italic", isOn: controller.activeInline.contains(.italic)) { controller.toggle(.italic) }
+                tool("Underline", "underline", isOn: controller.activeInline.contains(.underline)) { controller.toggle(.underline) }
                 tool("Strikethrough", "strikethrough", isOn: controller.activeInline.contains(.strikethrough)) {
                     controller.toggle(.strikethrough)
                 }

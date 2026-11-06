@@ -216,7 +216,23 @@ struct JournalPDF {
         return item
     }
 
-    /// Bold, italic, strikethrough, code and links within a line; ends the paragraph.
+    /// `<u>…</u>`, which Markdown leaves as text: underlined, the tags taken out.
+    private static func applyUnderlines(in text: NSMutableAttributedString) {
+        while true {
+            let string = text.string as NSString
+            let open = string.range(of: "<u>")
+            guard open.location != NSNotFound else { return }
+            let afterOpen = NSMaxRange(open)
+            let close = string.range(of: "</u>", range: NSRange(location: afterOpen, length: string.length - afterOpen))
+            guard close.location != NSNotFound else { return }
+            text.addAttribute(.underlineStyle, value: NSUnderlineStyle.single.rawValue,
+                              range: NSRange(location: afterOpen, length: close.location - afterOpen))
+            text.deleteCharacters(in: close)
+            text.deleteCharacters(in: open)
+        }
+    }
+
+    /// Bold, italic, underline, strikethrough, code and links within a line; ends the paragraph.
     private func inline(_ markdown: String, font: UIFont, color: UIColor, style: NSParagraphStyle) -> NSAttributedString {
         let parsed = (try? AttributedString(markdown: markdown, options: .init(interpretedSyntax: .inlineOnlyPreservingWhitespace)))
             ?? AttributedString(markdown)
@@ -243,6 +259,7 @@ struct JournalPDF {
             }
             result.append(NSAttributedString(string: String(parsed[run.range].characters), attributes: attributes))
         }
+        Self.applyUnderlines(in: result)
         result.append(NSAttributedString(string: "\n", attributes: [.font: font, .paragraphStyle: style]))
         return result
     }
