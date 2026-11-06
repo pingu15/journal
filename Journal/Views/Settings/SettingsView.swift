@@ -63,10 +63,10 @@ struct SettingsView: View {
                 // Each on its own page, like Theme, saying here whether it's on.
                 Section {
                     notificationRow("Daily Reminder", systemImage: "bell", isOn: reminderEnabled) {
-                        notificationPage("Daily Reminder", systemImage: "bell", isOn: reminderBinding, time: reminderTime)
+                        notificationPage("Daily Reminder", isOn: reminderBinding, time: reminderTime)
                     }
                     notificationRow("On This Day", systemImage: "calendar", isOn: onThisDayEnabled) {
-                        notificationPage("On This Day", systemImage: "calendar", isOn: onThisDayBinding, time: onThisDayTime)
+                        notificationPage("On This Day", isOn: onThisDayBinding, time: onThisDayTime)
                     }
                 } header: {
                     Text("Notifications")
@@ -302,11 +302,12 @@ struct SettingsView: View {
     /// A notification's own page: its switch, then, while it's on, its time, and the note when
     /// notifications are off in iOS. Built in Settings' body, so it follows Settings' state.
     private func notificationPage(
-        _ title: String, systemImage: String, isOn: Binding<Bool>, time: Binding<Date>
+        _ title: String, isOn: Binding<Bool>, time: Binding<Date>
     ) -> some View {
         Form {
             Section {
-                Toggle(title, systemImage: systemImage, isOn: isOn)
+                // The page's title says which; the switch is whether it comes as a notification.
+                Toggle("System Notification", systemImage: "bell.badge", isOn: isOn)
                     .tint(Theme.accent)
                 if isOn.wrappedValue {
                     DatePicker(selection: time, displayedComponents: .hourAndMinute) {
