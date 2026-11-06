@@ -223,7 +223,11 @@ extension Entry {
     /// Removes entries that were created but never written in (e.g. an editor that was
     /// dismissed before it could clean up after itself). `keeping` are entries still open.
     static func deleteBlankEntries(in context: ModelContext, keeping open: Set<PersistentIdentifier>) {
-        let descriptor = FetchDescriptor<Entry>(predicate: #Predicate { $0.deletedAt == nil && $0.text == "" })
+        // Blank text is empty, or an empty title line ("# ") or bare line breaks: anything else
+        // starts with a character worth keeping. Those are checked as read (`isBlank`).
+        let descriptor = FetchDescriptor<Entry>(predicate: #Predicate {
+            $0.deletedAt == nil && ($0.text == "" || $0.text.starts(with: "#") || $0.text.starts(with: "\n") || $0.text.starts(with: " "))
+        })
         guard let candidates = try? context.fetch(descriptor) else { return }
         for entry in candidates where entry.isBlank && !open.contains(entry.persistentModelID) {
             context.delete(entry)
