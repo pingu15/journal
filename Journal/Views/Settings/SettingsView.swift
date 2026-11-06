@@ -21,6 +21,7 @@ struct SettingsView: View {
     /// For the Location note: tracking on without access says so, like the reminder without notifications.
     @State private var locationAllowed = LocationService.shared.isAuthorized
     @State private var locationCanAsk = LocationService.shared.canAsk
+    @State private var locationAlways = LocationService.shared.allowsAlways
 
     var body: some View {
         NavigationStack {
@@ -95,7 +96,9 @@ struct SettingsView: View {
                     Text("Location")
                 } footer: {
                     // Tracking stays on without access, like the reminder without notifications, and
-                    // says so here until it's allowed.
+                    // says so here until it's allowed: location off altogether, or only While Using,
+                    // short of the Always tracking needs (which only iOS's Settings can give once
+                    // it's been asked).
                     if locationDenied || (trackPlaces && !locationAllowed) {
                         Button {
                             if locationCanAsk {
@@ -114,6 +117,17 @@ struct SettingsView: View {
                             Text("Location access is off. ") + Text(AccessLink.title(canAsk: locationCanAsk)).underline()
                         }
                         // A button takes the body size; set like the other footers.
+                        .font(.footnote)
+                        .foregroundStyle(Theme.secondaryText)
+                        .multilineTextAlignment(.leading)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                        .buttonStyle(.borderless)
+                    } else if trackPlaces && !locationAlways {
+                        Button {
+                            if let url = URL(string: UIApplication.openSettingsURLString) { openURL(url) }
+                        } label: {
+                            Text("Location tracking is off. ") + Text("Open Settings").underline()
+                        }
                         .font(.footnote)
                         .foregroundStyle(Theme.secondaryText)
                         .multilineTextAlignment(.leading)
@@ -252,6 +266,7 @@ struct SettingsView: View {
     private func refreshLocationAccess() {
         locationAllowed = LocationService.shared.isAuthorized
         locationCanAsk = LocationService.shared.canAsk
+        locationAlways = LocationService.shared.allowsAlways
         if locationAllowed { locationDenied = false }
     }
 

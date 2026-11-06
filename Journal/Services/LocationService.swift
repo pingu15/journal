@@ -30,6 +30,11 @@ final class LocationService: NSObject, CLLocationManagerDelegate {
         [.authorizedWhenInUse, .authorizedAlways].contains(manager.authorizationStatus)
     }
 
+    /// Always, which tracking visited places needs to carry on in the background.
+    var allowsAlways: Bool {
+        manager.authorizationStatus == .authorizedAlways
+    }
+
     /// The last location the system has, at once, though it may be out of date.
     var lastKnownLocation: CLLocation? {
         isAuthorized ? manager.location : nil
