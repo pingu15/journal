@@ -303,17 +303,15 @@ struct SettingsView: View {
         }
     }
 
-    /// Just the time, under its switch's right-hand end. The label is there but unseen, laid out
-    /// like the switches' (an icon, then text), so the line above the next row starts under their
-    /// text rather than at the edge.
+    /// "Time" and the time, with no icon: an unseen one keeps the label laid out like the
+    /// switches' (icon, then text), so "Time" and the lines between rows start under their text.
     private func timeRow(_ time: Binding<Date>) -> some View {
-        LabeledContent {
-            DatePicker("Time", selection: time, displayedComponents: .hourAndMinute)
-                .labelsHidden()
-        } label: {
-            Label(" ", systemImage: "clock")
-                .hidden()
-                .accessibilityHidden(true)
+        DatePicker(selection: time, displayedComponents: .hourAndMinute) {
+            Label {
+                Text("Time")
+            } icon: {
+                Image(systemName: "clock").hidden()
+            }
         }
     }
 
