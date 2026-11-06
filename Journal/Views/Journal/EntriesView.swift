@@ -139,12 +139,6 @@ struct EntriesView: View {
         List {
             topMarker
 
-            if !entries.isEmpty && sections.isEmpty {
-                ContentUnavailableView.search(text: searchText)
-                    .listRowBackground(Color.clear)
-                    .listRowSeparator(.hidden)
-            }
-
             // Section labels are ordinary rows; the one for the section at the top is drawn again,
             // pinned, over the list (`PinnedSectionLabel`). A list's own pinned headers faded out, under
             // the rows, as the next one came up.
@@ -166,6 +160,10 @@ struct EntriesView: View {
         .overlay {
             if entries.isEmpty {
                 EmptyState(title: "A blank page", systemImage: "book", message: "Write a few lines about today.")
+            } else if sections.isEmpty {
+                // Centered in the card like the other empty states, not the system's large search one
+                // as the list's first row.
+                EmptyState(title: "No Results", systemImage: "magnifyingglass", message: "Nothing matches “\(searchText)”.")
             }
         }
     }
