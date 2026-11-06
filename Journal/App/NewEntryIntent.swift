@@ -17,13 +17,14 @@ nonisolated struct JournalShortcuts: AppShortcutsProvider {
     static var appShortcuts: [AppShortcut] {
         AppShortcut(
             intent: NewEntryIntent(),
-            // Said with the app's name before "entry" ("New Today entry"): after "in", Today reads
-            // as a time ("…in today"). Siri also takes the alternative names, Today Journal and
-            // Daily Journal (`INAlternativeAppNames`).
+            // Every phrase has to name the app (the build refuses one that doesn't). Said with the
+            // alternative name Today Journal (`INAlternativeAppNames`), the first is just "New
+            // Today Journal entry".
             phrases: [
                 "New \(.applicationName) entry",
-                "Start a \(.applicationName) entry",
-                "Write a \(.applicationName) entry",
+                "New journal entry in \(.applicationName)",
+                "Start a journal entry in \(.applicationName)",
+                "Write a journal entry in \(.applicationName)",
             ],
             shortTitle: "New Entry",
             systemImageName: "square.and.pencil"
