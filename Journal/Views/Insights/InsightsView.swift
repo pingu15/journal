@@ -33,66 +33,56 @@ struct InsightsView: View {
 }
 
 /// The current streak as a crest: "TODAY JOURNAL" (bold, then thin, widely spaced), "N Day" and
-/// "Journal 🔥 Streak" (the flame in sand), between a sprig of leaves above and one below.
+/// "Journal 🔥 Streak" (the flame in sand), between two upright laurel branches, the way Apple frames an award.
 private struct StreakCrest: View {
     let streak: Int
+    /// The text's height, which sizes the branches: a fitted image left to size itself in a row
+    /// takes its height from the width it's offered.
+    @State private var textHeight: CGFloat = 0
 
     var body: some View {
-        VStack(spacing: Spacing.s) {
-            LeafSprig()
-                .padding(.bottom, Spacing.xs)
-            (Text("TODAY").font(Typography.crestNameBold)
-                + Text("JOURNAL").font(Typography.crestNameLight))
-                .tracking(Typography.crestNameTracking)
-                // Tracking also follows the last letter: as much again on the left centers it.
-                .padding(.leading, Typography.crestNameTracking)
-                .foregroundStyle(Theme.primaryText)
-                .lineLimit(1)
-                .minimumScaleFactor(0.6)
-            Text("\(streak.formatted()) Day")
-                .font(Typography.crestNumber)
-                .foregroundStyle(Theme.primaryText)
-                .contentTransition(.numericText())
-                .minimumScaleFactor(0.5)
-                .lineLimit(1)
-            HStack(spacing: Spacing.s) {
-                MetaLabel("Journal", color: Theme.primaryText)
-                Image(systemName: "flame.fill")
-                    .font(Typography.meta)
-                    .foregroundStyle(Theme.accent)
-                MetaLabel("Streak", color: Theme.primaryText)
+        HStack(spacing: Spacing.m) {
+            laurel("laurel.leading")
+            VStack(spacing: Spacing.s) {
+                (Text("TODAY").font(Typography.crestNameBold)
+                    + Text("JOURNAL").font(Typography.crestNameLight))
+                    .tracking(Typography.crestNameTracking)
+                    // Tracking also follows the last letter: as much again on the left centers it.
+                    .padding(.leading, Typography.crestNameTracking)
+                    .foregroundStyle(Theme.primaryText)
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.6)
+                Text("\(streak.formatted()) Day")
+                    .font(Typography.crestNumber)
+                    .foregroundStyle(Theme.primaryText)
+                    .contentTransition(.numericText())
+                    .minimumScaleFactor(0.5)
+                    .lineLimit(1)
+                HStack(spacing: Spacing.s) {
+                    MetaLabel("Journal", color: Theme.primaryText)
+                    Image(systemName: "flame.fill")
+                        .font(Typography.meta)
+                        .foregroundStyle(Theme.accent)
+                    MetaLabel("Streak", color: Theme.primaryText)
+                }
             }
-            LeafSprig()
-                .scaleEffect(y: -1)
-                .padding(.top, Spacing.xs)
+            .onGeometryChange(for: CGFloat.self, of: \.size.height) { textHeight = $0 }
+            laurel("laurel.trailing")
         }
         .frame(maxWidth: .infinity)
         .padding(.vertical, Spacing.s)
         .accessibilityElement(children: .ignore)
         .accessibilityLabel("\(streak) day streak")
     }
-}
 
-/// Three `leaf.fill`s fanned out from a point below them: one upright in the middle, one leaning
-/// out to each side (flipped for the foot of the crest).
-private struct LeafSprig: View {
-    @ScaledMetric(relativeTo: .body) private var size: CGFloat = 16
-
-    var body: some View {
-        HStack(alignment: .bottom, spacing: size * 0.15) {
-            // The symbol's leaf points up and to the right: turned back 45° it stands upright, and
-            // the side leaves lean 40° out from that (the left one mirrored, so its curve matches).
-            leaf.rotationEffect(.degrees(-5)).scaleEffect(x: -1)
-            leaf.rotationEffect(.degrees(-45)).offset(y: -size * 0.3)
-            leaf.rotationEffect(.degrees(-5))
-        }
-        .foregroundStyle(Theme.primaryText)
-        .accessibilityHidden(true)
-    }
-
-    private var leaf: some View {
-        Image(systemName: "leaf.fill")
-            .font(.system(size: size))
+    /// A branch three quarters as tall as the crest's text beside it.
+    private func laurel(_ name: String) -> some View {
+        Image(systemName: name)
+            .resizable()
+            .scaledToFit()
+            .frame(height: textHeight * 0.75)
+            .foregroundStyle(Theme.primaryText)
+            .accessibilityHidden(true)
     }
 }
 
