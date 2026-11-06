@@ -602,7 +602,7 @@ struct InsightsButton: View {
     @State private var showing = false
 
     var body: some View {
-        Button("Insights", systemImage: "chart.line.uptrend.xyaxis") { showing = true }
+        Button("Insights", systemImage: "chart.bar.xaxis") { showing = true }
             .sheet(isPresented: $showing) { InsightsView().sheetBackdrop() }
     }
 }
