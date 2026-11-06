@@ -36,13 +36,20 @@ struct LocationPicker: View {
         self.entry = entry
         self.onChange = onChange
         // Set up front: the Map ignores a camera change made in onAppear.
-        if let coordinate = entry.location?.coordinate {
-            _camera = State(initialValue: .region(
-                MKCoordinateRegion(center: coordinate, latitudinalMeters: 1500, longitudinalMeters: 1500)
-            ))
+        if let coordinate = (entry.location ?? LocationService.shared.lastKnownLocation)?.coordinate {
+            _camera = State(initialValue: .region(Self.region(around: coordinate)))
         } else {
             _camera = State(initialValue: .userLocation(fallback: .automatic))
         }
+    }
+
+    private static func region(around coordinate: CLLocationCoordinate2D) -> MKCoordinateRegion {
+        MKCoordinateRegion(center: coordinate, latitudinalMeters: 1500, longitudinalMeters: 1500)
+    }
+
+    /// With no place set, the map shows where you are, so it needs location access.
+    private var showsMap: Bool {
+        entry.location != nil || LocationService.shared.isAuthorized
     }
 
     private var placeKey: String {
@@ -90,6 +97,10 @@ struct LocationPicker: View {
         }
         .task(id: placeKey) {
             guard let center = await nearbyCenter() else { return }
+            // Where you are wasn't known when the sheet opened: go there, unless the map was moved.
+            if entry.location == nil, visibleRegion == nil || camera.followsUserLocation {
+                camera = .region(Self.region(around: center.coordinate))
+            }
             search.prefer(around: center.coordinate)
             nearby = await NearbyPlace.around(center, excluding: entry.placeName)
         }
@@ -119,26 +130,6 @@ struct LocationPicker: View {
         .padding(.vertical, 11)
         .background(Theme.primaryText.opacity(0.07), in: .capsule)
         .padding(.horizontal, Spacing.m)
-    }
-
-    @ViewBuilder
-    private var map: some View {
-        if entry.location == nil && !LocationService.shared.isAuthorized {
-            // Nothing to show yet: a quiet placeholder rather than a zoomed-out continent.
-            Theme.primaryText.opacity(0.05)
-                .overlay {
-                    VStack(spacing: Spacing.s) {
-                        Image(systemName: "map")
-                            .font(Typography.icon.weight(.light))
-                        Text("No location set")
-                            .font(Typography.note)
-                    }
-                    .foregroundStyle(Theme.secondaryText)
-                }
-                .frame(height: 170)
-        } else {
-            liveMap
-        }
     }
 
     /// Pans and zooms; holding a spot sets the place there.
@@ -184,8 +175,9 @@ struct LocationPicker: View {
     /// The map with the place set under it, in one card, then Current Location / Remove and nearby places.
     @ViewBuilder
     private var currentPlace: some View {
+        if showsMap {
         Section {
-            map
+            liveMap
                 .listRowInsets(EdgeInsets())
                 // The name row meets the map with no line between them.
                 .listRowSeparator(.hidden)
@@ -202,6 +194,7 @@ struct LocationPicker: View {
                 }
                 .accessibilityElement(children: .combine)
             }
+        }
         }
 
         Section {
