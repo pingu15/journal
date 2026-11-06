@@ -45,6 +45,9 @@ struct EntryRow: View {
                         .font(Typography.entryExcerpt)
                         .foregroundStyle(Theme.secondaryText)
                 }
+                // Down at the row's foot when the text is shorter than the row (beside a photo or
+                // the day column), the space above it left blank.
+                Spacer(minLength: 0)
                 EntryMetaLine(entry: entry)
                     .padding(.top, 2)
                 if let warning {
@@ -52,7 +55,7 @@ struct EntryRow: View {
                         .padding(.top, 2)
                 }
             }
-            .frame(maxWidth: .infinity, alignment: .leading)
+            .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
 
             if let photo {
                 PhotoThumbnail(attachment: photo)
@@ -90,7 +93,7 @@ struct EntryRow: View {
 }
 
 /// Date, text and cover photo side by side: the date centered vertically in the row, and the
-/// photo spanning the row's full height.
+/// text and photo spanning the row's full height (the text's meta line at its foot).
 private struct EntryRowLayout: Layout {
     let hasDate: Bool
     let hasPhoto: Bool
@@ -110,8 +113,9 @@ private struct EntryRowLayout: Layout {
         let textWidth = max(0, width - dateSize.width - dateSpacing - (hasPhoto ? photoWidth + photoSpacing : 0))
         let textDimensions = subviews[1].dimensions(in: ProposedViewSize(width: textWidth, height: nil))
 
-        let text = CGRect(x: dateSize.width + dateSpacing, y: 0, width: textWidth, height: textDimensions.height)
-        let height = max(dateSize.height, text.height, hasPhoto ? minPhotoHeight : 0)
+        let height = max(dateSize.height, textDimensions.height, hasPhoto ? minPhotoHeight : 0)
+        // The row's full height, so its meta line sits at the foot.
+        let text = CGRect(x: dateSize.width + dateSpacing, y: 0, width: textWidth, height: height)
         let date = CGRect(x: 0, y: (height - dateSize.height) / 2, width: dateSize.width, height: dateSize.height)
         // The photo spans the row's full height, top to bottom.
         let photo = hasPhoto
