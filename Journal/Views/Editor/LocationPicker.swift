@@ -17,6 +17,10 @@ struct LocationPicker: View {
     @State private var search = PlaceSearch()
     @State private var camera: MapCameraPosition
     @State private var nearby: [NearbyPlace] = []
+    /// The address under the place's name; looked up when the sheet opens.
+    @State private var address: String?
+    /// Where a long press on the map dropped the pin, while its name is looked up.
+    @State private var dropped: CLLocationCoordinate2D?
     @State private var isLocating = false
     @State private var resolvingID: String?
     @State private var errorMessage: String?
@@ -40,9 +44,13 @@ struct LocationPicker: View {
         !search.query.trimmingCharacters(in: .whitespaces).isEmpty
     }
 
-    /// Where "Nearby" is measured from: the entry's place, else where you last were.
-    private var nearbyCenter: CLLocation? {
-        entry.location ?? LocationService.shared.lastKnownLocation
+    /// Where "Nearby" is measured from: the entry's place, else where you are, when that's allowed
+    /// (never asking).
+    private func nearbyCenter() async -> CLLocation? {
+        if let location = entry.location { return location }
+        guard LocationService.shared.isAuthorized else { return nil }
+        if let location = LocationService.shared.lastKnownLocation { return location }
+        return try? await LocationService.shared.currentLocation()
     }
 
     var body: some View {
@@ -62,8 +70,15 @@ struct LocationPicker: View {
             }
         }
         .tint(Theme.primaryText)
+        .sensoryFeedback(.impact, trigger: dropped?.latitude)
         .task {
-            guard let center = nearbyCenter else { return }
+            if let coordinate = entry.location?.coordinate, let name = entry.placeName,
+               let placemark = await PlaceAddress.lookup(coordinate) {
+                address = PlaceAddress.describing(placemark, named: name)
+            }
+        }
+        .task {
+            guard let center = await nearbyCenter() else { return }
             search.prefer(around: center.coordinate)
             nearby = await NearbyPlace.around(center, excluding: entry.placeName)
         }
@@ -115,22 +130,28 @@ struct LocationPicker: View {
         }
     }
 
+    /// Pans and zooms; holding a spot sets the place there.
     private var liveMap: some View {
-        Map(position: $camera) {
-            if let coordinate = entry.location?.coordinate {
-                Annotation(entry.placeName ?? "", coordinate: coordinate, anchor: .center) {
-                    MapPin()
+        MapReader { proxy in
+            Map(position: $camera) {
+                if let coordinate = dropped ?? entry.location?.coordinate {
+                    Annotation(entry.placeName ?? "", coordinate: coordinate, anchor: .center) {
+                        MapPin()
+                    }
+                    .annotationTitles(.hidden)
+                } else {
+                    UserAnnotation()
                 }
-                .annotationTitles(.hidden)
-            } else {
-                UserAnnotation()
             }
+            .mapStyle(.standard(pointsOfInterest: .excludingAll))
+            .mapControls {}
+            .gesture(MapLongPress { point in
+                if let coordinate = proxy.convert(point, from: .local) { drop(at: coordinate) }
+            })
         }
-        .mapStyle(.standard(pointsOfInterest: .excludingAll))
-        .mapControls {}
         .frame(height: 170)
-        .allowsHitTesting(false)
         .accessibilityLabel(entry.placeName.map { "Map showing \($0)" } ?? "Map")
+        .accessibilityHint("Touch and hold a spot to set the place there")
     }
 
     private var results: some View {
@@ -154,9 +175,20 @@ struct LocationPicker: View {
         Section {
             map
                 .listRowInsets(EdgeInsets())
+                // The name row meets the map with no line between them.
+                .listRowSeparator(.hidden)
+            // Laid out like the day sheet's places: the name over its address.
             if let placeName = entry.placeName {
-                Label(placeName, systemImage: "mappin.and.ellipse")
-                    .foregroundStyle(Theme.primaryText)
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(placeName)
+                        .font(Typography.body)
+                        .foregroundStyle(Theme.primaryText)
+                    Text(address ?? "Looking up the address")
+                        .font(Typography.detail)
+                        .foregroundStyle(Theme.secondaryText)
+                        .redacted(reason: address == nil ? .placeholder : [])
+                }
+                .accessibilityElement(children: .combine)
             }
         }
 
@@ -258,6 +290,14 @@ struct LocationPicker: View {
 
     // MARK: - Actions
 
+    private func drop(at coordinate: CLLocationCoordinate2D) {
+        guard dropped == nil else { return }
+        dropped = coordinate
+        Task {
+            choose(await PlaceNames.name(for: coordinate), at: coordinate)
+        }
+    }
+
     private func choose(_ name: String, at coordinate: CLLocationCoordinate2D) {
         entry.setPlace(name: name, coordinate: coordinate)
         onChange()
@@ -329,7 +369,7 @@ private struct JournalPlace: Identifiable {
 private struct NearbyPlace: Identifiable {
     let name: String
     let coordinate: CLLocationCoordinate2D
-    /// How far it is, and its street when known: "120 m · Valencia St".
+    /// How far it is, and its address: "120 m · 432 Octavia St, San Francisco, CA 94102, United States".
     let detail: String
 
     var id: String { "\(name)|\(coordinate.latitude)|\(coordinate.longitude)" }
@@ -343,7 +383,7 @@ private struct NearbyPlace: Identifiable {
             let distance = center.distance(from: CLLocation(latitude: coordinate.latitude, longitude: coordinate.longitude))
             let length = Measurement(value: distance, unit: UnitLength.meters)
                 .formatted(.measurement(width: .abbreviated, usage: .road, numberFormatStyle: .number.precision(.fractionLength(0))))
-            let detail = [length, item.placemark.thoroughfare].compactMap { $0 }.joined(separator: " · ")
+            let detail = [length, PlaceAddress.full(item.placemark)].compactMap { $0 }.joined(separator: " · ")
             return (NearbyPlace(name: name, coordinate: coordinate, detail: detail), distance)
         }
         return places.sorted { $0.1 < $1.1 }.prefix(15).map(\.0)
@@ -368,5 +408,18 @@ struct MapPin: View {
                 .overlay { Circle().strokeBorder(.white, lineWidth: 3) }
                 .shadow(color: .black.opacity(0.3), radius: 2, y: 1)
         }
+    }
+}
+
+/// A long press on the map, reporting where it began. A UIKit recognizer, so the map still pans and zooms.
+private struct MapLongPress: UIGestureRecognizerRepresentable {
+    let action: (CGPoint) -> Void
+
+    func makeUIGestureRecognizer(context: Context) -> UILongPressGestureRecognizer {
+        UILongPressGestureRecognizer()
+    }
+
+    func handleUIGestureRecognizerAction(_ recognizer: UILongPressGestureRecognizer, context: Context) {
+        if recognizer.state == .began { action(context.converter.localLocation) }
     }
 }

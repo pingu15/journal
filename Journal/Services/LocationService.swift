@@ -152,3 +152,34 @@ final class PlaceSearch: NSObject, MKLocalSearchCompleterDelegate {
         }
     }
 }
+
+/// Addresses written out from a placemark, the way Maps writes them.
+enum PlaceAddress {
+    static func lookup(_ coordinate: CLLocationCoordinate2D) async -> CLPlacemark? {
+        let location = CLLocation(latitude: coordinate.latitude, longitude: coordinate.longitude)
+        return try? await CLGeocoder().reverseGeocodeLocation(location).first
+    }
+
+    /// "432 Octavia St, San Francisco, CA 94102, United States".
+    static func full(_ placemark: CLPlacemark) -> String? {
+        let state = [placemark.administrativeArea, placemark.postalCode].compactMap { $0 }.joined(separator: " ")
+        return joined([street(placemark), placemark.locality, state, placemark.country])
+    }
+
+    /// The full address, or just "San Francisco, CA, United States" when `name` already is the street.
+    static func describing(_ placemark: CLPlacemark, named name: String) -> String? {
+        if let street = street(placemark), street.caseInsensitiveCompare(name) == .orderedSame {
+            return joined([placemark.locality, placemark.administrativeArea, placemark.country])
+        }
+        return full(placemark)
+    }
+
+    private static func street(_ placemark: CLPlacemark) -> String? {
+        joined([placemark.subThoroughfare, placemark.thoroughfare], separator: " ")
+    }
+
+    private static func joined(_ parts: [String?], separator: String = ", ") -> String? {
+        let parts = parts.compactMap { $0 }.filter { !$0.isEmpty }
+        return parts.isEmpty ? nil : parts.joined(separator: separator)
+    }
+}
