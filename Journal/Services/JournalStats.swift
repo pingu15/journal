@@ -4,7 +4,11 @@ import Foundation
 struct JournalStats {
     let entryCount: Int
     let wordCount: Int
-    let daysJournaled: Int
+    /// Different places written from: entries' places by name (ignoring case), or by
+    /// coordinates to about 100 m for a place with no name.
+    let placeCount: Int
+    /// Photos and videos across all entries.
+    let photoCount: Int
     let currentStreak: Int
     let longestStreak: Int
     /// Words written per calendar day (keyed by start of day).
@@ -21,7 +25,17 @@ struct JournalStats {
         self.wordsByDay = wordsByDay
 
         let days = Set(wordsByDay.keys)
-        daysJournaled = days.count
+
+        var places = Set<String>()
+        for entry in entries {
+            if let name = entry.placeName?.trimmingCharacters(in: .whitespacesAndNewlines), !name.isEmpty {
+                places.insert("name:" + name.lowercased())
+            } else if let latitude = entry.latitude, let longitude = entry.longitude {
+                places.insert(String(format: "at:%.3f,%.3f", latitude, longitude))
+            }
+        }
+        placeCount = places.count
+        photoCount = entries.reduce(0) { $0 + $1.photos.count }
 
         // Today doesn't break the streak until it's over.
         var current = 0

@@ -97,12 +97,12 @@ private struct StatGrid: View {
                     .gridCellColumns(2)
             }
             GridRow {
-                tile(stats.currentStreak, "Day streak")
+                tile(stats.placeCount, stats.placeCount == 1 ? "Place visited" : "Places visited")
                 tile(stats.longestStreak, "Longest streak")
             }
             GridRow {
                 tile(stats.entryCount, stats.entryCount == 1 ? "Entry" : "Entries")
-                tile(stats.daysJournaled, stats.daysJournaled == 1 ? "Day written" : "Days written")
+                tile(stats.photoCount, stats.photoCount == 1 ? "Photo" : "Photos")
             }
         }
     }
