@@ -161,9 +161,11 @@ struct EntriesView: View {
             if entries.isEmpty {
                 EmptyState(title: "A blank page", systemImage: "book", message: "Write a few lines about today.")
             } else if sections.isEmpty {
-                // Centered in the card like the other empty states, not the system's large search one
-                // as the list's first row.
-                EmptyState(title: "No Results", systemImage: "magnifyingglass", message: "Nothing matches “\(searchText)”.")
+                // The system's own, as Mail and Notes show it: centered in the card (as the list's
+                // first row it sat at the top).
+                ContentUnavailableView.search(text: searchText)
+                    .padding(.bottom, Spacing.l)
+                    .allowsHitTesting(false)
             }
         }
     }
