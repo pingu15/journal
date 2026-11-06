@@ -165,7 +165,18 @@ struct EntriesView: View {
                 // first row it sat at the top). The system's layout and wording, its line under the title as small as the app's
                 // other notes.
                 ContentUnavailableView {
-                    Label("No Results for “\(searchText)”", systemImage: "magnifyingglass")
+                    Label {
+                        // On one line: a long search is cut short with "…", keeping its closing quote.
+                        HStack(spacing: 0) {
+                            Text("No Results for “").fixedSize()
+                            Text(searchText).truncationMode(.tail)
+                            Text("”").fixedSize()
+                        }
+                        .lineLimit(1)
+                        .padding(.horizontal, Spacing.content)
+                    } icon: {
+                        Image(systemName: "magnifyingglass")
+                    }
                 } description: {
                     Text("Check the spelling or try a new search.")
                         .font(Typography.note)
