@@ -33,7 +33,7 @@ struct InsightsView: View {
 }
 
 /// The current streak as a crest: "TODAY JOURNAL" (bold, then thin, widely spaced), "N Day" and
-/// "Streak", between two upright laurel branches, the way Apple frames an award.
+/// "Journal 🔥 Streak" (the flame in sand), between two upright laurel branches, the way Apple frames an award.
 private struct StreakCrest: View {
     let streak: Int
     /// The text's height, which sizes the branches: a fitted image left to size itself in a row
@@ -49,7 +49,7 @@ private struct StreakCrest: View {
                     .tracking(Typography.crestNameTracking)
                     // Tracking also follows the last letter: as much again on the left centers it.
                     .padding(.leading, Typography.crestNameTracking)
-                    .foregroundStyle(Theme.accent)
+                    .foregroundStyle(Theme.primaryText)
                     .lineLimit(1)
                     .minimumScaleFactor(0.6)
                 Text("\(streak.formatted()) Day")
@@ -58,7 +58,13 @@ private struct StreakCrest: View {
                     .contentTransition(.numericText())
                     .minimumScaleFactor(0.5)
                     .lineLimit(1)
-                MetaLabel("Streak", color: Theme.accent)
+                HStack(spacing: Spacing.s) {
+                    MetaLabel("Journal", color: Theme.primaryText)
+                    Image(systemName: "flame.fill")
+                        .font(Typography.meta)
+                        .foregroundStyle(Theme.accent)
+                    MetaLabel("Streak", color: Theme.primaryText)
+                }
             }
             .onGeometryChange(for: CGFloat.self, of: \.size.height) { textHeight = $0 }
             laurel("laurel.trailing")
