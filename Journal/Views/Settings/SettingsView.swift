@@ -18,6 +18,9 @@ struct SettingsView: View {
     /// Notifications haven't been asked for yet, so the note can ask rather than send the user away.
     @State private var notificationsCanAsk = false
     @State private var locationDenied = false
+    /// For the Location note: tracking on without access says so, like the reminder without notifications.
+    @State private var locationAllowed = LocationService.shared.isAuthorized
+    @State private var locationCanAsk = LocationService.shared.canAsk
 
     var body: some View {
         NavigationStack {
@@ -91,11 +94,24 @@ struct SettingsView: View {
                 } header: {
                     Text("Location")
                 } footer: {
-                    if locationDenied {
+                    // Tracking stays on without access, like the reminder without notifications, and
+                    // says so here until it's allowed.
+                    if locationDenied || (trackPlaces && !locationAllowed) {
                         Button {
-                            if let url = URL(string: UIApplication.openSettingsURLString) { openURL(url) }
+                            if locationCanAsk {
+                                Task {
+                                    if trackPlaces {
+                                        await PlaceTracker.shared.enable()
+                                    } else {
+                                        _ = await LocationService.shared.requestAuthorization()
+                                    }
+                                    refreshLocationAccess()
+                                }
+                            } else if let url = URL(string: UIApplication.openSettingsURLString) {
+                                openURL(url)
+                            }
                         } label: {
-                            Text("Location access is off. ") + Text("Open Settings").underline()
+                            Text("Location access is off. ") + Text(AccessLink.title(canAsk: locationCanAsk)).underline()
                         }
                         // A button takes the body size; set like the other footers.
                         .font(.footnote)
@@ -141,6 +157,7 @@ struct SettingsView: View {
                 guard scenePhase == .active else { return }
                 notificationsDenied = reminderEnabled ? !(await ReminderScheduler.isAllowed()) : false
                 notificationsCanAsk = await ReminderScheduler.canAsk()
+                refreshLocationAccess()
             }
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
@@ -214,7 +231,8 @@ struct SettingsView: View {
         }
     }
 
-    /// Like "Add current location": stays off if location access is refused.
+    /// Like the daily reminder: it turns on whatever iOS says, asking for location if it hasn't
+    /// yet; without access, the note says so and tracking starts once it's allowed.
     private var trackPlacesBinding: Binding<Bool> {
         Binding {
             trackPlaces
@@ -223,8 +241,18 @@ struct SettingsView: View {
                 PlaceTracker.shared.disable()
                 return
             }
-            Task { locationDenied = !(await PlaceTracker.shared.enable()) }
+            withAnimation { trackPlaces = true }
+            Task {
+                await PlaceTracker.shared.enable()
+                refreshLocationAccess()
+            }
         }
+    }
+
+    private func refreshLocationAccess() {
+        locationAllowed = LocationService.shared.isAuthorized
+        locationCanAsk = LocationService.shared.canAsk
+        if locationAllowed { locationDenied = false }
     }
 
     private var reminderTime: Binding<Date> {

@@ -52,14 +52,17 @@ final class PlaceTracker: NSObject, CLLocationManagerDelegate {
         if isEnabled && isAuthorized { start() }
     }
 
-    /// Asks for location access (and then for Always, so tracking carries on once the app has been
-    /// closed); true when tracking is on.
+    /// Turns tracking on, like the daily reminder, whether or not location is allowed: it asks for
+    /// access if it hasn't yet (and then for Always, so tracking carries on once the app has been
+    /// closed), and starts once access is there — now, or when it's allowed later
+    /// (`locationManagerDidChangeAuthorization`). True when it's tracking.
+    @discardableResult
     func enable() async -> Bool {
+        UserDefaults.standard.set(true, forKey: Self.enabledKey)
         guard await LocationService.shared.requestAuthorization() else { return false }
         if manager.authorizationStatus == .authorizedWhenInUse {
             await SystemPrompts.shared.during { await askForAlways() }
         }
-        UserDefaults.standard.set(true, forKey: Self.enabledKey)
         start()
         return true
     }
