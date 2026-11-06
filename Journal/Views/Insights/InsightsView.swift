@@ -12,10 +12,9 @@ struct InsightsView: View {
             ScrollView {
                 let stats = JournalStats(entries: entries)
                 VStack(alignment: .leading, spacing: Spacing.l) {
+                    StreakCrest(streak: stats.currentStreak)
+                    ActivityHeatmap(wordsByDay: stats.wordsByDay)
                     StatGrid(stats: stats)
-                    InsightSection(title: "Writing activity") {
-                        ActivityHeatmap(wordsByDay: stats.wordsByDay)
-                    }
                 }
                 .padding(.horizontal, Spacing.content)
                 .padding(.top, Spacing.m)
@@ -33,15 +32,63 @@ struct InsightsView: View {
     }
 }
 
-private struct InsightSection<Content: View>: View {
-    let title: String
-    @ViewBuilder let content: Content
+/// The current streak as a crest: the journal's name and "N Days" between two laurel branches,
+/// "Day streak" with a sand flame under the number.
+private struct StreakCrest: View {
+    let streak: Int
+    @AppStorage(JournalName.storageKey) private var journalName = JournalName.default
 
     var body: some View {
-        VStack(alignment: .leading, spacing: Spacing.m) {
-            MetaLabel(title)
-            content
+        VStack(spacing: Spacing.s) {
+            Laurels()
+                .scaleEffect(y: -1)
+            MetaLabel(JournalName.display(journalName), color: Theme.primaryText)
+            Text(streak == 1 ? "1 Day" : "\(streak.formatted()) Days")
+                .font(Typography.crestNumber)
+                .foregroundStyle(Theme.primaryText)
+                .contentTransition(.numericText())
+                .minimumScaleFactor(0.5)
+                .lineLimit(1)
+            HStack(spacing: Spacing.s) {
+                MetaLabel("Day", color: Theme.primaryText)
+                Image(systemName: "flame.fill")
+                    .font(Typography.meta)
+                    .foregroundStyle(Theme.accent)
+                MetaLabel("Streak", color: Theme.primaryText)
+            }
+            Laurels()
         }
+        .frame(maxWidth: .infinity)
+        .padding(.vertical, Spacing.s)
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel("\(streak) day streak")
+    }
+}
+
+/// Two laurel branches crossing in the middle, their tips curling up (flipped for the top).
+private struct Laurels: View {
+    /// How long each branch is (it's half as tall).
+    @ScaledMetric(relativeTo: .title2) private var length: CGFloat = 52
+
+    var body: some View {
+        HStack(spacing: -length * 0.12) {
+            branch
+            branch.scaleEffect(x: -1)
+        }
+        .foregroundStyle(Theme.primaryText)
+        .accessibilityHidden(true)
+    }
+
+    /// The left half: the system's trailing laurel, ")" with its stem at the foot, turned a
+    /// quarter to the left so the stem is at the center and the branch arches out to the left.
+    /// (A rotation leaves the frame upright, so it's laid out in its turned frame.)
+    private var branch: some View {
+        Image(systemName: "laurel.trailing")
+            .resizable()
+            .scaledToFit()
+            .frame(width: length / 2, height: length)
+            .rotationEffect(.degrees(-90))
+            .frame(width: length, height: length / 2)
     }
 }
 

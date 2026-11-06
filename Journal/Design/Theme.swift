@@ -100,6 +100,8 @@ enum Typography {
     static let calendarDay = Font.system(.callout).weight(.semibold)
     static let statNumber = Font.system(size: 40, weight: .regular, design: .serif)
     static let largeStatNumber = Font.system(size: 52, weight: .regular, design: .serif)
+    /// The Insights crest's streak ("12 Days"), sans like everything but the page titles.
+    static let crestNumber = Font.system(size: 52, weight: .bold)
 }
 
 enum Radius {
