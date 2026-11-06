@@ -103,11 +103,6 @@ struct RootView: View {
                 hasPromptedSinceForeground = false
             case .active:
                 Task { await ReminderScheduler.refresh() }
-                // On the first open (while iOS hasn't been asked for location), not over the lock
-                // screen: asks for what place tracking needs, and turns it on if it's allowed.
-                if !lockEnabled || lock.isUnlocked {
-                    Task { await PlaceTracker.shared.enableOnFirstOpen() }
-                }
                 if lockEnabled && !lock.isUnlocked && !hasPromptedSinceForeground {
                     hasPromptedSinceForeground = true
                     Task { await lock.unlock() }

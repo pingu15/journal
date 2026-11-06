@@ -52,13 +52,6 @@ final class PlaceTracker: NSObject, CLLocationManagerDelegate {
         if isEnabled && isAuthorized { start() }
     }
 
-    /// On the app's first open, while iOS hasn't been asked for location yet: asks as turning
-    /// tracking on in Settings does, and turns it on if location is allowed. Otherwise it stays off.
-    func enableOnFirstOpen() async {
-        guard LocationService.shared.canAsk else { return }
-        _ = await enable()
-    }
-
     /// Asks for location access (and then for Always, so tracking carries on once the app has been
     /// closed); true when tracking is on.
     func enable() async -> Bool {
