@@ -75,12 +75,12 @@ private struct StreakCrest: View {
         .accessibilityLabel("\(streak) day streak")
     }
 
-    /// A branch three quarters as tall as the crest's text beside it.
+    /// A branch three fifths as tall as the crest's text beside it.
     private func laurel(_ name: String) -> some View {
         Image(systemName: name)
             .resizable()
             .scaledToFit()
-            .frame(height: textHeight * 0.75)
+            .frame(height: textHeight * 0.6)
             .foregroundStyle(Theme.primaryText)
             .accessibilityHidden(true)
     }
