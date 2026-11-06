@@ -102,7 +102,11 @@ struct RootView: View {
                 lock.lock()
                 hasPromptedSinceForeground = false
             case .active:
-                Task { await ReminderScheduler.refresh() }
+                Task {
+                    await ReminderScheduler.refresh()
+                    // The coming month's, with whatever was written or deleted since.
+                    await OnThisDayScheduler.refresh(in: context)
+                }
                 if lockEnabled && !lock.isUnlocked && !hasPromptedSinceForeground {
                     hasPromptedSinceForeground = true
                     Task { await lock.unlock() }

@@ -3,6 +3,7 @@ import SwiftUI
 
 struct SettingsView: View {
     @Environment(AppLock.self) private var lock
+    @Environment(\.modelContext) private var context
     @Environment(\.dismiss) private var dismiss
     @Environment(\.openURL) private var openURL
     @Environment(\.scenePhase) private var scenePhase
@@ -12,6 +13,8 @@ struct SettingsView: View {
     @AppStorage(Appearance.storageKey) private var appearance = Appearance.system
     @AppStorage(ReminderScheduler.enabledKey) private var reminderEnabled = false
     @AppStorage(ReminderScheduler.minutesKey) private var reminderMinutes = ReminderScheduler.defaultMinutes
+    @AppStorage(OnThisDayScheduler.enabledKey) private var onThisDayEnabled = false
+    @AppStorage(OnThisDayScheduler.minutesKey) private var onThisDayMinutes = OnThisDayScheduler.defaultMinutes
     @AppStorage(LocationService.autoTagKey) private var autoTagLocation = false
     @AppStorage(PlaceTracker.enabledKey) private var trackPlaces = false
     @State private var notificationsDenied = false
@@ -65,8 +68,15 @@ struct SettingsView: View {
                             Label("Time", systemImage: "clock")
                         }
                     }
+                    Toggle("On This Day", systemImage: "clock.arrow.circlepath", isOn: onThisDayBinding)
+                        .tint(Theme.accent)
+                    if onThisDayEnabled {
+                        DatePicker(selection: onThisDayTime, displayedComponents: .hourAndMinute) {
+                            Label("Time", systemImage: "clock")
+                        }
+                    }
                 } header: {
-                    Text("Reminders")
+                    Text("Notifications")
                 } footer: {
                     if notificationsDenied {
                         Button {
@@ -169,7 +179,7 @@ struct SettingsView: View {
             // Including on the way back from iOS's Settings.
             .task(id: scenePhase) {
                 guard scenePhase == .active else { return }
-                notificationsDenied = reminderEnabled ? !(await ReminderScheduler.isAllowed()) : false
+                notificationsDenied = (reminderEnabled || onThisDayEnabled) ? !(await ReminderScheduler.isAllowed()) : false
                 notificationsCanAsk = await ReminderScheduler.canAsk()
                 refreshLocationAccess()
             }
@@ -204,7 +214,7 @@ struct SettingsView: View {
         } set: { enable in
             guard enable else {
                 reminderEnabled = false
-                notificationsDenied = false
+                if !onThisDayEnabled { notificationsDenied = false }
                 ReminderScheduler.cancel()
                 return
             }
@@ -215,13 +225,30 @@ struct SettingsView: View {
         }
     }
 
-    /// Asks iOS (it shows its prompt only the first time) and schedules the reminder if allowed.
+    /// Like the daily reminder: on whatever iOS says, with the note when notifications are off.
+    private var onThisDayBinding: Binding<Bool> {
+        Binding {
+            onThisDayEnabled
+        } set: { enable in
+            guard enable else {
+                onThisDayEnabled = false
+                if !reminderEnabled { notificationsDenied = false }
+                Task { await OnThisDayScheduler.cancel() }
+                return
+            }
+            withAnimation { onThisDayEnabled = true }
+            Task { await askForNotifications() }
+        }
+    }
+
+    /// Asks iOS (it shows its prompt only the first time) and schedules what's on if allowed.
     private func askForNotifications() async {
         let allowed = await ReminderScheduler.requestAuthorization()
         notificationsDenied = !allowed
         notificationsCanAsk = await ReminderScheduler.canAsk()
         if allowed {
-            await ReminderScheduler.schedule(minutesAfterMidnight: reminderMinutes)
+            if reminderEnabled { await ReminderScheduler.schedule(minutesAfterMidnight: reminderMinutes) }
+            await OnThisDayScheduler.refresh(in: context)
         }
     }
 
@@ -277,6 +304,16 @@ struct SettingsView: View {
             let components = Calendar.current.dateComponents([.hour, .minute], from: date)
             reminderMinutes = (components.hour ?? 21) * 60 + (components.minute ?? 0)
             Task { await ReminderScheduler.schedule(minutesAfterMidnight: reminderMinutes) }
+        }
+    }
+
+    private var onThisDayTime: Binding<Date> {
+        Binding {
+            Calendar.current.date(bySettingHour: onThisDayMinutes / 60, minute: onThisDayMinutes % 60, second: 0, of: .now) ?? .now
+        } set: { date in
+            let components = Calendar.current.dateComponents([.hour, .minute], from: date)
+            onThisDayMinutes = (components.hour ?? 9) * 60 + (components.minute ?? 0)
+            Task { await OnThisDayScheduler.refresh(in: context) }
         }
     }
 }
