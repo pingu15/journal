@@ -17,10 +17,13 @@ struct LocationPicker: View {
     @State private var search = PlaceSearch()
     @State private var camera: MapCameraPosition
     @State private var nearby: [NearbyPlace] = []
-    /// The address under the place's name; looked up when the sheet opens.
+    /// The address under the place's name; looked up whenever the place changes.
     @State private var address: String?
     /// Where a long press on the map dropped the pin, while its name is looked up.
     @State private var dropped: CLLocationCoordinate2D?
+    @State private var drops = 0
+    /// What the map shows now, so a hold leaves it there (an automatic camera jumps to the new pin).
+    @State private var visibleRegion: MKCoordinateRegion?
     @State private var isLocating = false
     @State private var resolvingID: String?
     @State private var errorMessage: String?
@@ -38,6 +41,10 @@ struct LocationPicker: View {
         } else {
             _camera = State(initialValue: .userLocation(fallback: .automatic))
         }
+    }
+
+    private var placeKey: String {
+        "\(entry.placeName ?? "")|\(entry.latitude ?? 0)|\(entry.longitude ?? 0)"
     }
 
     private var isSearching: Bool {
@@ -70,14 +77,16 @@ struct LocationPicker: View {
             }
         }
         .tint(Theme.primaryText)
-        .sensoryFeedback(.impact, trigger: dropped?.latitude)
-        .task {
+        .sensoryFeedback(.impact, trigger: drops)
+        // Again when a hold on the map moves the place, as the sheet stays open.
+        .task(id: placeKey) {
+            address = nil
             if let coordinate = entry.location?.coordinate, let name = entry.placeName,
                let placemark = await PlaceAddress.lookup(coordinate) {
                 address = PlaceAddress.describing(placemark, named: name)
             }
         }
-        .task {
+        .task(id: placeKey) {
             guard let center = await nearbyCenter() else { return }
             search.prefer(around: center.coordinate)
             nearby = await NearbyPlace.around(center, excluding: entry.placeName)
@@ -145,6 +154,7 @@ struct LocationPicker: View {
             }
             .mapStyle(.standard(pointsOfInterest: .excludingAll))
             .mapControls {}
+            .onMapCameraChange(frequency: .onEnd) { visibleRegion = $0.region }
             .gesture(MapLongPress { point in
                 if let coordinate = proxy.convert(point, from: .local) { drop(at: coordinate) }
             })
@@ -293,8 +303,14 @@ struct LocationPicker: View {
     private func drop(at coordinate: CLLocationCoordinate2D) {
         guard dropped == nil else { return }
         dropped = coordinate
+        drops += 1
+        if let visibleRegion { camera = .region(visibleRegion) }
+        // The sheet stays open, the map where it is, so the spot can be moved again.
         Task {
-            choose(await PlaceNames.name(for: coordinate), at: coordinate)
+            let name = await PlaceNames.name(for: coordinate)
+            entry.setPlace(name: name, coordinate: coordinate)
+            onChange()
+            dropped = nil
         }
     }
 
