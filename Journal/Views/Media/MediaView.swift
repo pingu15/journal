@@ -209,9 +209,9 @@ private enum MediaFilter: String, CaseIterable, Identifiable {
 
     var emptyMessage: String {
         switch self {
-        case .all: "Photos and videos you add to entries appear here."
-        case .photos: "Photos you add to entries appear here."
-        case .videos: "Videos you add to entries appear here."
+        case .all: "Media you add to entries will appear here."
+        case .photos: "Photos you add to entries will appear here."
+        case .videos: "Videos you add to entries will appear here."
         }
     }
 }
