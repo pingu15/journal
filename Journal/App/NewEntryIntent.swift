@@ -3,7 +3,6 @@ import AppIntents
 /// "New Journal Entry" — available in Shortcuts, Spotlight, Siri, and the Action button.
 nonisolated struct NewEntryIntent: AppIntent {
     static let title: LocalizedStringResource = "New Journal Entry"
-    static let description = IntentDescription("Opens Journal to a blank page.")
     static let openAppWhenRun = true
 
     @MainActor
@@ -18,9 +17,13 @@ nonisolated struct JournalShortcuts: AppShortcutsProvider {
     static var appShortcuts: [AppShortcut] {
         AppShortcut(
             intent: NewEntryIntent(),
+            // Said with the app's name before "entry" ("New Today entry"): after "in", Today reads
+            // as a time ("…in today"). Siri also takes the alternative names, Today Journal and
+            // Daily Journal (`INAlternativeAppNames`).
             phrases: [
-                "New entry in \(.applicationName)",
-                "Write in \(.applicationName)",
+                "New \(.applicationName) entry",
+                "Start a \(.applicationName) entry",
+                "Write a \(.applicationName) entry",
             ],
             shortTitle: "New Entry",
             systemImageName: "square.and.pencil"
