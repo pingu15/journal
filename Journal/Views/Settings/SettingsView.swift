@@ -60,37 +60,18 @@ struct SettingsView: View {
                     Text("Appearance")
                 }
 
+                // Each on its own page, like Theme, saying here whether it's on.
                 Section {
-                    Toggle("Daily Reminder", systemImage: "bell", isOn: reminderBinding)
-                        .tint(Theme.accent)
-                    if reminderEnabled {
-                        timeRow(reminderTime)
+                    notificationRow("Daily Reminder", systemImage: "bell", isOn: reminderEnabled) {
+                        notificationPage("Daily Reminder", systemImage: "bell", isOn: reminderBinding, time: reminderTime)
                     }
-                    Toggle("On This Day", systemImage: "calendar", isOn: onThisDayBinding)
-                        .tint(Theme.accent)
-                    if onThisDayEnabled {
-                        timeRow(onThisDayTime)
+                    notificationRow("On This Day", systemImage: "calendar", isOn: onThisDayEnabled) {
+                        notificationPage("On This Day", systemImage: "calendar", isOn: onThisDayBinding, time: onThisDayTime)
                     }
                 } header: {
                     Text("Notifications")
                 } footer: {
-                    if notificationsDenied {
-                        Button {
-                            if notificationsCanAsk {
-                                Task { await askForNotifications() }
-                            } else if let url = URL(string: UIApplication.openSettingsURLString) {
-                                openURL(url)
-                            }
-                        } label: {
-                            Text("Notifications are off. ") + Text(AccessLink.title(canAsk: notificationsCanAsk)).underline()
-                        }
-                        // A button takes the body size; set like the other footers.
-                        .font(.footnote)
-                        .foregroundStyle(Theme.secondaryText)
-                        .multilineTextAlignment(.leading)
-                        .frame(maxWidth: .infinity, alignment: .leading)
-                        .buttonStyle(.borderless)
-                    }
+                    notificationsNote
                 }
 
                 Section {
@@ -303,15 +284,66 @@ struct SettingsView: View {
         }
     }
 
-    /// "Time" and the time, with no icon: an unseen one keeps the label laid out like the
-    /// switches' (icon, then text), so "Time" and the lines between rows start under their text.
-    private func timeRow(_ time: Binding<Date>) -> some View {
-        DatePicker(selection: time, displayedComponents: .hourAndMinute) {
-            Label {
-                Text("Time")
-            } icon: {
-                Image(systemName: "clock").hidden()
+    /// A notification's row in Settings: its name, and On or Off, opening its page.
+    private func notificationRow<Page: View>(
+        _ title: String, systemImage: String, isOn: Bool, @ViewBuilder page: @escaping () -> Page
+    ) -> some View {
+        NavigationLink {
+            page()
+        } label: {
+            LabeledContent {
+                Text(isOn ? "On" : "Off")
+            } label: {
+                Label(title, systemImage: systemImage)
             }
+        }
+    }
+
+    /// A notification's own page: its switch, then, while it's on, its time, and the note when
+    /// notifications are off in iOS. Built in Settings' body, so it follows Settings' state.
+    private func notificationPage(
+        _ title: String, systemImage: String, isOn: Binding<Bool>, time: Binding<Date>
+    ) -> some View {
+        Form {
+            Section {
+                Toggle(title, systemImage: systemImage, isOn: isOn)
+                    .tint(Theme.accent)
+                if isOn.wrappedValue {
+                    DatePicker(selection: time, displayedComponents: .hourAndMinute) {
+                        Label("Time", systemImage: "clock")
+                    }
+                }
+            } footer: {
+                // Only for this one: the other may be the one that's on.
+                if isOn.wrappedValue { notificationsNote }
+            }
+        }
+        .tint(Theme.primaryText)
+        .scrollContentBackground(.hidden)
+        .background(Theme.background)
+        .navigationTitle(title)
+        .navigationBarTitleDisplayMode(.inline)
+    }
+
+    /// "Notifications are off." while one is on but iOS won't show it, asking in place while it can.
+    @ViewBuilder
+    private var notificationsNote: some View {
+        if notificationsDenied {
+            Button {
+                if notificationsCanAsk {
+                    Task { await askForNotifications() }
+                } else if let url = URL(string: UIApplication.openSettingsURLString) {
+                    openURL(url)
+                }
+            } label: {
+                Text("Notifications are off. ") + Text(AccessLink.title(canAsk: notificationsCanAsk)).underline()
+            }
+            // A button takes the body size; set like the other footers.
+            .font(.footnote)
+            .foregroundStyle(Theme.secondaryText)
+            .multilineTextAlignment(.leading)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .buttonStyle(.borderless)
         }
     }
 
