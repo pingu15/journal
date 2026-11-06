@@ -32,63 +32,52 @@ struct InsightsView: View {
     }
 }
 
-/// The current streak as a crest: the journal's name and "N Days" between two laurel branches,
-/// "Day streak" with a sand flame under the number.
+/// The current streak as a crest: the journal's name, "N Day" and "Streak" (with a sand flame),
+/// between two upright laurel branches, the way Apple frames an award.
 private struct StreakCrest: View {
     let streak: Int
     @AppStorage(JournalName.storageKey) private var journalName = JournalName.default
+    /// The text's height, which the branches take: a fitted image left to size itself in a row
+    /// takes its height from the width it's offered.
+    @State private var textHeight: CGFloat = 0
 
     var body: some View {
-        VStack(spacing: Spacing.s) {
-            Laurels()
-                .scaleEffect(y: -1)
-            MetaLabel(JournalName.display(journalName), color: Theme.primaryText)
-            Text(streak == 1 ? "1 Day" : "\(streak.formatted()) Days")
-                .font(Typography.crestNumber)
-                .foregroundStyle(Theme.primaryText)
-                .contentTransition(.numericText())
-                .minimumScaleFactor(0.5)
-                .lineLimit(1)
-            HStack(spacing: Spacing.s) {
-                MetaLabel("Day", color: Theme.primaryText)
-                Image(systemName: "flame.fill")
-                    .font(Typography.meta)
-                    .foregroundStyle(Theme.accent)
-                MetaLabel("Streak", color: Theme.primaryText)
+        HStack(spacing: Spacing.m) {
+            laurel("laurel.leading")
+            VStack(spacing: Spacing.s) {
+                MetaLabel(JournalName.display(journalName), color: Theme.primaryText)
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.7)
+                Text("\(streak.formatted()) Day")
+                    .font(Typography.crestNumber)
+                    .foregroundStyle(Theme.primaryText)
+                    .contentTransition(.numericText())
+                    .minimumScaleFactor(0.5)
+                    .lineLimit(1)
+                HStack(spacing: Spacing.s) {
+                    Image(systemName: "flame.fill")
+                        .font(Typography.meta)
+                        .foregroundStyle(Theme.accent)
+                    MetaLabel("Streak", color: Theme.primaryText)
+                }
             }
-            Laurels()
+            .onGeometryChange(for: CGFloat.self, of: \.size.height) { textHeight = $0 }
+            laurel("laurel.trailing")
         }
         .frame(maxWidth: .infinity)
         .padding(.vertical, Spacing.s)
         .accessibilityElement(children: .ignore)
         .accessibilityLabel("\(streak) day streak")
     }
-}
 
-/// Two laurel branches crossing in the middle, their tips curling up (flipped for the top).
-private struct Laurels: View {
-    /// How long each branch is (it's half as tall).
-    @ScaledMetric(relativeTo: .title2) private var length: CGFloat = 52
-
-    var body: some View {
-        HStack(spacing: -length * 0.12) {
-            branch
-            branch.scaleEffect(x: -1)
-        }
-        .foregroundStyle(Theme.primaryText)
-        .accessibilityHidden(true)
-    }
-
-    /// The left half: the system's trailing laurel, ")" with its stem at the foot, turned a
-    /// quarter to the left so the stem is at the center and the branch arches out to the left.
-    /// (A rotation leaves the frame upright, so it's laid out in its turned frame.)
-    private var branch: some View {
-        Image(systemName: "laurel.trailing")
+    /// A branch as tall as the crest's text beside it.
+    private func laurel(_ name: String) -> some View {
+        Image(systemName: name)
             .resizable()
             .scaledToFit()
-            .frame(width: length / 2, height: length)
-            .rotationEffect(.degrees(-90))
-            .frame(width: length, height: length / 2)
+            .frame(height: textHeight)
+            .foregroundStyle(Theme.primaryText)
+            .accessibilityHidden(true)
     }
 }
 
