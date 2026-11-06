@@ -411,7 +411,7 @@ private struct ZoomableImage: UIViewRepresentable {
     }
 }
 
-/// Lets the user backdate an entry.
+/// Lets the user move an entry to another date and time, past or future.
 struct DateEditSheet: View {
     @Binding var date: Date
     @Environment(\.dismiss) private var dismiss
@@ -420,7 +420,7 @@ struct DateEditSheet: View {
 
     var body: some View {
         NavigationStack {
-            DatePicker("Entry date", selection: $date, in: ...Date.now, displayedComponents: [.date, .hourAndMinute])
+            DatePicker("Entry date", selection: $date, displayedComponents: [.date, .hourAndMinute])
                 .datePickerStyle(.graphical)
                 .tint(Theme.primaryText)
                 .padding(.horizontal)
