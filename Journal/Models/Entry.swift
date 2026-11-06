@@ -60,9 +60,10 @@ extension Entry {
         !plainText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
     }
 
-    /// Nothing worth keeping — no text, photos, or place.
+    /// Nothing worth keeping — no text, photos, or place. Text as read: a new entry left with only
+    /// its empty title line ("# ") is blank too.
     var isBlank: Bool {
-        text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+        !hasText
             && (attachments ?? []).isEmpty
             && placeName == nil
     }
