@@ -10,23 +10,16 @@ struct InsightsView: View {
     var body: some View {
         NavigationStack {
             ScrollView {
-                if !entries.isEmpty {
-                    let stats = JournalStats(entries: entries)
-                    VStack(alignment: .leading, spacing: Spacing.l) {
-                        StatGrid(stats: stats)
-                        InsightSection(title: "Writing activity") {
-                            ActivityHeatmap(wordsByDay: stats.wordsByDay)
-                        }
+                let stats = JournalStats(entries: entries)
+                VStack(alignment: .leading, spacing: Spacing.l) {
+                    StatGrid(stats: stats)
+                    InsightSection(title: "Writing activity") {
+                        ActivityHeatmap(wordsByDay: stats.wordsByDay)
                     }
-                    .padding(.horizontal, Spacing.content)
-                    .padding(.top, Spacing.m)
-                    .padding(.bottom, Spacing.l)
                 }
-            }
-            .overlay {
-                if entries.isEmpty {
-                    EmptyState(title: "Nothing to see yet", systemImage: "chart.bar", message: "Insights appear as you write.")
-                }
+                .padding(.horizontal, Spacing.content)
+                .padding(.top, Spacing.m)
+                .padding(.bottom, Spacing.l)
             }
             .background(Theme.background)
             .sheetTitle("Insights")
