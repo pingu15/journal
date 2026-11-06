@@ -22,6 +22,8 @@ struct LocationPicker: View {
     /// Where a long press on the map dropped the pin, while its name is looked up.
     @State private var dropped: CLLocationCoordinate2D?
     @State private var drops = 0
+    /// In Your Journal's addresses, by place.
+    @State private var journalAddresses: [String: String] = [:]
     /// What the map shows now, so a hold leaves it there (an automatic camera jumps to the new pin).
     @State private var visibleRegion: MKCoordinateRegion?
     @State private var isLocating = false
@@ -255,8 +257,15 @@ struct LocationPicker: View {
         if !journal.isEmpty {
             Section {
                 ForEach(journal.prefix(5)) { place in
-                    placeRow(title: place.name, subtitle: place.detail) {
+                    placeRow(title: place.name, subtitle: journalAddresses[place.addressKey] ?? "") {
                         choose(place.name, at: place.coordinate)
+                    }
+                    // Looked up as the row shows, like Maps' own suggestions carry theirs.
+                    .task(id: place.addressKey) {
+                        guard journalAddresses[place.addressKey] == nil,
+                              let placemark = await PlaceAddress.lookup(place.coordinate),
+                              let address = PlaceAddress.full(placemark) else { return }
+                        journalAddresses[place.addressKey] = address
                     }
                 }
             } header: {
@@ -350,14 +359,14 @@ struct LocationPicker: View {
     }
 }
 
-/// A place other entries are set at, by name: where it was last used, and how often.
+/// A place other entries are set at, by name: where it was last used, and how often (most used first).
 private struct JournalPlace: Identifiable {
     let name: String
     let coordinate: CLLocationCoordinate2D
     let count: Int
 
     var id: String { name }
-    var detail: String { count == 1 ? "1 entry" : "\(count) entries" }
+    var addressKey: String { "\(coordinate.latitude),\(coordinate.longitude)" }
 
     func matches(_ query: String) -> Bool {
         query.split(whereSeparator: \.isWhitespace).allSatisfy { name.localizedStandardContains($0) }
