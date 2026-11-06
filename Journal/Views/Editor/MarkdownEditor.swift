@@ -246,9 +246,6 @@ struct MarkdownEditor<Header: View>: UIViewRepresentable {
                 return false
             }
 
-            // Where the page was: the edit and the new selection make the text view scroll the caret
-            // to the middle of the screen; it only needs to come into view.
-            let offset = textView.contentOffset
             textView.replace(range, with: "\n")
             let caret = range.location + 1
             // Return at the end of a title or heading starts body text; splitting one keeps the style.
@@ -256,7 +253,6 @@ struct MarkdownEditor<Header: View>: UIViewRepresentable {
             parent.controller.applyBlock(next, toParagraphAt: caret)
             textView.selectedRange = NSRange(location: caret, length: 0)
             parent.controller.updateTypingAttributes()
-            textView.keepCaretInView(from: offset)
             return false
         }
 
@@ -483,28 +479,18 @@ final class MarkdownTextView: UITextView {
         return rect
     }
 
-    /// Puts the page back where it was (`offset`), then scrolls only as far as the caret needs to
-    /// be in view, above the keyboard bar, rather than to the middle.
-    func keepCaretInView(from offset: CGPoint) {
-        layoutIfNeeded()
-        let caret = caretRect(for: selectedTextRange?.end ?? endOfDocument)
-        let inset = adjustedContentInset
-        let visibleTop = offset.y + inset.top
-        let visibleBottom = offset.y + bounds.height - inset.bottom
-        var y = offset.y
-        if caret.maxY > visibleBottom {
-            y += caret.maxY - visibleBottom
-        } else if caret.minY < visibleTop {
-            y -= visibleTop - caret.minY
+    /// Typing a return has the text view scroll a block of the page around the caret into view,
+    /// which brought the caret up to the middle of the screen. Only the caret has to be in view:
+    /// just above the keyboard bar (`contentInset.bottom`), with the page otherwise left alone.
+    override func scrollRectToVisible(_ rect: CGRect, animated: Bool) {
+        guard isFirstResponder, let selection = selectedTextRange, selection.isEmpty else {
+            return super.scrollRectToVisible(rect, animated: animated)
         }
-        let maxY = max(-inset.top, contentSize.height + inset.bottom - bounds.height)
-        y = min(max(y, -inset.top), maxY)
-        setContentOffset(CGPoint(x: offset.x, y: y), animated: false)
-        // The text view's own scroll to the caret comes on the next turn; hold the page there too.
-        DispatchQueue.main.async { [weak self] in
-            guard let self, abs(self.contentOffset.y - y) > 0.5 else { return }
-            self.setContentOffset(CGPoint(x: offset.x, y: y), animated: false)
+        let caret = caretRect(for: selection.end)
+        guard rect.height > caret.height * 2, rect.minY <= caret.maxY, rect.maxY >= caret.minY else {
+            return super.scrollRectToVisible(rect, animated: animated)
         }
+        super.scrollRectToVisible(caret, animated: animated)
     }
 
     override func gestureRecognizerShouldBegin(_ gestureRecognizer: UIGestureRecognizer) -> Bool {
