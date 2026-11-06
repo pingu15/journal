@@ -591,6 +591,16 @@ struct EmptyState: View {
 }
 
 /// Gear button that opens Settings; shared by every tab.
+/// The bar's leading button on every tab: opens Insights as a sheet.
+struct InsightsButton: View {
+    @State private var showing = false
+
+    var body: some View {
+        Button("Insights", systemImage: "chart.line.uptrend.xyaxis") { showing = true }
+            .sheet(isPresented: $showing) { InsightsView().sheetBackdrop() }
+    }
+}
+
 struct SettingsButton: View {
     @State private var showing = false
 

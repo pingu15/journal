@@ -58,6 +58,9 @@ struct MediaView: View {
             }
             .pageTitle()
             .toolbar {
+                ToolbarItem(placement: .topBarLeading) {
+                    InsightsButton()
+                }
                 ToolbarItem(placement: .topBarTrailing) {
                     SettingsButton()
                 }

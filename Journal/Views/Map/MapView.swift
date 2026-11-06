@@ -24,6 +24,9 @@ struct MapView: View {
             EntryMap(pins: pins, recenterCount: recenterCount, onOpen: open(_:), onLongPress: newEntry(at:))
                 .pageTitle()
                 .toolbar {
+                    ToolbarItem(placement: .topBarLeading) {
+                        InsightsButton()
+                    }
                     ToolbarItem(placement: .topBarTrailing) {
                         Button("Current Location", systemImage: "location", action: recenter)
                     }

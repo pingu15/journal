@@ -91,6 +91,9 @@ struct CalendarView: View {
             }
             .pageTitle()
             .toolbar {
+                ToolbarItem(placement: .topBarLeading) {
+                    InsightsButton()
+                }
                 ToolbarItem(placement: .topBarTrailing) {
                     Button("Today", systemImage: "\(calendar.component(.day, from: .now)).square") {
                         showThisMonth()

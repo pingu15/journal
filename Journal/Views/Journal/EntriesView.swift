@@ -23,7 +23,6 @@ struct EntriesView: View {
     @FocusState private var isSearching: Bool
     @State private var filter = JournalFilter.all
     @State private var newEntryCount = 0
-    @State private var showingInsights = false
     /// Where the bar's search button is, for the field to grow out of.
     @State private var searchButtonFrame: CGRect = .zero
     @State private var labelTops = LabelTops()
@@ -88,9 +87,6 @@ struct EntriesView: View {
         // closing (a pushed view's own setting only lifts once its pop animation ends).
         .toolbar(router.journalPath.isEmpty ? .visible : .hidden, for: .tabBar)
         .sensoryFeedback(.impact(weight: .light), trigger: newEntryCount)
-        .sheet(isPresented: $showingInsights) {
-            InsightsView().sheetBackdrop()
-        }
         .onChange(of: router.journalPath) { _, path in
             if path.isEmpty {
                 Entry.deleteBlankEntries(in: context, keeping: router.openEntries)
@@ -111,7 +107,7 @@ struct EntriesView: View {
     @ToolbarContentBuilder
     private var toolbarContent: some ToolbarContent {
         ToolbarItem(placement: .topBarLeading) {
-            Button("Insights", systemImage: "chart.bar.xaxis") { showingInsights = true }
+            InsightsButton()
         }
         ToolbarItem(placement: .topBarTrailing) {
             Button("Search", systemImage: "magnifyingglass", action: openSearch)
