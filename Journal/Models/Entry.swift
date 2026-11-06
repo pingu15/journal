@@ -91,8 +91,9 @@ extension Entry {
         plainText.split { $0.isWhitespace || $0.isNewline }.count
     }
 
+    /// At 230 words a minute, rounded up: any part of a minute counts as one.
     var readingMinutes: Int {
-        max(1, Int((Double(wordCount) / 230).rounded()))
+        max(1, Int((Double(wordCount) / 230).rounded(.up)))
     }
 
     var shareText: String {
