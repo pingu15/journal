@@ -262,7 +262,7 @@ struct LocationPicker: View {
                     }
                 }
             } header: {
-                MetaLabel("In Your Journal", systemImage: "book.closed")
+                MetaLabel("In My Journal", systemImage: "book.closed")
             }
         }
 
@@ -274,7 +274,7 @@ struct LocationPicker: View {
                     }
                 }
             } header: {
-                MetaLabel("Places", systemImage: "mappin")
+                MetaLabel("Places", systemImage: "mappin.and.ellipse")
             } footer: {
                 if let errorMessage { Text(errorMessage) }
             }
