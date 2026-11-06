@@ -112,7 +112,6 @@ struct EntriesView: View {
         ToolbarItem(placement: .topBarTrailing) {
             Button("Search", systemImage: "magnifyingglass", action: openSearch)
                 .onGeometryChange(for: CGRect.self) { $0.frame(in: .global) } action: { searchButtonFrame = $0 }
-                .disabled(filter == .all && entries.isEmpty)
                 .id(searchButtonID)
         }
         ToolbarItem(placement: .topBarTrailing) {
@@ -158,8 +157,9 @@ struct EntriesView: View {
             if phase == .interacting { swipedOpen = nil }
         }
         .overlay {
-            if entries.isEmpty {
-                EmptyState(title: "A blank page", systemImage: "book", message: "Write a few lines about today.")
+            // Search works on an empty journal too, and says it found nothing.
+            if entries.isEmpty && searchText.trimmingCharacters(in: .whitespaces).isEmpty {
+                EmptyState(title: "A brand new journal", systemImage: "book", message: "Write a few lines about today.")
             } else if sections.isEmpty {
                 // The system's own, as Mail and Notes show it: centered in the card (as the list's
                 // first row it sat at the top). The system's layout and wording, its line under the title as small as the app's
