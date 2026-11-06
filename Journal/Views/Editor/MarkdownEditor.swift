@@ -455,7 +455,7 @@ final class MarkdownTextView: UITextView {
     /// Taps on the header belong to the header's controls, not the text.
     /// The empty line at the very end of the text takes the paragraph style of the line above, so
     /// after a photo or video (whose line is centered) the caret sat centered. It starts at the
-    /// left margin, like any empty line.
+    /// left margin, like any empty line, and is as tall as on a line with text.
     override func caretRect(for position: UITextPosition) -> CGRect {
         var rect = super.caretRect(for: position)
         let text = textStorage.string as NSString
@@ -464,6 +464,14 @@ final class MarkdownTextView: UITextView {
            text.character(at: text.length - 1) == 0x0A,
            text.character(at: text.length - 2) == 0xFFFC {
             rect.origin.x = textContainerInset.left + textContainer.lineFragmentPadding
+        }
+        // On an empty line the caret also took in the line spacing below the text, so it stood
+        // taller than on a line with text.
+        let isEmptyLine = (offset == 0 || text.character(at: offset - 1) == 0x0A)
+            && (offset == text.length || text.character(at: offset) == 0x0A)
+        if isEmptyLine, let style = typingAttributes[.paragraphStyle] as? NSParagraphStyle,
+           rect.height > style.lineSpacing * 2 {
+            rect.size.height -= style.lineSpacing
         }
         return rect
     }
