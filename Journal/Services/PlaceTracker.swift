@@ -19,7 +19,7 @@ struct LocationSample: Codable {
 /// Settings or from a day's Places card. The samples stay on this iPhone, a file a day.
 final class PlaceTracker: NSObject, CLLocationManagerDelegate {
     static let shared = PlaceTracker()
-    /// Settings: track places.
+    /// Settings: Track Visited Places.
     static let enabledKey = "trackPlaces"
     static let interval: TimeInterval = 5 * 60
     /// Readings vaguer than this (meters) are left out.

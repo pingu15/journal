@@ -86,7 +86,7 @@ struct SettingsView: View {
                 Section {
                     Toggle("Add Current Location", systemImage: "location", isOn: autoTagBinding)
                         .tint(Theme.accent)
-                    Toggle("Track Places", systemImage: "mappin.and.ellipse", isOn: trackPlacesBinding)
+                    Toggle("Track Visited Places", systemImage: "figure.walk", isOn: trackPlacesBinding)
                         .tint(Theme.accent)
                 } header: {
                     Text("Location")
