@@ -162,8 +162,14 @@ struct EntriesView: View {
                 EmptyState(title: "A blank page", systemImage: "book", message: "Write a few lines about today.")
             } else if sections.isEmpty {
                 // The system's own, as Mail and Notes show it: centered in the card (as the list's
-                // first row it sat at the top).
-                ContentUnavailableView.search(text: searchText)
+                // first row it sat at the top). The system's layout and wording, its line under the title as small as the app's
+                // other notes.
+                ContentUnavailableView {
+                    Label("No Results for “\(searchText)”", systemImage: "magnifyingglass")
+                } description: {
+                    Text("Check the spelling or try a new search.")
+                        .font(Typography.note)
+                }
                     .padding(.bottom, Spacing.l)
                     .allowsHitTesting(false)
             }
