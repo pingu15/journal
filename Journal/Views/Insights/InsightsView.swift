@@ -32,12 +32,11 @@ struct InsightsView: View {
     }
 }
 
-/// The current streak as a crest: the journal's name, "N Day" and "Streak" (with a sand flame),
-/// between two upright laurel branches, the way Apple frames an award.
+/// The current streak as a crest: "TODAY JOURNAL" (thin, then bold, widely spaced), "N Day" and
+/// "Streak", between two upright laurel branches, the way Apple frames an award.
 private struct StreakCrest: View {
     let streak: Int
-    @AppStorage(JournalName.storageKey) private var journalName = JournalName.default
-    /// The text's height, which the branches take: a fitted image left to size itself in a row
+    /// The text's height, which sizes the branches: a fitted image left to size itself in a row
     /// takes its height from the width it's offered.
     @State private var textHeight: CGFloat = 0
 
@@ -45,21 +44,21 @@ private struct StreakCrest: View {
         HStack(spacing: Spacing.m) {
             laurel("laurel.leading")
             VStack(spacing: Spacing.s) {
-                MetaLabel(JournalName.display(journalName), color: Theme.primaryText)
+                (Text("TODAY").font(Typography.crestNameLight)
+                    + Text("JOURNAL").font(Typography.crestNameBold))
+                    .tracking(Typography.crestNameTracking)
+                    // Tracking also follows the last letter: as much again on the left centers it.
+                    .padding(.leading, Typography.crestNameTracking)
+                    .foregroundStyle(Theme.accent)
                     .lineLimit(1)
-                    .minimumScaleFactor(0.7)
+                    .minimumScaleFactor(0.6)
                 Text("\(streak.formatted()) Day")
                     .font(Typography.crestNumber)
                     .foregroundStyle(Theme.primaryText)
                     .contentTransition(.numericText())
                     .minimumScaleFactor(0.5)
                     .lineLimit(1)
-                HStack(spacing: Spacing.s) {
-                    Image(systemName: "flame.fill")
-                        .font(Typography.meta)
-                        .foregroundStyle(Theme.accent)
-                    MetaLabel("Streak", color: Theme.primaryText)
-                }
+                MetaLabel("Streak", color: Theme.accent)
             }
             .onGeometryChange(for: CGFloat.self, of: \.size.height) { textHeight = $0 }
             laurel("laurel.trailing")
@@ -70,12 +69,12 @@ private struct StreakCrest: View {
         .accessibilityLabel("\(streak) day streak")
     }
 
-    /// A branch as tall as the crest's text beside it.
+    /// A branch three quarters as tall as the crest's text beside it.
     private func laurel(_ name: String) -> some View {
         Image(systemName: name)
             .resizable()
             .scaledToFit()
-            .frame(height: textHeight)
+            .frame(height: textHeight * 0.75)
             .foregroundStyle(Theme.primaryText)
             .accessibilityHidden(true)
     }

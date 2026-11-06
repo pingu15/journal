@@ -101,7 +101,11 @@ enum Typography {
     static let statNumber = Font.system(size: 40, weight: .regular, design: .serif)
     static let largeStatNumber = Font.system(size: 52, weight: .regular, design: .serif)
     /// The Insights crest's streak ("12 Days"), sans like everything but the page titles.
-    static let crestNumber = Font.system(size: 52, weight: .bold)
+    static let crestNumber = Font.system(size: 52, weight: .black)
+    /// The crest's name over the number: "TODAY" thin, "JOURNAL" bold, very widely spaced.
+    static let crestNameLight = Font.system(.title3).weight(.thin)
+    static let crestNameBold = Font.system(.title3).weight(.bold)
+    static let crestNameTracking: CGFloat = 6
 }
 
 enum Radius {
