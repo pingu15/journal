@@ -166,14 +166,12 @@ struct EntriesView: View {
                 // other notes.
                 ContentUnavailableView {
                     Label {
-                        // On one line: a long search is cut short with "…", keeping its closing quote.
-                        HStack(spacing: 0) {
-                            Text("No Results for “").fixedSize()
-                            Text(searchText).truncationMode(.tail)
-                            Text("”").fixedSize()
-                        }
-                        .lineLimit(1)
-                        .padding(.horizontal, Spacing.content)
+                        // At most two lines: a long search is cut short with "…".
+                        Text("No Results for “\(searchText)”")
+                            .lineLimit(2)
+                            .truncationMode(.tail)
+                            .multilineTextAlignment(.center)
+                            .padding(.horizontal, Spacing.content)
                     } icon: {
                         Image(systemName: "magnifyingglass")
                     }
