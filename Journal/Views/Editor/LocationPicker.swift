@@ -1,16 +1,22 @@
 import MapKit
+import SwiftData
 import SwiftUI
 
-/// Set, change or clear an entry's place: search, current location, or remove.
-/// A small map shows the entry's place (or where you are, before one is set).
+/// Set, change or clear an entry's place. With nothing typed: a small map of the entry's place (or
+/// where you are, before one is set) with its name attached below, Current Location / Remove, and
+/// places nearby. While searching, those give way to the journal's own places that match, then
+/// suggestions from Maps.
 struct LocationPicker: View {
     @Bindable var entry: Entry
     let onChange: () -> Void
 
     @Environment(\.dismiss) private var dismiss
     @Environment(\.openURL) private var openURL
+    @Query(filter: #Predicate<Entry> { $0.deletedAt == nil && $0.placeName != nil }, sort: \Entry.createdAt, order: .reverse)
+    private var placedEntries: [Entry]
     @State private var search = PlaceSearch()
     @State private var camera: MapCameraPosition
+    @State private var nearby: [NearbyPlace] = []
     @State private var isLocating = false
     @State private var resolvingID: String?
     @State private var errorMessage: String?
@@ -30,6 +36,15 @@ struct LocationPicker: View {
         }
     }
 
+    private var isSearching: Bool {
+        !search.query.trimmingCharacters(in: .whitespaces).isEmpty
+    }
+
+    /// Where "Nearby" is measured from: the entry's place, else where you last were.
+    private var nearbyCenter: CLLocation? {
+        entry.location ?? LocationService.shared.lastKnownLocation
+    }
+
     var body: some View {
         NavigationStack {
             VStack(spacing: Spacing.m) {
@@ -47,10 +62,10 @@ struct LocationPicker: View {
             }
         }
         .tint(Theme.primaryText)
-        .onAppear {
-            if let place = entry.placeName {
-                search.query = place
-            }
+        .task {
+            guard let center = nearbyCenter else { return }
+            search.prefer(around: center.coordinate)
+            nearby = await NearbyPlace.around(center, excluding: entry.placeName)
         }
     }
 
@@ -84,8 +99,7 @@ struct LocationPicker: View {
     private var map: some View {
         if entry.location == nil && !LocationService.shared.isAuthorized {
             // Nothing to show yet: a quiet placeholder rather than a zoomed-out continent.
-            RoundedRectangle(cornerRadius: Radius.card)
-                .fill(Theme.primaryText.opacity(0.05))
+            Theme.primaryText.opacity(0.05)
                 .overlay {
                     VStack(spacing: Spacing.s) {
                         Image(systemName: "map")
@@ -115,83 +129,16 @@ struct LocationPicker: View {
         .mapStyle(.standard(pointsOfInterest: .excludingAll))
         .mapControls {}
         .frame(height: 170)
-        .clipShape(.rect(cornerRadius: Radius.card))
-        .overlay {
-            RoundedRectangle(cornerRadius: Radius.card).strokeBorder(Theme.hairline)
-        }
         .allowsHitTesting(false)
         .accessibilityLabel(entry.placeName.map { "Map showing \($0)" } ?? "Map")
     }
 
-    /// The map is the list's first row, so it scrolls away with the places below it.
     private var results: some View {
         List {
-            map
-                // The List already insets rows to its card width; no extra inset, so the map matches the cards.
-                .listRowInsets(EdgeInsets())
-                .listRowBackground(Color.clear)
-                .listRowSeparator(.hidden)
-
-            Section {
-                Button(action: useCurrentLocation) {
-                    HStack {
-                        Label("Current Location", systemImage: "location")
-                        Spacer()
-                        if isLocating { ProgressView() }
-                    }
-                }
-                .disabled(isLocating || resolvingID != nil)
-
-                if entry.placeName != nil {
-                    Button("Remove Location", systemImage: "location.slash", role: .destructive) {
-                        entry.clearPlace()
-                        onChange()
-                        dismiss()
-                    }
-                }
-            } footer: {
-                if locationDenied {
-                    Button {
-                        if let url = URL(string: UIApplication.openSettingsURLString) { openURL(url) }
-                    } label: {
-                        Text("Location access is off for Journal. ") + Text("Open Settings").underline()
-                    }
-                    // A button takes the body size; set like a footer.
-                    .font(.footnote)
-                    .foregroundStyle(Theme.secondaryText)
-                    .buttonStyle(.borderless)
-                } else if let errorMessage {
-                    Text(errorMessage)
-                }
-            }
-
-            // Hide suggestions that just echo the place already set.
-            let suggestions = search.suggestions.filter { !(search.query == entry.placeName && $0.title == entry.placeName) }
-            if !suggestions.isEmpty {
-                Section {
-                    ForEach(suggestions) { suggestion in
-                        Button {
-                            Task { await select(suggestion) }
-                        } label: {
-                            HStack {
-                            VStack(alignment: .leading, spacing: 2) {
-                                Text(suggestion.title)
-                                    .foregroundStyle(Theme.primaryText)
-                                if !suggestion.subtitle.isEmpty {
-                                    Text(suggestion.subtitle)
-                                        .font(Typography.detail)
-                                        .foregroundStyle(Theme.secondaryText)
-                                }
-                            }
-                            Spacer(minLength: 0)
-                            if resolvingID == suggestion.id { ProgressView() }
-                            }
-                        }
-                        .disabled(resolvingID != nil)
-                    }
-                } header: {
-                    MetaLabel("Places", systemImage: "mappin")
-                }
+            if isSearching {
+                searchResults
+            } else {
+                currentPlace
             }
         }
         .scrollContentBackground(.hidden)
@@ -201,8 +148,121 @@ struct LocationPicker: View {
         .listSectionSpacing(Spacing.m)
     }
 
+    /// The map with the place set under it, in one card, then Current Location / Remove and nearby places.
+    @ViewBuilder
+    private var currentPlace: some View {
+        Section {
+            map
+                .listRowInsets(EdgeInsets())
+            if let placeName = entry.placeName {
+                Label(placeName, systemImage: "mappin.and.ellipse")
+                    .foregroundStyle(Theme.primaryText)
+            }
+        }
+
+        Section {
+            Button(action: useCurrentLocation) {
+                HStack {
+                    Label("Current Location", systemImage: "location")
+                    Spacer()
+                    if isLocating { ProgressView() }
+                }
+            }
+            .disabled(isLocating || resolvingID != nil)
+
+            if entry.placeName != nil {
+                Button("Remove Location", systemImage: "location.slash", role: .destructive) {
+                    entry.clearPlace()
+                    onChange()
+                    dismiss()
+                }
+            }
+        } footer: {
+            if locationDenied {
+                Button {
+                    if let url = URL(string: UIApplication.openSettingsURLString) { openURL(url) }
+                } label: {
+                    Text("Location access is off for Journal. ") + Text("Open Settings").underline()
+                }
+                // A button takes the body size; set like a footer.
+                .font(.footnote)
+                .foregroundStyle(Theme.secondaryText)
+                .buttonStyle(.borderless)
+            } else if let errorMessage {
+                Text(errorMessage)
+            }
+        }
+
+        if !nearby.isEmpty {
+            Section {
+                ForEach(nearby) { place in
+                    placeRow(title: place.name, subtitle: place.detail) {
+                        choose(place.name, at: place.coordinate)
+                    }
+                }
+            } header: {
+                MetaLabel("Nearby", systemImage: "location.circle")
+            }
+        }
+    }
+
+    /// Places already in the journal that match, then suggestions from Maps.
+    @ViewBuilder
+    private var searchResults: some View {
+        let journal = JournalPlace.all(in: placedEntries, excluding: entry).filter { $0.matches(search.query) }
+        if !journal.isEmpty {
+            Section {
+                ForEach(journal.prefix(5)) { place in
+                    placeRow(title: place.name, subtitle: place.detail) {
+                        choose(place.name, at: place.coordinate)
+                    }
+                }
+            } header: {
+                MetaLabel("In Your Journal", systemImage: "book.closed")
+            }
+        }
+
+        if !search.suggestions.isEmpty {
+            Section {
+                ForEach(search.suggestions) { suggestion in
+                    placeRow(title: suggestion.title, subtitle: suggestion.subtitle, isResolving: resolvingID == suggestion.id) {
+                        Task { await select(suggestion) }
+                    }
+                }
+            } header: {
+                MetaLabel("Places", systemImage: "mappin")
+            } footer: {
+                if let errorMessage { Text(errorMessage) }
+            }
+        }
+    }
+
+    private func placeRow(title: String, subtitle: String, isResolving: Bool = false, action: @escaping () -> Void) -> some View {
+        Button(action: action) {
+            HStack {
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(title)
+                        .foregroundStyle(Theme.primaryText)
+                    if !subtitle.isEmpty {
+                        Text(subtitle)
+                            .font(Typography.detail)
+                            .foregroundStyle(Theme.secondaryText)
+                    }
+                }
+                Spacer(minLength: 0)
+                if isResolving { ProgressView() }
+            }
+        }
+        .disabled(resolvingID != nil)
+    }
+
     // MARK: - Actions
 
+    private func choose(_ name: String, at coordinate: CLLocationCoordinate2D) {
+        entry.setPlace(name: name, coordinate: coordinate)
+        onChange()
+        dismiss()
+    }
 
     private func useCurrentLocation() {
         isLocating = true
@@ -213,9 +273,7 @@ struct LocationPicker: View {
             do {
                 let location = try await LocationService.shared.currentLocation()
                 let name = await LocationService.shared.placeName(for: location) ?? "Current Location"
-                entry.setPlace(name: name, coordinate: location.coordinate)
-                onChange()
-                dismiss()
+                choose(name, at: location.coordinate)
             } catch LocationService.Failure.denied {
                 locationDenied = true
             } catch {
@@ -232,9 +290,63 @@ struct LocationPicker: View {
             errorMessage = "Couldn't find that place."
             return
         }
-        entry.setPlace(name: suggestion.title, coordinate: coordinate)
-        onChange()
-        dismiss()
+        choose(suggestion.title, at: coordinate)
+    }
+}
+
+/// A place other entries are set at, by name: where it was last used, and how often.
+private struct JournalPlace: Identifiable {
+    let name: String
+    let coordinate: CLLocationCoordinate2D
+    let count: Int
+
+    var id: String { name }
+    var detail: String { count == 1 ? "1 entry" : "\(count) entries" }
+
+    func matches(_ query: String) -> Bool {
+        query.split(whereSeparator: \.isWhitespace).allSatisfy { name.localizedStandardContains($0) }
+    }
+
+    /// Most used first. `entries` are newest first, so each place keeps its latest spot.
+    static func all(in entries: [Entry], excluding entry: Entry) -> [JournalPlace] {
+        var order: [String] = []
+        var places: [String: JournalPlace] = [:]
+        for other in entries where other != entry {
+            guard let name = other.placeName, let coordinate = other.location?.coordinate else { continue }
+            let key = name.lowercased()
+            if let place = places[key] {
+                places[key] = JournalPlace(name: place.name, coordinate: place.coordinate, count: place.count + 1)
+            } else {
+                order.append(key)
+                places[key] = JournalPlace(name: name, coordinate: coordinate, count: 1)
+            }
+        }
+        return order.compactMap { places[$0] }.sorted { $0.count > $1.count }
+    }
+}
+
+/// A point of interest near the entry's place, from Maps, closest first.
+private struct NearbyPlace: Identifiable {
+    let name: String
+    let coordinate: CLLocationCoordinate2D
+    /// How far it is, and its street when known: "120 m · Valencia St".
+    let detail: String
+
+    var id: String { "\(name)|\(coordinate.latitude)|\(coordinate.longitude)" }
+
+    static func around(_ center: CLLocation, excluding placeName: String?) async -> [NearbyPlace] {
+        let request = MKLocalPointsOfInterestRequest(center: center.coordinate, radius: 500)
+        guard let items = try? await MKLocalSearch(request: request).start().mapItems else { return [] }
+        let places = items.compactMap { item -> (NearbyPlace, CLLocationDistance)? in
+            guard let name = item.name, name != placeName else { return nil }
+            let coordinate = item.placemark.coordinate
+            let distance = center.distance(from: CLLocation(latitude: coordinate.latitude, longitude: coordinate.longitude))
+            let length = Measurement(value: distance, unit: UnitLength.meters)
+                .formatted(.measurement(width: .abbreviated, usage: .road, numberFormatStyle: .number.precision(.fractionLength(0))))
+            let detail = [length, item.placemark.thoroughfare].compactMap { $0 }.joined(separator: " · ")
+            return (NearbyPlace(name: name, coordinate: coordinate, detail: detail), distance)
+        }
+        return places.sorted { $0.1 < $1.1 }.prefix(15).map(\.0)
     }
 }
 

@@ -118,6 +118,11 @@ final class PlaceSearch: NSObject, MKLocalSearchCompleterDelegate {
     }
     private(set) var suggestions: [Suggestion] = []
 
+    /// Suggestions favour places around here (a city's width), else where Maps thinks you are.
+    func prefer(around center: CLLocationCoordinate2D) {
+        completer.region = MKCoordinateRegion(center: center, latitudinalMeters: 20_000, longitudinalMeters: 20_000)
+    }
+
     @ObservationIgnored private let completer = MKLocalSearchCompleter()
 
     override init() {
