@@ -124,17 +124,34 @@ struct EntryMap: UIViewRepresentable {
         }
 
         /// Taps on dots are caught here, not through MapKit's selection, which holds a tap for half a
-        /// second to rule out a double tap.
+        /// second to rule out a double tap. The dot is found by where the dots are, not by hit-testing:
+        /// the location dot is drawn above them and took the tap when it was close by.
         @objc func tap(_ gesture: UITapGestureRecognizer) {
             guard let map = gesture.view as? MKMapView else { return }
-            var view = map.hitTest(gesture.location(in: map), with: nil)
-            while let current = view, !(current is EntryDotView) {
-                view = current.superview
-            }
-            if let dot = view as? EntryDotView, let annotation = dot.annotation {
+            let point = gesture.location(in: map)
+            let hit = Self.dots(in: map)
+                .map { dot in (dot, dot.convert(dot.bounds, to: map)) }
+                .filter { $0.1.contains(point) }
+                // Overlapping dots: the one whose center is nearest.
+                .min { Self.distance($0.1, point) < Self.distance($1.1, point) }?.0
+            if let dot = hit, let annotation = dot.annotation {
                 dot.pulse()
                 open(annotation)
             }
+        }
+
+        /// The dots on screen (not those folded into a group).
+        private static func dots(in view: UIView) -> [EntryDotView] {
+            view.subviews.flatMap { subview -> [EntryDotView] in
+                if let dot = subview as? EntryDotView {
+                    return dot.isHidden || dot.alpha < 0.01 ? [] : [dot]
+                }
+                return dots(in: subview)
+            }
+        }
+
+        private static func distance(_ frame: CGRect, _ point: CGPoint) -> CGFloat {
+            hypot(frame.midX - point.x, frame.midY - point.y)
         }
 
         /// The map's own gestures carry on alongside the tap.
