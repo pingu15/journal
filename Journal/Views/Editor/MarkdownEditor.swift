@@ -51,8 +51,8 @@ struct MarkdownEditor<Header: View>: UIViewRepresentable {
 
     func updateUIView(_ textView: MarkdownTextView, context: Context) {
         context.coordinator.parent = self
-        // The keyboard bar floats a little above the keyboard.
-        let toolbarClearance: CGFloat = isEditing ? MarkdownToolbar.height + Spacing.s : 0
+        // The keyboard bar floats a little above the keyboard; the last line stays well clear of it.
+        let toolbarClearance: CGFloat = isEditing ? MarkdownToolbar.height + Spacing.s + Spacing.l : 0
         if textView.contentInset.bottom != toolbarClearance {
             textView.contentInset.bottom = toolbarClearance
             textView.verticalScrollIndicatorInsets.bottom = toolbarClearance
@@ -246,6 +246,9 @@ struct MarkdownEditor<Header: View>: UIViewRepresentable {
                 return false
             }
 
+            // Where the page was: the edit and the new selection make the text view scroll the caret
+            // to the middle of the screen; it only needs to come into view.
+            let offset = textView.contentOffset
             textView.replace(range, with: "\n")
             let caret = range.location + 1
             // Return at the end of a title or heading starts body text; splitting one keeps the style.
@@ -253,6 +256,7 @@ struct MarkdownEditor<Header: View>: UIViewRepresentable {
             parent.controller.applyBlock(next, toParagraphAt: caret)
             textView.selectedRange = NSRange(location: caret, length: 0)
             parent.controller.updateTypingAttributes()
+            textView.keepCaretInView(from: offset)
             return false
         }
 
@@ -469,11 +473,38 @@ final class MarkdownTextView: UITextView {
         // taller than on a line with text.
         let isEmptyLine = (offset == 0 || text.character(at: offset - 1) == 0x0A)
             && (offset == text.length || text.character(at: offset) == 0x0A)
+        // Only when it did: right after a return the line isn't laid out yet and the caret is the
+        // plain height, which trimming made too short.
         if isEmptyLine, let style = typingAttributes[.paragraphStyle] as? NSParagraphStyle,
-           rect.height > style.lineSpacing * 2 {
+           let font = typingAttributes[.font] as? UIFont,
+           rect.height - style.lineSpacing >= font.lineHeight {
             rect.size.height -= style.lineSpacing
         }
         return rect
+    }
+
+    /// Puts the page back where it was (`offset`), then scrolls only as far as the caret needs to
+    /// be in view, above the keyboard bar, rather than to the middle.
+    func keepCaretInView(from offset: CGPoint) {
+        layoutIfNeeded()
+        let caret = caretRect(for: selectedTextRange?.end ?? endOfDocument)
+        let inset = adjustedContentInset
+        let visibleTop = offset.y + inset.top
+        let visibleBottom = offset.y + bounds.height - inset.bottom
+        var y = offset.y
+        if caret.maxY > visibleBottom {
+            y += caret.maxY - visibleBottom
+        } else if caret.minY < visibleTop {
+            y -= visibleTop - caret.minY
+        }
+        let maxY = max(-inset.top, contentSize.height + inset.bottom - bounds.height)
+        y = min(max(y, -inset.top), maxY)
+        setContentOffset(CGPoint(x: offset.x, y: y), animated: false)
+        // The text view's own scroll to the caret comes on the next turn; hold the page there too.
+        DispatchQueue.main.async { [weak self] in
+            guard let self, abs(self.contentOffset.y - y) > 0.5 else { return }
+            self.setContentOffset(CGPoint(x: offset.x, y: y), animated: false)
+        }
     }
 
     override func gestureRecognizerShouldBegin(_ gestureRecognizer: UIGestureRecognizer) -> Bool {
