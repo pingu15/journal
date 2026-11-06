@@ -61,7 +61,7 @@ struct EntriesView: View {
                     ExpandingSearchBar(
                         text: $searchText,
                         isFocused: $isSearching,
-                        prompt: "Search by text or date",
+                        prompt: "Search entries",
                         buttonFrame: searchButtonFrame,
                         onClosing: closingSearch,
                         onClose: closeSearch
