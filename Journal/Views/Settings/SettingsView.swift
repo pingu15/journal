@@ -64,16 +64,12 @@ struct SettingsView: View {
                     Toggle("Daily Reminder", systemImage: "bell", isOn: reminderBinding)
                         .tint(Theme.accent)
                     if reminderEnabled {
-                        DatePicker(selection: reminderTime, displayedComponents: .hourAndMinute) {
-                            Label("Time", systemImage: "clock")
-                        }
+                        timeRow(reminderTime)
                     }
-                    Toggle("On This Day", systemImage: "clock.arrow.circlepath", isOn: onThisDayBinding)
+                    Toggle("On This Day", systemImage: "calendar", isOn: onThisDayBinding)
                         .tint(Theme.accent)
                     if onThisDayEnabled {
-                        DatePicker(selection: onThisDayTime, displayedComponents: .hourAndMinute) {
-                            Label("Time", systemImage: "clock")
-                        }
+                        timeRow(onThisDayTime)
                     }
                 } header: {
                     Text("Notifications")
@@ -304,6 +300,20 @@ struct SettingsView: View {
             let components = Calendar.current.dateComponents([.hour, .minute], from: date)
             reminderMinutes = (components.hour ?? 21) * 60 + (components.minute ?? 0)
             Task { await ReminderScheduler.schedule(minutesAfterMidnight: reminderMinutes) }
+        }
+    }
+
+    /// Just the time, under its switch's right-hand end. The label is there but unseen, laid out
+    /// like the switches' (an icon, then text), so the line above the next row starts under their
+    /// text rather than at the edge.
+    private func timeRow(_ time: Binding<Date>) -> some View {
+        LabeledContent {
+            DatePicker("Time", selection: time, displayedComponents: .hourAndMinute)
+                .labelsHidden()
+        } label: {
+            Label(" ", systemImage: "clock")
+                .hidden()
+                .accessibilityHidden(true)
         }
     }
 
