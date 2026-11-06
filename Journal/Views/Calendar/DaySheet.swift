@@ -3,8 +3,9 @@ import SwiftData
 import SwiftUI
 
 /// A day from the calendar, in a sheet that swipes down to close: the date in the bar with arrows to
-/// the day before and after, then a list of that day's entries, the places the user spent time, the
-/// events in their calendar, and the photos taken that day from the photo library. Also opened from an entry (the editor's View Day), which is then
+/// the day before and after, then a list of that day's entries, the photos taken that day from the
+/// photo library, the places the user spent time and the events in their calendar (those with nothing
+/// to show moved to the end, `sectionOrder`). Also opened from an entry (the editor's View Day), which is then
 /// left out of the list, and a place tapped becomes its place.
 struct DaySheet: View {
     let entries: [Entry]
@@ -38,15 +39,23 @@ struct DaySheet: View {
         NavigationStack {
             slidingDay {
                 List {
-                    entriesSection
-                    DayPlacesSection(day: day, current: openedFrom.flatMap { entry in
-                        entry.location.map { ($0, entry.createdAt) }
-                    }, action: placeAction)
-                    DayEventsSection(day: day, action: eventAction)
-                    Section {
-                        DayPhotos(day: day)
-                    } header: {
-                        MetaLabel("Photos", systemImage: "photo.on.rectangle")
+                    ForEach(sectionOrder, id: \.self) { section in
+                        switch section {
+                        case .entries:
+                            entriesSection
+                        case .photos:
+                            Section {
+                                DayPhotos(day: day)
+                            } header: {
+                                MetaLabel("Photos", systemImage: "photo.on.rectangle")
+                            }
+                        case .places:
+                            DayPlacesSection(day: day, current: openedFrom.flatMap { entry in
+                                entry.location.map { ($0, entry.createdAt) }
+                            }, action: placeAction)
+                        case .events:
+                            DayEventsSection(day: day, action: eventAction)
+                        }
                     }
                 }
                 .scrollContentBackground(.hidden)
@@ -175,9 +184,32 @@ struct DaySheet: View {
         }
     }
 
+    private enum DaySection: CaseIterable {
+        case entries, photos, places, events
+    }
+
+    /// Entries, Photos, Places, Events — but those with nothing to show (none that day, or no
+    /// access yet) go to the end, still in that order among themselves.
+    private var sectionOrder: [DaySection] {
+        let empty: Set<DaySection> = Set(DaySection.allCases.filter { section in
+            switch section {
+            case .entries: dayEntries.isEmpty
+            case .photos: PhotoLibrary.photos(on: day).isEmpty
+            case .places: DayPlaces.places(on: day).isEmpty
+            case .events: CalendarEvents.events(on: day).isEmpty
+            }
+        })
+        return DaySection.allCases.filter { !empty.contains($0) } + DaySection.allCases.filter { empty.contains($0) }
+    }
+
+    /// The day's entries, but the one this was opened from.
+    private var dayEntries: [Entry] {
+        entries.filter { calendar.isDate($0.createdAt, inSameDayAs: day) && $0 != openedFrom }
+    }
+
     @ViewBuilder
     private var entriesSection: some View {
-        let dayEntries = entries.filter { calendar.isDate($0.createdAt, inSameDayAs: day) && $0 != openedFrom }
+        let dayEntries = dayEntries
         let isOpenedFromDay = openedFrom.map { calendar.isDate($0.createdAt, inSameDayAs: day) } ?? false
 
         Section {
