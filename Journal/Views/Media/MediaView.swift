@@ -44,7 +44,8 @@ struct MediaView: View {
                             } label: {
                                 MediaTile(photo: item.photo, date: item.entry.createdAt)
                             }
-                            .buttonStyle(TapPressStyle(scale: 0.97))
+                            // Fades a little when pressed: shrinking would open a gap in the edge-to-edge grid.
+                            .buttonStyle(TapPressStyle(scale: 1, opacity: 0.7))
                         }
                     }
                 }

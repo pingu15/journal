@@ -32,7 +32,7 @@ struct MetaLabel: View {
 /// little when pressed.
 struct AccentButtonStyle: PrimitiveButtonStyle {
     func makeBody(configuration: Configuration) -> some View {
-        TapPressButton(configuration: configuration, scale: 0.96) {
+        TapPressButton(configuration: configuration, scale: 0.96, opacity: 1) {
             configuration.label
                 .font(Typography.action)
                 .padding(.horizontal, Spacing.l)
@@ -52,6 +52,8 @@ extension PrimitiveButtonStyle where Self == AccentButtonStyle {
 /// (`duration`) and its action goes ahead after that.
 struct TapPressStyle: PrimitiveButtonStyle {
     var scale: CGFloat = 0.92
+    /// How see-through the press leaves it: Media's photos fade a little rather than shrink.
+    var opacity: Double = 1
 
     /// A whole row's: less, as it's wide.
     static let rowScale: CGFloat = 0.97
@@ -60,13 +62,14 @@ struct TapPressStyle: PrimitiveButtonStyle {
     static var duration: Duration { .milliseconds(110) }
 
     func makeBody(configuration: Configuration) -> some View {
-        TapPressButton(configuration: configuration, scale: scale) { configuration.label }
+        TapPressButton(configuration: configuration, scale: scale, opacity: opacity) { configuration.label }
     }
 }
 
 private struct TapPressButton<Label: View>: View {
     let configuration: PrimitiveButtonStyleConfiguration
     let scale: CGFloat
+    let opacity: Double
     @ViewBuilder let label: Label
 
     @State private var taps = 0
@@ -85,17 +88,18 @@ private struct TapPressButton<Label: View>: View {
         } label: {
             label
         }
-        .buttonStyle(HeldPressStyle(scale: scale, taps: taps))
+        .buttonStyle(HeldPressStyle(scale: scale, opacity: opacity, taps: taps))
     }
 }
 
 /// Shrinks while pressed, and for a moment after each tap (`taps`).
 private struct HeldPressStyle: ButtonStyle {
     let scale: CGFloat
+    let opacity: Double
     let taps: Int
 
     func makeBody(configuration: Configuration) -> some View {
-        HeldPress(label: configuration.label, isPressed: configuration.isPressed, scale: scale, taps: taps)
+        HeldPress(label: configuration.label, isPressed: configuration.isPressed, scale: scale, opacity: opacity, taps: taps)
     }
 }
 
@@ -103,6 +107,7 @@ private struct HeldPress<Label: View>: View {
     let label: Label
     let isPressed: Bool
     let scale: CGFloat
+    let opacity: Double
     let taps: Int
 
     @State private var showsTap = false
@@ -111,6 +116,7 @@ private struct HeldPress<Label: View>: View {
         let isShrunk = isPressed || showsTap
         label
             .scaleEffect(isShrunk ? scale : 1)
+            .opacity(isShrunk ? opacity : 1)
             .animation(.spring(duration: 0.25, bounce: 0.3), value: isShrunk)
             .onChange(of: taps) {
                 showsTap = true
