@@ -473,8 +473,8 @@ extension View {
 
 /// An entry as a row of a popup's inset-grouped list (the day sheet, a map group): highlighted while
 /// touched like any list row.
-/// A day sheet section's note when it can't show anything yet: "Photo access is off for Journal.
-/// Grant Access" while Journal hasn't asked (`canAsk`: the action asks in place), "Open Settings"
+/// A day sheet section's note when it can't show anything yet: "Photo access is off.
+/// Grant Access" while the app hasn't asked (`canAsk`: the action asks in place), "Open Settings"
 /// once it has, as iOS asks only once (the action opens iOS's Settings).
 struct AccessOffNote: View {
     let subject: String
@@ -489,7 +489,7 @@ struct AccessOffNote: View {
 
     var body: some View {
         Button(action: action) {
-            Text("\(subject) is off for Journal. ") + Text(AccessLink.title(canAsk: canAsk)).underline()
+            Text("\(subject) is off. ") + Text(AccessLink.title(canAsk: canAsk)).underline()
         }
         .font(Typography.note)
         .foregroundStyle(Theme.secondaryText)

@@ -95,7 +95,7 @@ struct SettingsView: View {
                         Button {
                             if let url = URL(string: UIApplication.openSettingsURLString) { openURL(url) }
                         } label: {
-                            Text("Location access is off for Journal. ") + Text("Open Settings").underline()
+                            Text("Location access is off. ") + Text("Open Settings").underline()
                         }
                         // A button takes the body size; set like the other footers.
                         .font(.footnote)

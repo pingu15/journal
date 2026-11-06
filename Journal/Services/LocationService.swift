@@ -8,7 +8,7 @@ final class LocationService: NSObject, CLLocationManagerDelegate {
         case denied
 
         var errorDescription: String? {
-            "Location access is off for Journal. You can turn it on in Settings."
+            "Location access is off. You can turn it on in Settings."
         }
     }
 
