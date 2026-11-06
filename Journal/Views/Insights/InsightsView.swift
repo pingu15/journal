@@ -32,7 +32,7 @@ struct InsightsView: View {
     }
 }
 
-/// The current streak as a crest: "TODAY JOURNAL" (thin, then bold, widely spaced), "N Day" and
+/// The current streak as a crest: "TODAY JOURNAL" (bold, then thin, widely spaced), "N Day" and
 /// "Streak", between two upright laurel branches, the way Apple frames an award.
 private struct StreakCrest: View {
     let streak: Int
@@ -44,8 +44,8 @@ private struct StreakCrest: View {
         HStack(spacing: Spacing.m) {
             laurel("laurel.leading")
             VStack(spacing: Spacing.s) {
-                (Text("TODAY").font(Typography.crestNameLight)
-                    + Text("JOURNAL").font(Typography.crestNameBold))
+                (Text("TODAY").font(Typography.crestNameBold)
+                    + Text("JOURNAL").font(Typography.crestNameLight))
                     .tracking(Typography.crestNameTracking)
                     // Tracking also follows the last letter: as much again on the left centers it.
                     .padding(.leading, Typography.crestNameTracking)
