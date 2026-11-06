@@ -26,33 +26,37 @@ struct EntryRow: View {
         EntryRowLayout(hasDate: dateStyle != .none, hasPhoto: photo != nil) {
             dateColumn
 
-            VStack(alignment: .leading, spacing: Spacing.xs) {
-                // A title only when the entry's first line is in the Title style.
-                if let title {
-                    Text(title)
-                        .font(Typography.entryTitle)
-                        .foregroundStyle(Theme.primaryText)
-                        .lineLimit(1)
-                }
-                if !excerpt.isEmpty {
-                    Text(excerpt)
-                        .font(Typography.entryExcerpt)
-                        .foregroundStyle(Theme.secondaryText)
-                        .lineLimit(title == nil ? 3 : 2)
-                } else if title == nil && entry.photos.isEmpty {
-                    // A photo-only entry needs no stand-in text: its thumbnail shows beside the row.
-                    Text("No content yet.")
-                        .font(Typography.entryExcerpt)
-                        .foregroundStyle(Theme.secondaryText)
+            VStack(alignment: .leading, spacing: 0) {
+                VStack(alignment: .leading, spacing: Spacing.xs) {
+                    // A title only when the entry's first line is in the Title style.
+                    if let title {
+                        Text(title)
+                            .font(Typography.entryTitle)
+                            .foregroundStyle(Theme.primaryText)
+                            .lineLimit(1)
+                    }
+                    if !excerpt.isEmpty {
+                        Text(excerpt)
+                            .font(Typography.entryExcerpt)
+                            .foregroundStyle(Theme.secondaryText)
+                            .lineLimit(title == nil ? 3 : 2)
+                    } else if title == nil && entry.photos.isEmpty {
+                        // A photo-only entry needs no stand-in text: its thumbnail shows beside the row.
+                        Text("No content yet.")
+                            .font(Typography.entryExcerpt)
+                            .foregroundStyle(Theme.secondaryText)
+                    }
                 }
                 // Down at the row's foot when the text is shorter than the row (beside a photo or
-                // the day column), the space above it left blank.
+                // the day column), the space above it left blank; otherwise as close under the text
+                // as the title is to the excerpt. (Spacing on the stack would come twice, around
+                // the spacer.)
                 Spacer(minLength: 0)
                 EntryMetaLine(entry: entry)
-                    .padding(.top, 2)
+                    .padding(.top, Spacing.xs)
                 if let warning {
                     MetaLabel(warning, color: Theme.destructive)
-                        .padding(.top, 2)
+                        .padding(.top, Spacing.xs)
                 }
             }
             .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
