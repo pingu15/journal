@@ -45,6 +45,21 @@ final class LocationService: NSObject, CLLocationManagerDelegate {
         manager.authorizationStatus == .notDetermined
     }
 
+    /// On the app's first open: asks for Always, if location hasn't been asked for yet. iOS's
+    /// first prompt only offers Allow Once / While Using / Don't Allow (While Using is granted as
+    /// a provisional Always), and iOS itself offers the upgrade to Always later, once the app
+    /// uses location in the background (place tracking).
+    func requestAlwaysOnFirstOpen() async {
+        guard manager.authorizationStatus == .notDetermined else { return }
+        await SystemPrompts.shared.during {
+            await withCheckedContinuation { continuation in
+                authorizationWaiters.append(continuation)
+                manager.requestAlwaysAuthorization()
+            }
+        }
+        refreshLastKnownLocation()
+    }
+
     /// Asks for permission if it hasn't been asked yet; true when location is allowed.
     func requestAuthorization() async -> Bool {
         if manager.authorizationStatus == .notDetermined {

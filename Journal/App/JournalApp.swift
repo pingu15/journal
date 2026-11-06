@@ -103,6 +103,11 @@ struct RootView: View {
                 hasPromptedSinceForeground = false
             case .active:
                 Task { await ReminderScheduler.refresh() }
+                // Location on the first open (it asks only while iOS hasn't been asked yet), not
+                // over the lock screen.
+                if !lockEnabled || lock.isUnlocked {
+                    Task { await LocationService.shared.requestAlwaysOnFirstOpen() }
+                }
                 if lockEnabled && !lock.isUnlocked && !hasPromptedSinceForeground {
                     hasPromptedSinceForeground = true
                     Task { await lock.unlock() }
