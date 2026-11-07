@@ -45,6 +45,32 @@ enum PhotoLibrary {
         return assets
     }
 
+    /// How many videos were taken on `day` (the widgets' count; the day sheet shows photos only).
+    static func videoCount(on day: Date) -> Int {
+        guard canRead else { return 0 }
+        let calendar = Calendar.current
+        let start = calendar.startOfDay(for: day)
+        guard let end = calendar.date(byAdding: .day, value: 1, to: start) else { return 0 }
+        let options = PHFetchOptions()
+        options.predicate = NSPredicate(format: "creationDate >= %@ AND creationDate < %@", start as NSDate, end as NSDate)
+        return PHAsset.fetchAssets(with: .video, options: options).count
+    }
+
+    /// A square-cropped image about `pixels` across, fetched at once (on device only, never from
+    /// iCloud), for the widgets' snapshot.
+    static func imageNow(for asset: PHAsset, pixels: CGFloat) -> UIImage? {
+        let options = PHImageRequestOptions()
+        options.isSynchronous = true
+        options.deliveryMode = .highQualityFormat
+        options.resizeMode = .fast
+        options.isNetworkAccessAllowed = false
+        var result: UIImage?
+        PHImageManager.default().requestImage(
+            for: asset, targetSize: CGSize(width: pixels, height: pixels), contentMode: .aspectFill, options: options
+        ) { image, _ in result = image }
+        return result
+    }
+
     private static func fetchPhotos(from start: Date) -> [PHAsset] {
         let calendar = Calendar.current
         guard let end = calendar.date(byAdding: .day, value: 1, to: start) else { return [] }

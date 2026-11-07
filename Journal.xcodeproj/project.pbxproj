@@ -6,8 +6,37 @@
 	objectVersion = 77;
 	objects = {
 
+/* Begin PBXBuildFile section */
+		BB0000000000000000000010 /* JournalWidgets.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = BB0000000000000000000001 /* JournalWidgets.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
+/* End PBXBuildFile section */
+
+/* Begin PBXContainerItemProxy section */
+		BB0000000000000000000011 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = AA000000000000000000000A /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = BB0000000000000000000006;
+			remoteInfo = JournalWidgets;
+		};
+/* End PBXContainerItemProxy section */
+
+/* Begin PBXCopyFilesBuildPhase section */
+		BB0000000000000000000012 /* Embed Foundation Extensions */ = {
+			isa = PBXCopyFilesBuildPhase;
+			buildActionMask = 2147483647;
+			dstPath = "";
+			dstSubfolderSpec = 13;
+			files = (
+				BB0000000000000000000010 /* JournalWidgets.appex in Embed Foundation Extensions */,
+			);
+			name = "Embed Foundation Extensions";
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXCopyFilesBuildPhase section */
+
 /* Begin PBXFileReference section */
 		AA0000000000000000000001 /* Journal.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = Journal.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		BB0000000000000000000001 /* JournalWidgets.appex */ = {isa = PBXFileReference; explicitFileType = "wrapper.app-extension"; includeInIndex = 0; path = JournalWidgets.appex; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
 
 /* Begin PBXFileSystemSynchronizedRootGroup section */
@@ -16,10 +45,27 @@
 			path = Journal;
 			sourceTree = "<group>";
 		};
+		BB0000000000000000000002 /* JournalWidgets */ = {
+			isa = PBXFileSystemSynchronizedRootGroup;
+			path = JournalWidgets;
+			sourceTree = "<group>";
+		};
+		BB0000000000000000000013 /* Shared */ = {
+			isa = PBXFileSystemSynchronizedRootGroup;
+			path = Shared;
+			sourceTree = "<group>";
+		};
 /* End PBXFileSystemSynchronizedRootGroup section */
 
 /* Begin PBXFrameworksBuildPhase section */
 		AA0000000000000000000003 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		BB0000000000000000000003 /* Frameworks */ = {
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
@@ -33,6 +79,8 @@
 			isa = PBXGroup;
 			children = (
 				AA0000000000000000000002 /* Journal */,
+				BB0000000000000000000002 /* JournalWidgets */,
+				BB0000000000000000000013 /* Shared */,
 				AA0000000000000000000005 /* Products */,
 			);
 			sourceTree = "<group>";
@@ -41,6 +89,7 @@
 			isa = PBXGroup;
 			children = (
 				AA0000000000000000000001 /* Journal.app */,
+				BB0000000000000000000001 /* JournalWidgets.appex */,
 			);
 			name = Products;
 			sourceTree = "<group>";
@@ -55,13 +104,16 @@
 				AA0000000000000000000008 /* Sources */,
 				AA0000000000000000000003 /* Frameworks */,
 				AA0000000000000000000009 /* Resources */,
+				BB0000000000000000000012 /* Embed Foundation Extensions */,
 			);
 			buildRules = (
 			);
 			dependencies = (
+				BB0000000000000000000014 /* PBXTargetDependency */,
 			);
 			fileSystemSynchronizedGroups = (
 				AA0000000000000000000002 /* Journal */,
+				BB0000000000000000000013 /* Shared */,
 			);
 			name = Journal;
 			packageProductDependencies = (
@@ -69,6 +121,29 @@
 			productName = Journal;
 			productReference = AA0000000000000000000001 /* Journal.app */;
 			productType = "com.apple.product-type.application";
+		};
+		BB0000000000000000000006 /* JournalWidgets */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = BB0000000000000000000007 /* Build configuration list for PBXNativeTarget "JournalWidgets" */;
+			buildPhases = (
+				BB0000000000000000000008 /* Sources */,
+				BB0000000000000000000003 /* Frameworks */,
+				BB0000000000000000000009 /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			fileSystemSynchronizedGroups = (
+				BB0000000000000000000002 /* JournalWidgets */,
+				BB0000000000000000000013 /* Shared */,
+			);
+			name = JournalWidgets;
+			packageProductDependencies = (
+			);
+			productName = JournalWidgets;
+			productReference = BB0000000000000000000001 /* JournalWidgets.appex */;
+			productType = "com.apple.product-type.app-extension";
 		};
 /* End PBXNativeTarget section */
 
@@ -81,6 +156,9 @@
 				LastUpgradeCheck = 2710;
 				TargetAttributes = {
 					AA0000000000000000000006 = {
+						CreatedOnToolsVersion = 27.0;
+					};
+					BB0000000000000000000006 = {
 						CreatedOnToolsVersion = 27.0;
 					};
 				};
@@ -100,12 +178,20 @@
 			projectRoot = "";
 			targets = (
 				AA0000000000000000000006 /* Journal */,
+				BB0000000000000000000006 /* JournalWidgets */,
 			);
 		};
 /* End PBXProject section */
 
 /* Begin PBXResourcesBuildPhase section */
 		AA0000000000000000000009 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		BB0000000000000000000009 /* Resources */ = {
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
@@ -122,7 +208,22 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
+		BB0000000000000000000008 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 /* End PBXSourcesBuildPhase section */
+
+/* Begin PBXTargetDependency section */
+		BB0000000000000000000014 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = BB0000000000000000000006 /* JournalWidgets */;
+			targetProxy = BB0000000000000000000011 /* PBXContainerItemProxy */;
+		};
+/* End PBXTargetDependency section */
 
 /* Begin XCBuildConfiguration section */
 		AA000000000000000000000C /* Debug */ = {
@@ -234,11 +335,12 @@
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = Info.plist;
 				INFOPLIST_KEY_CFBundleDisplayName = Today;
-				INFOPLIST_KEY_NSCalendarsFullAccessUsageDescription = "Journal shows the events from your calendar on a day alongside what you wrote.";
-				INFOPLIST_KEY_NSFaceIDUsageDescription = "Face ID keeps your journal private.";
-				INFOPLIST_KEY_NSLocationAlwaysAndWhenInUseUsageDescription = "With Track Places on, Journal notes where you spend time through the day, so each day can show the places you went. It stays on this iPhone.";
-				INFOPLIST_KEY_NSLocationWhenInUseUsageDescription = "Journal tags an entry with your location when you ask it to, and notes the places you spend time if you turn that on.";
-				INFOPLIST_KEY_NSPhotoLibraryUsageDescription = "Journal shows the photos you took on a day alongside what you wrote.";
+				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.healthcare-fitness";
+				INFOPLIST_KEY_NSCalendarsFullAccessUsageDescription = "See events from your calendar on a day alongside what you wrote. All data stays";
+				INFOPLIST_KEY_NSFaceIDUsageDescription = "Require Face ID upon opening the app.";
+				INFOPLIST_KEY_NSLocationAlwaysAndWhenInUseUsageDescription = "See the places you spend time at through the day. Location data stays on this iPhone.";
+				INFOPLIST_KEY_NSLocationWhenInUseUsageDescription = "Uses your current location to tag entries.";
+				INFOPLIST_KEY_NSPhotoLibraryUsageDescription = "See photos you took on a day alongside what you wrote. All data stay on this iPhone.";
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
 				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
@@ -275,11 +377,12 @@
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = Info.plist;
 				INFOPLIST_KEY_CFBundleDisplayName = Today;
-				INFOPLIST_KEY_NSCalendarsFullAccessUsageDescription = "Journal shows the events from your calendar on a day alongside what you wrote.";
-				INFOPLIST_KEY_NSFaceIDUsageDescription = "Face ID keeps your journal private.";
-				INFOPLIST_KEY_NSLocationAlwaysAndWhenInUseUsageDescription = "With Track Places on, Journal notes where you spend time through the day, so each day can show the places you went. It stays on this iPhone.";
-				INFOPLIST_KEY_NSLocationWhenInUseUsageDescription = "Journal tags an entry with your location when you ask it to, and notes the places you spend time if you turn that on.";
-				INFOPLIST_KEY_NSPhotoLibraryUsageDescription = "Journal shows the photos you took on a day alongside what you wrote.";
+				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.healthcare-fitness";
+				INFOPLIST_KEY_NSCalendarsFullAccessUsageDescription = "See events from your calendar on a day alongside what you wrote. All data stays";
+				INFOPLIST_KEY_NSFaceIDUsageDescription = "Require Face ID upon opening the app.";
+				INFOPLIST_KEY_NSLocationAlwaysAndWhenInUseUsageDescription = "See the places you spend time at through the day. Location data stays on this iPhone.";
+				INFOPLIST_KEY_NSLocationWhenInUseUsageDescription = "Uses your current location to tag entries.";
+				INFOPLIST_KEY_NSPhotoLibraryUsageDescription = "See photos you took on a day alongside what you wrote. All data stay on this iPhone.";
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
 				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
@@ -303,6 +406,64 @@
 			};
 			name = Release;
 		};
+		BB000000000000000000000E /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CODE_SIGN_ENTITLEMENTS = JournalWidgets.entitlements;
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = L3957C4ZBL;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = "JournalWidgets-Info.plist";
+				INFOPLIST_KEY_CFBundleDisplayName = Today;
+				INFOPLIST_KEY_NSHumanReadableCopyright = "";
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@executable_path/../../Frameworks",
+				);
+				MARKETING_VERSION = 0.1;
+				PRODUCT_BUNDLE_IDENTIFIER = com.maxsun.journal.widgets;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SKIP_INSTALL = YES;
+				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
+				SUPPORTS_MACCATALYST = NO;
+				SWIFT_APPROACHABLE_CONCURRENCY = YES;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_VERSION = 6.0;
+				TARGETED_DEVICE_FAMILY = 1;
+			};
+			name = Debug;
+		};
+		BB000000000000000000000F /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CODE_SIGN_ENTITLEMENTS = JournalWidgets.entitlements;
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = L3957C4ZBL;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = "JournalWidgets-Info.plist";
+				INFOPLIST_KEY_CFBundleDisplayName = Today;
+				INFOPLIST_KEY_NSHumanReadableCopyright = "";
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@executable_path/../../Frameworks",
+				);
+				MARKETING_VERSION = 0.1;
+				PRODUCT_BUNDLE_IDENTIFIER = com.maxsun.journal.widgets;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SKIP_INSTALL = YES;
+				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
+				SUPPORTS_MACCATALYST = NO;
+				SWIFT_APPROACHABLE_CONCURRENCY = YES;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_VERSION = 6.0;
+				TARGETED_DEVICE_FAMILY = 1;
+			};
+			name = Release;
+		};
 /* End XCBuildConfiguration section */
 
 /* Begin XCConfigurationList section */
@@ -320,6 +481,15 @@
 			buildConfigurations = (
 				AA000000000000000000000C /* Debug */,
 				AA000000000000000000000D /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		BB0000000000000000000007 /* Build configuration list for PBXNativeTarget "JournalWidgets" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				BB000000000000000000000E /* Debug */,
+				BB000000000000000000000F /* Release */,
 			);
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;
