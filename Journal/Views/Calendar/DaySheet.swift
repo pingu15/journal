@@ -57,6 +57,9 @@ struct DaySheet: View {
                             DayEventsSection(day: day, action: eventAction)
                         }
                     }
+                    // White at every height: left to the system, rows went grey while the sheet was at
+                    // half height (its glass) and white only at full.
+                    .listRowBackground(Theme.card)
                 }
                 .scrollContentBackground(.hidden)
                 .listSectionSpacing(Spacing.m)

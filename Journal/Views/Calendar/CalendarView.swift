@@ -319,7 +319,7 @@ private struct DayCell: View {
                     .font(Typography.calendarDay)
                     .foregroundStyle(
                         image != nil ? Color.white
-                            : info != nil ? Theme.onAccent
+                            : info != nil ? Theme.calendarWrittenDay
                             : isFuture ? Theme.secondaryText.opacity(0.5)
                             : Theme.primaryText
                     )
@@ -329,7 +329,7 @@ private struct DayCell: View {
             .clipShape(shape)
             .overlay {
                 if isToday {
-                    shape.strokeBorder(Theme.secondaryText, lineWidth: 1)
+                    shape.strokeBorder(Theme.calendarToday, lineWidth: 2.5)
                 }
             }
             .contentShape(shape)

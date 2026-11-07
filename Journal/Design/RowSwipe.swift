@@ -64,7 +64,7 @@ private struct PressableRow<Label: View>: View {
             .contentShape(.rect)
             .background {
                 RoundedRectangle(cornerRadius: Radius.row, style: .continuous)
-                    .fill(Theme.surface)
+                    .fill(Theme.rowHighlight)
                     .opacity(isHighlighted ? 1 : 0)
                     .animation(.easeOut(duration: 0.15), value: isHighlighted)
             }

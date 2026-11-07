@@ -90,6 +90,8 @@ struct EntriesView: View {
         .onChange(of: router.journalPath) { _, path in
             if path.isEmpty {
                 Entry.deleteBlankEntries(in: context, keeping: router.openEntries)
+                try? context.save()
+                WidgetSync.update(in: context)
             }
         }
         .onChange(of: router.pendingNewEntry, initial: true) { _, pending in
@@ -157,6 +159,7 @@ struct EntriesView: View {
             if phase == .interacting { swipedOpen = nil }
         }
         .overlay {
+            Group {
             // Search works on an empty journal too, and says it found nothing.
             if entries.isEmpty && searchText.trimmingCharacters(in: .whitespaces).isEmpty {
                 EmptyState(title: "A brand new journal", systemImage: "book", message: "Write a few lines about today.")
@@ -179,9 +182,12 @@ struct EntriesView: View {
                     Text("Check the spelling or try a new search.")
                         .font(Typography.note)
                 }
-                    .padding(.bottom, Spacing.l)
                     .allowsHitTesting(false)
             }
+            }
+            // The card runs under the keyboard: centered in what shows of it, between the search
+            // field and the keyboard.
+            .centeredAboveKeyboard()
         }
     }
 
@@ -318,7 +324,7 @@ struct JournalEntryRow: View {
             trailingInset: EntriesView.contentInset,
             actions: [
                 RowSwipeAction(title: "Share", symbol: "square.and.arrow.up", tint: Theme.accent, removesRow: false) {
-                    Task { await ShareSheet.present(entry.shareText) }
+                    Task { await JournalExport.sharePDF(of: entry) }
                 },
                 // Leaves the row in place while it asks.
                 RowSwipeAction(title: "Delete", symbol: "trash", tint: Theme.destructive, removesRow: false) {
@@ -330,7 +336,11 @@ struct JournalEntryRow: View {
         // A list's context menu covers the whole row, so none while its buttons are showing.
         .contextMenu {
             if swipedOpen != entry.persistentModelID {
-                ShareLink(item: entry.shareText)
+                // A PDF of the entry, as from the editor (a `ShareLink` needs its file before the
+                // menu opens).
+                Button("Share", systemImage: "square.and.arrow.up") {
+                    Task { await JournalExport.sharePDF(of: entry) }
+                }
                 Button("Delete", systemImage: "trash", role: .destructive) {
                     confirmingDelete = true
                 }

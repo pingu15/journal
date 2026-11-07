@@ -174,39 +174,26 @@ private struct StatGrid: View {
     }
 }
 
-/// The last 18 weeks as a day grid: filled if anything was written. Tap a day for its word count.
+/// The last 18 weeks as a day grid: filled if anything was written.
 private struct ActivityHeatmap: View {
     let wordsByDay: [Date: Int]
-
-    @State private var selectedDay: Date?
 
     private let weeks = 18
     private let gap: CGFloat = 4
     private let calendar = Calendar.current
 
     var body: some View {
-        VStack(alignment: .leading, spacing: Spacing.s) {
-            HStack(alignment: .top, spacing: gap) {
-                ForEach(columns, id: \.self) { weekStart in
-                    VStack(spacing: gap) {
-                        ForEach(0..<7, id: \.self) { offset in
-                            dayCell(calendar.date(byAdding: .day, value: offset, to: weekStart)!)
-                                .aspectRatio(1, contentMode: .fit)
-                        }
+        HStack(alignment: .top, spacing: gap) {
+            ForEach(columns, id: \.self) { weekStart in
+                VStack(spacing: gap) {
+                    ForEach(0..<7, id: \.self) { offset in
+                        dayCell(calendar.date(byAdding: .day, value: offset, to: weekStart)!)
+                            .aspectRatio(1, contentMode: .fit)
                     }
-                    .frame(maxWidth: .infinity)
                 }
-            }
-
-            // Only once a day is tapped: its date and word count.
-            if let detail {
-                Text(detail)
-                    .font(Typography.note)
-                    .foregroundStyle(Theme.secondaryText)
-                    .transition(.opacity)
+                .frame(maxWidth: .infinity)
             }
         }
-        .sensoryFeedback(.selection, trigger: selectedDay)
     }
 
     @ViewBuilder
@@ -214,35 +201,12 @@ private struct ActivityHeatmap: View {
         if day > .now {
             Color.clear
         } else {
-            let words = wordsByDay[day] ?? 0
-            let isSelected = selectedDay == day
             RoundedRectangle(cornerRadius: 3)
                 .fill(wordsByDay[day] != nil ? Theme.activityFilled : Theme.activityEmpty)
-                .overlay {
-                    if isSelected {
-                        RoundedRectangle(cornerRadius: 4)
-                            .strokeBorder(Theme.primaryText, lineWidth: 1.5)
-                            .padding(-2)
-                    }
-                }
-                .padding(2) // larger hit target than the mark
-                .contentShape(.rect)
-                .padding(-2)
-                .onTapGesture {
-                    withAnimation(.snappy) { selectedDay = isSelected ? nil : day }
-                }
                 .accessibilityElement()
                 .accessibilityLabel(day.formatted(date: .abbreviated, time: .omitted))
-                .accessibilityValue(wordsByDay[day] == nil ? "No entries" : "\(words) words")
-                .accessibilityAddTraits(.isButton)
+                .accessibilityValue(wordsByDay[day].map { "\($0) words" } ?? "No entries")
         }
-    }
-
-    private var detail: String? {
-        guard let selectedDay else { return nil }
-        let date = selectedDay.formatted(.dateTime.month(.abbreviated).day())
-        guard let words = wordsByDay[selectedDay] else { return "\(date) · nothing written" }
-        return "\(date) · \(words.formatted()) words"
     }
 
     private var columns: [Date] {

@@ -59,6 +59,8 @@ final class PlaceTracker: NSObject, CLLocationManagerDelegate {
     @discardableResult
     func enable() async -> Bool {
         UserDefaults.standard.set(true, forKey: Self.enabledKey)
+        // Its reminder now goes day by day, with each day's places.
+        await ReminderScheduler.refresh()
         guard await LocationService.shared.requestAuthorization() else { return false }
         if manager.authorizationStatus == .authorizedWhenInUse {
             await SystemPrompts.shared.during { await askForAlways() }
@@ -70,6 +72,7 @@ final class PlaceTracker: NSObject, CLLocationManagerDelegate {
     /// Stops tracking; the places already noted stay.
     func disable() {
         UserDefaults.standard.set(false, forKey: Self.enabledKey)
+        Task { await ReminderScheduler.refresh() }
         manager.stopUpdatingLocation()
         manager.stopMonitoringSignificantLocationChanges()
         clock?.invalidate()
@@ -77,7 +80,12 @@ final class PlaceTracker: NSObject, CLLocationManagerDelegate {
     }
 
     private func start() {
-        manager.allowsBackgroundLocationUpdates = true
+        // In the background only with Always. With While Using, iOS treats location carrying on after
+        // the app closes as a live activity it must show: the Dynamic Island's location indicator, which
+        // the app shrank into when closed instead of into its icon. Settings already calls tracking off
+        // then, so it notes places only while the app is open, until Always is allowed.
+        let always = manager.authorizationStatus == .authorizedAlways
+        manager.allowsBackgroundLocationUpdates = always
         // Standing still is the point: a place is somewhere the user stayed.
         manager.pausesLocationUpdatesAutomatically = false
         manager.showsBackgroundLocationIndicator = false
@@ -122,6 +130,8 @@ final class PlaceTracker: NSObject, CLLocationManagerDelegate {
             accuracy: location.horizontalAccuracy
         )
         Self.save(Self.samples(on: sample.time) + [sample], on: sample.time)
+        // The daily reminder says how many places today took in.
+        Task { await ReminderScheduler.refresh() }
     }
 
     // MARK: Storage
