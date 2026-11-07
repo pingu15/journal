@@ -178,10 +178,7 @@ struct EntryEditorView: View {
 
     /// Shares the entry as a PDF.
     private func sharePDF() {
-        Task {
-            guard let url = try? JournalExport.writePDF(of: entry) else { return }
-            await ShareSheet.present(url)
-        }
+        Task { await JournalExport.sharePDF(of: entry) }
     }
 
     private func image(for id: UUID) -> UIImage? {

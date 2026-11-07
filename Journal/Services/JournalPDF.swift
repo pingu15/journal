@@ -123,15 +123,18 @@ struct JournalPDF {
     }
 
     private func append(_ entry: Entry, to text: NSMutableAttributedString, isFirst: Bool) {
-        // Date line, with place and weather.
-        var meta = [entry.createdAt.formatted(.dateTime.weekday(.wide).month(.wide).day().year()),
+        // Date line, then place and weather under it, as the editor's header has them.
+        let meta = [entry.createdAt.formatted(.dateTime.weekday(.wide).month(.wide).day().year()),
                     entry.createdAt.formatted(date: .omitted, time: .shortened)]
-        meta += JournalExport.metaParts(for: entry)
+        let hasPlaceLine = entry.placeName != nil || entry.weather != nil
         let metaStyle = paragraph {
             $0.paragraphSpacingBefore = isFirst ? 0 : 40
-            $0.paragraphSpacing = 6
+            $0.paragraphSpacing = hasPlaceLine ? 3 : 6
         }
         text.append(NSAttributedString(string: meta.joined(separator: "  ·  ").uppercased() + "\n", attributes: metaAttributes(metaStyle)))
+        if hasPlaceLine {
+            text.append(placeLine(for: entry))
+        }
 
         var lines = entry.text.components(separatedBy: .newlines)
         // The first line of text is the entry's title.
@@ -308,6 +311,49 @@ struct JournalPDF {
         style.paragraphSpacing = 6
         configure(style)
         return style
+    }
+
+    /// "Mission District · ☀︎ 19°": the editor's line under the date — sans, in stone, the weather's
+    /// symbol drawn as in the app — at the PDF's scale (the editor's `Typography.detail` is to its body
+    /// as 10 is to the PDF's 11.5).
+    private func placeLine(for entry: Entry) -> NSAttributedString {
+        let font = UIFont.systemFont(ofSize: 10)
+        let attributes: [NSAttributedString.Key: Any] = [
+            .font: font, .foregroundColor: stone, .paragraphStyle: paragraph { $0.paragraphSpacing = 10 },
+        ]
+        let line = NSMutableAttributedString()
+        if let place = entry.placeName {
+            line.append(NSAttributedString(string: place, attributes: attributes))
+        }
+        if let weather = entry.weather {
+            if entry.placeName != nil {
+                line.append(NSAttributedString(string: " · ", attributes: attributes))
+            }
+            let configuration = UIImage.SymbolConfiguration(font: font)
+            if let glyph = UIImage(systemName: weather.symbol, withConfiguration: configuration)?
+                .withTintColor(stone, renderingMode: .alwaysOriginal) {
+                // Flattened to a transparent bitmap first: the symbol as it is drew as a solid square
+                // in the PDF.
+                let format = UIGraphicsImageRendererFormat()
+                format.scale = 4
+                format.opaque = false
+                let symbol = UIGraphicsImageRenderer(size: glyph.size, format: format).image { _ in
+                    glyph.draw(at: .zero)
+                }
+                let attachment = NSTextAttachment(image: symbol)
+                // Sat on the text's baseline, centred on its capitals.
+                attachment.bounds = CGRect(
+                    x: 0, y: (font.capHeight - symbol.size.height) / 2,
+                    width: symbol.size.width, height: symbol.size.height
+                )
+                let image = NSMutableAttributedString(attachment: attachment)
+                image.addAttributes(attributes, range: NSRange(location: 0, length: image.length))
+                line.append(image)
+            }
+            line.append(NSAttributedString(string: " \(weather.formattedTemperature)", attributes: attributes))
+        }
+        line.append(NSAttributedString(string: "\n", attributes: attributes))
+        return line
     }
 
     private func metaAttributes(_ style: NSParagraphStyle) -> [NSAttributedString.Key: Any] {

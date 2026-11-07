@@ -16,7 +16,11 @@ enum ShareSheet {
             if top.presentedViewController == nil {
                 let controller = UIActivityViewController(activityItems: [item], applicationActivities: nil)
                 controller.popoverPresentationController?.sourceView = top.view
-                top.present(controller, animated: true)
+                // Returns once the sheet is on screen (it takes a moment to load), so a caller showing
+                // progress can keep it up until then.
+                await withCheckedContinuation { continuation in
+                    top.present(controller, animated: true) { continuation.resume() }
+                }
                 return
             }
             try? await Task.sleep(for: .milliseconds(50))
