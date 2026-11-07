@@ -3,6 +3,7 @@ import SwiftUI
 
 struct SettingsView: View {
     @Environment(AppLock.self) private var lock
+    @Environment(ICloudSync.self) private var sync
     @Environment(\.modelContext) private var context
     @Environment(\.dismiss) private var dismiss
     @Environment(\.openURL) private var openURL
@@ -17,6 +18,7 @@ struct SettingsView: View {
     @AppStorage(OnThisDayScheduler.minutesKey) private var onThisDayMinutes = OnThisDayScheduler.defaultMinutes
     @AppStorage(LocationService.autoTagKey) private var autoTagLocation = false
     @AppStorage(PlaceTracker.enabledKey) private var trackPlaces = false
+    @AppStorage(ICloudSync.enabledKey) private var syncEnabled = false
     @State private var notificationsDenied = false
     /// Notifications haven't been asked for yet, so the note can ask rather than send the user away.
     @State private var notificationsCanAsk = false
@@ -124,6 +126,19 @@ struct SettingsView: View {
                 }
 
                 Section {
+                    Toggle("Sync to iCloud", systemImage: "icloud", isOn: Binding {
+                        syncEnabled
+                    } set: { on in
+                        sync.setEnabled(on)
+                    })
+                    .tint(Theme.accent)
+                } header: {
+                    Text("iCloud")
+                } footer: {
+                    syncNote
+                }
+
+                Section {
                     Toggle("Require \(lock.biometryName)", systemImage: lock.biometrySymbol, isOn: lockBinding)
                         .tint(Theme.accent)
                         .disabled(!lock.isAvailable && !lockEnabled)
@@ -159,6 +174,7 @@ struct SettingsView: View {
                 notificationsDenied = (reminderEnabled || onThisDayEnabled) ? !(await ReminderScheduler.isAllowed()) : false
                 notificationsCanAsk = await ReminderScheduler.canAsk()
                 refreshLocationAccess()
+                await sync.refreshAccountStatus()
             }
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
@@ -167,6 +183,24 @@ struct SettingsView: View {
                 }
             }
         }
+    }
+
+    /// Under Sync to iCloud: what it does while off; while on, when it last synced, or why it can't.
+    private var syncNote: Text {
+        guard syncEnabled else {
+            return Text("Keep your entries and photos in your private iCloud, available on all your devices.")
+        }
+        if !sync.accountAvailable {
+            return Text("Sign in to iCloud in Settings to sync your journal.")
+        }
+        if sync.lastError != nil {
+            return Text("Couldn't sync just now. Journal will try again.")
+        }
+        let places = Text(" Visited places stay on this iPhone.")
+        guard let lastSynced = sync.lastSynced else {
+            return Text("Your entries and photos sync to your private iCloud.") + places
+        }
+        return Text("Last synced \(lastSynced.formatted(.relative(presentation: .named))).") + places
     }
 
     /// Turning the lock on requires a successful authentication first,
@@ -371,18 +405,22 @@ private struct ExportRow: View {
 
     var body: some View {
         Button {
+            // Ignored mid-export, rather than disabled: a disabled row dims its spinner too.
+            guard exporting == nil else { return }
             choosingFormat = true
         } label: {
             HStack {
                 Label("Export Journal", systemImage: "square.and.arrow.up")
                 Spacer()
+                // From choosing a format until the share sheet is up: typesetting, then the sheet loading.
+                // At full strength at once: a fade-in froze partway while typesetting held the main thread.
                 if exporting != nil {
                     ProgressView()
+                        .tint(Theme.primaryText)
                 }
             }
         }
-        .disabled(entries.isEmpty || exporting != nil)
-        .opacity(entries.isEmpty ? 0.4 : 1)
+        // Always available: an empty journal exports as just its title.
         .confirmationDialog("Export Journal", isPresented: $choosingFormat, titleVisibility: .visible) {
             ForEach(JournalExport.Format.allCases) { format in
                 Button(format.label) { export(format) }
@@ -454,4 +492,5 @@ private extension Bundle {
     SettingsView()
         .modelContainer(.preview)
         .environment(AppLock())
+        .environment(ICloudSync.shared)
 }

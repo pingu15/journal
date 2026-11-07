@@ -34,7 +34,9 @@ final class Entry {
     init(text: String = "", createdAt: Date = .now) {
         self.text = text
         self.createdAt = createdAt
-        self.updatedAt = createdAt
+        // When it was made, even when dated earlier (a stay's start): what the blank sweep's grace
+        // while syncing is measured from.
+        self.updatedAt = .now
     }
 }
 
@@ -94,12 +96,6 @@ extension Entry {
     /// At 230 words a minute, rounded up: any part of a minute counts as one.
     var readingMinutes: Int {
         max(1, Int((Double(wordCount) / 230).rounded(.up)))
-    }
-
-    var shareText: String {
-        var header = createdAt.formatted(date: .complete, time: .shortened)
-        if let placeName { header += " · \(placeName)" }
-        return "\(header)\n\n\(Markdown.replacingImages(in: text, with: "[photo]"))"
     }
 
     /// Every word of `query` must match: text and place by substring; dates by whole word
@@ -223,6 +219,9 @@ extension Entry {
 
     /// Removes entries that were created but never written in (e.g. an editor that was
     /// dismissed before it could clean up after itself). `keeping` are entries still open.
+    /// How long a blank entry is kept while syncing, in case another device is filling it in.
+    static let blankGraceWhileSyncing: TimeInterval = 60 * 60
+
     static func deleteBlankEntries(in context: ModelContext, keeping open: Set<PersistentIdentifier>) {
         // Blank text is empty, or an empty title line ("# ") or bare line breaks: anything else
         // starts with a character worth keeping. Those are checked as read (`isBlank`).
@@ -230,7 +229,10 @@ extension Entry {
             $0.deletedAt == nil && ($0.text == "" || $0.text.starts(with: "#") || $0.text.starts(with: "\n") || $0.text.starts(with: " "))
         })
         guard let candidates = try? context.fetch(descriptor) else { return }
-        for entry in candidates where entry.isBlank && !open.contains(entry.persistentModelID) {
+        // Synced, a blank entry may be one just started on another device, still being written:
+        // left alone until it's been blank a while.
+        let cutoff = ICloudSync.isEnabled ? Date.now.addingTimeInterval(-blankGraceWhileSyncing) : .distantFuture
+        for entry in candidates where entry.isBlank && !open.contains(entry.persistentModelID) && entry.updatedAt < cutoff {
             context.delete(entry)
         }
     }

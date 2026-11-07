@@ -20,11 +20,18 @@ enum UITheme {
     static let primaryText = UIColor(light: Palette.ink, dark: Palette.paper)
     static let secondaryText = UIColor(hex: Palette.stone)
     static let accent = UIColor(hex: Palette.sand)
-    /// Quiet fill: a wash of sand on paper, a lift of stone on night.
+    /// Quiet fill (photos still loading, inline code): a wash of stone on paper, a lift of stone on
+    /// night — never sand.
     static let surface = UIColor { traits in
         traits.userInterfaceStyle == .dark
             ? UIColor(hex: Palette.stone).withAlphaComponent(0.14)
-            : UIColor(hex: Palette.sand).withAlphaComponent(0.45)
+            : UIColor(hex: Palette.stone).withAlphaComponent(0.15)
+    }
+    /// Cards standing on the page (the onboarding's): white on paper, a lift of stone on night.
+    static let card = UIColor { traits in
+        traits.userInterfaceStyle == .dark
+            ? UIColor(hex: Palette.stone).withAlphaComponent(0.14)
+            : .white
     }
     /// Over the page's card behind a sheet, on top of the system's dimming (`SheetBackdrop`).
     static let sheetBackdrop = UIColor.black.withAlphaComponent(0.5)
@@ -38,11 +45,19 @@ enum Theme {
     static let secondaryText = Color(uiColor: UITheme.secondaryText)
     static let accent = Color(uiColor: UITheme.accent)
     static let onAccent = Color.white
+    /// The one exception to white on sand: a written day's number in the Calendar, ink in light mode
+    /// (white was faint on sand there), white in dark.
+    static let calendarWrittenDay = Color(light: Palette.ink, dark: 0xFFFFFF)
+    /// The outline round today in the Calendar: ink in light mode, white in dark.
+    static let calendarToday = Color(light: Palette.ink, dark: 0xFFFFFF)
     /// Fill for delete swipe actions: the app-wide tint (primary text) would make them near-white in
     /// dark mode, hiding their white icon.
     static let destructive = Color.red
     static let hairline = Color(uiColor: UITheme.secondaryText).opacity(0.25)
     static let surface = Color(uiColor: UITheme.surface)
+    /// A touched or swiped entry row: a wash of stone in both modes, never sand.
+    static let rowHighlight = Color(uiColor: UITheme.secondaryText).opacity(0.15)
+    static let card = Color(uiColor: UITheme.card)
 
     /// Activity heatmap: a day was written or it wasn't.
     static let activityFilled = primaryText.opacity(0.8)
@@ -69,6 +84,10 @@ enum Typography {
     /// Popup titles (not sheets' bars, which keep the system's) and empty states.
     static let title = Font.system(.title2).weight(.bold)
     static let entryTitle = Font.system(.title3).weight(.semibold)
+    /// The first-launch introduction's page titles: large, but sans, as they aren't page titles.
+    static let onboardingTitle = Font.system(.title).weight(.bold)
+    /// An option's name in the introduction, over its line in `note`.
+    static let rowTitle = Font.system(.body).weight(.semibold)
 
     // Text.
     static let body = Font.system(.body)

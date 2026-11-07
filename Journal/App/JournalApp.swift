@@ -6,11 +6,16 @@ import UIKit
 struct JournalApp: App {
     @State private var lock = AppLock()
     @State private var router = AppRouter.shared
+    @State private var sync = ICloudSync.shared
 
     init() {
         Theme.applyNavigationBarAppearance()
         // Here, as iOS can relaunch the app in the background, with no scene, for a move.
         PlaceTracker.shared.resume()
+        // Registers "New Journal Entry" and its Siri phrases with the system as soon as the app has run.
+        JournalShortcuts.updateAppShortcutParameters()
+        // Following the keyboard from the start, for views centered above it.
+        _ = Keyboard.shared
     }
 
     var body: some Scene {
@@ -18,8 +23,10 @@ struct JournalApp: App {
             RootView()
                 .environment(lock)
                 .environment(router)
+                .environment(sync)
+                // The store mirrored to iCloud or not; a new one when sync is switched.
+                .modelContainer(sync.container)
         }
-        .modelContainer(for: [Entry.self, Attachment.self])
     }
 }
 
@@ -27,12 +34,14 @@ struct JournalApp: App {
 struct RootView: View {
     @Environment(AppLock.self) private var lock
     @Environment(AppRouter.self) private var router
+    @Environment(ICloudSync.self) private var sync
     @Environment(\.modelContext) private var context
     @Environment(\.scenePhase) private var scenePhase
     @AppStorage(AppLock.enabledKey) private var lockEnabled = false
     @AppStorage(Appearance.storageKey) private var appearance = Appearance.system
 
     @State private var shield = PrivacyShield()
+    @State private var showsOnboarding = Onboarding.isNeeded
     /// One automatic Face ID prompt per trip to the foreground; after that the user taps Unlock.
     @State private var hasPromptedSinceForeground = false
 
@@ -47,7 +56,7 @@ struct RootView: View {
         }
     }
 
-    var body: some View {
+    private var tabs: some View {
         TabView(selection: Binding(get: { router.selectedTab }, set: { router.selectedTab = $0 })) {
             // Each with its name under its icon, as iOS lays them out (smaller icons, room around each).
             Tab(value: .journal) {
@@ -71,7 +80,30 @@ struct RootView: View {
                 TabLabel(name: "Map", symbol: "map")
             }
         }
+    }
+
+    var body: some View {
+        Group {
+            // Out while sync swaps the store (`ICloudSync.applySetting`), so no query outlives it.
+            if sync.isSwapping {
+                Theme.background.ignoresSafeArea()
+            } else {
+                tabs
+            }
+        }
         .tint(Theme.primaryText)
+        .accessibilityHidden(showsOnboarding)
+        .overlay {
+            // Over the tabs from the first frame, rather than a cover sliding up over them.
+            if showsOnboarding {
+                OnboardingView {
+                    UserDefaults.standard.set(true, forKey: Onboarding.completedKey)
+                    sync.applySetting()
+                    withAnimation(.easeInOut(duration: 0.35)) { showsOnboarding = false }
+                }
+                .transition(.opacity)
+            }
+        }
         .task {
             #if DEBUG
             if ProcessInfo.processInfo.arguments.contains("-seedSampleData") {
@@ -83,6 +115,7 @@ struct RootView: View {
             #endif
             Entry.purgeExpiredTrash(in: context)
             Entry.deleteBlankEntries(in: context, keeping: [])
+            WidgetSync.update(in: context)
             // So the map can open on it at once.
             LocationService.shared.refreshLastKnownLocation()
         }
@@ -92,10 +125,22 @@ struct RootView: View {
         .onChange(of: isShielded, initial: true) { _, shielded in
             shield.setVisible(shielded, lock: lock)
         }
+        // The widgets' links: a blank entry for today, or just the journal.
+        .onOpenURL { url in
+            guard url.scheme == WidgetSnapshot.newEntryURL.scheme else { return }
+            router.selectedTab = .journal
+            if url.host() == WidgetSnapshot.newEntryURL.host() {
+                router.pendingNewEntry = true
+            }
+        }
         .onChange(of: scenePhase, initial: true) { _, phase in
             if phase != .active {
                 // Never leave writing only in memory when the app might be suspended or killed.
                 try? context.save()
+            }
+            if phase == .background {
+                // The widgets show what was written, and whether the lock is on.
+                WidgetSync.update(in: context)
             }
             switch phase {
             case .background:

@@ -31,20 +31,26 @@ struct MetaLabel: View {
 /// The sand capsule for the one primary action on a screen (the lock screen's Unlock), shrinking a
 /// little when pressed.
 struct AccentButtonStyle: PrimitiveButtonStyle {
+    var fill = Theme.accent
+    var foreground = Theme.onAccent
+
     func makeBody(configuration: Configuration) -> some View {
         TapPressButton(configuration: configuration, scale: 0.96, opacity: 1) {
             configuration.label
                 .font(Typography.action)
                 .padding(.horizontal, Spacing.l)
                 .padding(.vertical, Spacing.m - 2)
-                .foregroundStyle(Theme.onAccent)
-                .background(Theme.accent, in: .capsule)
+                .foregroundStyle(foreground)
+                .background(fill, in: .capsule)
         }
     }
 }
 
 extension PrimitiveButtonStyle where Self == AccentButtonStyle {
     static var accent: AccentButtonStyle { AccentButtonStyle() }
+    /// The same capsule in primary text, with the page's color on it (the onboarding's Continue):
+    /// ink with paper on it in light mode, paper with night in dark.
+    static var solid: AccentButtonStyle { AccentButtonStyle(fill: Theme.primaryText, foreground: Theme.background) }
 }
 
 /// A button that shrinks a little when pressed and springs back, like a key. A quick tap's press
@@ -199,11 +205,12 @@ extension View {
         modifier(PageTitle(title: title, isHeldFullScreen: isFullScreen))
     }
 
-    /// A softly colored rounded rectangle around a section of content.
+    /// A rounded card around a section of content (the Insights tiles): white on paper, a lift of
+    /// stone on night — no sand.
     func surfaceCard() -> some View {
         padding(Spacing.m)
             .frame(maxWidth: .infinity, alignment: .leading)
-            .background(Theme.surface, in: .rect(cornerRadius: Radius.card))
+            .background(Theme.card, in: .rect(cornerRadius: Radius.card))
     }
 
     /// A sheet's content, with the page behind it darkened (`SheetBackdrop`). Sheets that resize show
@@ -612,7 +619,10 @@ struct SettingsButton: View {
 
     var body: some View {
         Button("Settings", systemImage: "gearshape") { showing = true }
-            .sheet(isPresented: $showing) { SettingsView().sheetBackdrop() }
+            .sheet(isPresented: $showing, onDismiss: {
+                // A switched sync takes effect once Settings has closed (`ICloudSync.applySetting`).
+                ICloudSync.shared.applySetting()
+            }) { SettingsView().sheetBackdrop() }
     }
 }
 
@@ -764,5 +774,49 @@ private struct BackMenuRemover: UIViewControllerRepresentable {
             get { nil }
             set {}
         }
+    }
+}
+
+/// Where the keyboard's top is while it's up, in window coordinates, followed from launch
+/// (`Keyboard.shared` is made in `JournalApp.init`), so a view that appears after the keyboard has
+/// risen still knows about it.
+@Observable
+final class Keyboard {
+    static let shared = Keyboard()
+    private(set) var top: CGFloat?
+
+    private init() {
+        let center = NotificationCenter.default
+        center.addObserver(forName: UIResponder.keyboardWillChangeFrameNotification, object: nil, queue: .main) { [weak self] note in
+            let end = note.userInfo?[UIResponder.keyboardFrameEndUserInfoKey] as? CGRect
+            MainActor.assumeIsolated {
+                guard let self, let end else { return }
+                withAnimation(.smooth(duration: 0.25)) { self.top = end.height > 0 ? end.minY : nil }
+            }
+        }
+        center.addObserver(forName: UIResponder.keyboardWillHideNotification, object: nil, queue: .main) { [weak self] _ in
+            MainActor.assumeIsolated {
+                withAnimation(.smooth(duration: 0.25)) { self?.top = nil }
+            }
+        }
+    }
+}
+
+/// Centers its content in the part of its frame the keyboard leaves showing, for views in a page's
+/// card, which runs on under the keyboard (it ignores the bottom safe area).
+private struct CenteredAboveKeyboard: ViewModifier {
+    func body(content: Content) -> some View {
+        GeometryReader { proxy in
+            let frame = proxy.frame(in: .global)
+            let overlap = Keyboard.shared.top.map { max(0, frame.maxY - $0) } ?? 0
+            content
+                .frame(width: proxy.size.width, height: max(0, proxy.size.height - overlap))
+        }
+    }
+}
+
+extension View {
+    func centeredAboveKeyboard() -> some View {
+        modifier(CenteredAboveKeyboard())
     }
 }
