@@ -16,6 +16,7 @@ struct JournalApp: App {
         JournalShortcuts.updateAppShortcutParameters()
         // Following the keyboard from the start, for views centered above it.
         _ = Keyboard.shared
+        NotificationPresenter.shared.install()
     }
 
     var body: some Scene {
