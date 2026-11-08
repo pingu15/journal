@@ -157,6 +157,13 @@ struct LocationPicker: View {
         .accessibilityHint("Touch and hold a spot to set the place there")
     }
 
+    /// A row's icon in primary text, set on it rather than left to the tint, which list rows
+    /// sometimes lose (the icons then showed in blue).
+    private func rowIcon(_ systemName: String) -> some View {
+        Image(systemName: systemName)
+            .foregroundStyle(Theme.primaryText)
+    }
+
     private var results: some View {
         List {
             if isSearching {
@@ -200,7 +207,11 @@ struct LocationPicker: View {
         Section {
             Button(action: useCurrentLocation) {
                 HStack {
-                    Label("Current Location", systemImage: "location")
+                    Label {
+                        Text("Current Location")
+                    } icon: {
+                        rowIcon("location")
+                    }
                     Spacer()
                     if isLocating { ProgressView() }
                 }
@@ -208,10 +219,16 @@ struct LocationPicker: View {
             .disabled(isLocating || resolvingID != nil)
 
             if entry.placeName != nil {
-                Button("Remove Location", systemImage: "location.slash", role: .destructive) {
+                Button(role: .destructive) {
                     entry.clearPlace()
                     onChange()
                     dismiss()
+                } label: {
+                    Label {
+                        Text("Remove Location")
+                    } icon: {
+                        rowIcon("location.slash")
+                    }
                 }
             }
         } footer: {
