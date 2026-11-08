@@ -47,7 +47,6 @@ enum WidgetSync {
 
         let snapshot = WidgetSnapshot(
             journalName: JournalName.display(UserDefaults.standard.string(forKey: JournalName.storageKey) ?? ""),
-            isLocked: UserDefaults.standard.bool(forKey: AppLock.enabledKey),
             writtenDays: written.sorted(),
             wordCount: stats.wordCount,
             days: days

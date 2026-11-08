@@ -54,7 +54,7 @@ extension WidgetSnapshot {
             return calendar.date(byAdding: .day, value: -offset, to: today)
         }
         return WidgetSnapshot(
-            journalName: "Journal", isLocked: false, writtenDays: days.sorted(), wordCount: 14_200,
+            journalName: "Journal", writtenDays: days.sorted(), wordCount: 14_200,
             days: [dayKey(today): Day(entries: 2, places: 4, events: 3, photos: 12, videos: 1)]
         )
     }
@@ -285,7 +285,7 @@ struct TodayView: View {
                 .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .leading)
                 // The same inset as the text on its three outer sides, its corners following the widget's.
                 // A little over half the width, so the counts aren't left beside a wide empty gap.
-                Collage(files: entry.snapshot.isLocked ? [] : day.photoFiles, isLocked: entry.snapshot.isLocked)
+                Collage(files: day.photoFiles)
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
                     .padding(12)
                     .frame(width: proxy.size.width * Self.collageShare)
@@ -298,7 +298,6 @@ struct TodayView: View {
 /// the left and two stacked on the right.
 struct Collage: View {
     let files: [String]
-    let isLocked: Bool
     private let gap: CGFloat = 3
 
     private var images: [UIImage] {
@@ -314,9 +313,9 @@ struct Collage: View {
                 ZStack {
                     WidgetStyle.activityEmpty
                     VStack(spacing: 6) {
-                        Image(systemName: isLocked ? "lock.fill" : "photo.on.rectangle")
+                        Image(systemName: "photo.on.rectangle")
                             .font(.title3)
-                        Text(isLocked ? "Locked" : "No photos yet")
+                        Text("No photos yet")
                             .font(WidgetStyle.note)
                     }
                     .foregroundStyle(WidgetStyle.secondaryText)

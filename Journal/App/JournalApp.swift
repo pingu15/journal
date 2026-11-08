@@ -139,7 +139,7 @@ struct RootView: View {
                 try? context.save()
             }
             if phase == .background {
-                // The widgets show what was written, and whether the lock is on.
+                // The widgets show what was written.
                 WidgetSync.update(in: context)
             }
             switch phase {

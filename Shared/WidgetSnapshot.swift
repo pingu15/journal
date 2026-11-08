@@ -25,15 +25,13 @@ nonisolated struct WidgetSnapshot: Codable, Sendable {
     }
 
     var journalName: String
-    /// Face ID lock on: the widgets show no photos, only counts.
-    var isLocked: Bool
     /// Start of every day written on (the last 30 weeks or so: the grid and any streak shown).
     var writtenDays: [Date]
     var wordCount: Int
     /// Today and the coming week, keyed by `dayKey` (a day after the last one reads as empty).
     var days: [String: Day]
 
-    static let empty = WidgetSnapshot(journalName: "Journal", isLocked: false, writtenDays: [], wordCount: 0, days: [:])
+    static let empty = WidgetSnapshot(journalName: "Journal", writtenDays: [], wordCount: 0, days: [:])
 
     static var containerURL: URL? {
         FileManager.default.containerURL(forSecurityApplicationGroupIdentifier: appGroup)
