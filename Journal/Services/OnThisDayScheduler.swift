@@ -27,8 +27,9 @@ enum OnThisDayScheduler {
         await schedule(minutesAfterMidnight: minutes, in: context)
     }
 
+    /// Adds the new requests (replacing any with the same identifier) and only then removes the rest,
+    /// so nothing is left unscheduled if iOS suspends the app in between.
     static func schedule(minutesAfterMidnight minutes: Int, in context: ModelContext) async {
-        await cancel()
         let calendar = Calendar.current
         let descriptor = FetchDescriptor<Entry>(predicate: #Predicate { $0.deletedAt == nil })
         let entries = (try? context.fetch(descriptor)) ?? []
@@ -42,6 +43,7 @@ enum OnThisDayScheduler {
         }
 
         let center = UNUserNotificationCenter.current()
+        var kept: Set<String> = []
         let today = calendar.startOfDay(for: .now)
         for offset in 0..<daysAhead {
             guard let day = calendar.date(byAdding: .day, value: offset, to: today),
@@ -63,12 +65,19 @@ enum OnThisDayScheduler {
             )
             let identifier = prefix + day.formatted(.iso8601.year().month().day())
             try? await center.add(UNNotificationRequest(identifier: identifier, content: content, trigger: trigger))
+            kept.insert(identifier)
         }
+        await remove(except: kept)
     }
 
     static func cancel() async {
+        await remove(except: [])
+    }
+
+    private static func remove(except kept: Set<String>) async {
         let center = UNUserNotificationCenter.current()
-        let ids = await center.pendingNotificationRequests().map(\.identifier).filter { $0.hasPrefix(prefix) }
+        let ids = await center.pendingNotificationRequests().map(\.identifier)
+            .filter { $0.hasPrefix(prefix) && !kept.contains($0) }
         center.removePendingNotificationRequests(withIdentifiers: ids)
     }
 

@@ -1,4 +1,5 @@
 import Foundation
+import OSLog
 import UserNotifications
 
 /// Schedules the optional once-a-day writing reminder.
@@ -9,6 +10,7 @@ enum ReminderScheduler {
     static let defaultMinutes = 21 * 60
 
     private static let identifier = "daily-reminder"
+    private static let logger = Logger(subsystem: "com.maxsun.journal", category: "notifications")
 
     static func requestAuthorization() async -> Bool {
         let center = UNUserNotificationCenter.current()
@@ -50,42 +52,74 @@ enum ReminderScheduler {
     /// places, and a request's words are fixed when it's scheduled — so each of the next days gets its
     /// own, today's saying how many places so far, redone whenever `PlaceTracker` notes a sample (and
     /// when the app comes back); later days start with the nudge until their places come in.
+    ///
+    /// The new requests replace the old ones in place (same identifiers), and only then are leftovers
+    /// removed. Clearing first left nothing scheduled whenever iOS suspended the app in between, which
+    /// a sample noted in the background often does. Runs one at a time, so overlapping calls can't
+    /// remove each other's requests.
     static func schedule(minutesAfterMidnight minutes: Int) async {
-        let center = UNUserNotificationCenter.current()
-        await removeAll()
+        let previous = pending
+        let task = Task {
+            await previous?.value
+            await replace(with: requests(minutesAfterMidnight: minutes))
+        }
+        pending = task
+        await task.value
+    }
 
+    private static var pending: Task<Void, Never>?
+
+    private static func requests(minutesAfterMidnight minutes: Int) -> [UNNotificationRequest] {
         guard UserDefaults.standard.bool(forKey: PlaceTracker.enabledKey) else {
             var components = DateComponents()
             components.hour = minutes / 60
             components.minute = minutes % 60
             let trigger = UNCalendarNotificationTrigger(dateMatching: components, repeats: true)
-            try? await center.add(UNNotificationRequest(identifier: identifier, content: content(body: defaultBody), trigger: trigger))
-            return
+            return [UNNotificationRequest(identifier: identifier, content: content(body: defaultBody), trigger: trigger)]
         }
 
         let calendar = Calendar.current
         let today = calendar.startOfDay(for: .now)
-        for offset in 0..<daysAhead {
+        return (0..<daysAhead).compactMap { offset in
             guard let day = calendar.date(byAdding: .day, value: offset, to: today),
                   let fire = calendar.date(bySettingHour: minutes / 60, minute: minutes % 60, second: 0, of: day),
                   fire > .now
-            else { continue }
+            else { return nil }
             let count = offset == 0 ? DayPlaces.places(on: day).count : 0
             let trigger = UNCalendarNotificationTrigger(
                 dateMatching: calendar.dateComponents([.year, .month, .day, .hour, .minute], from: fire),
                 repeats: false
             )
-            let request = UNNotificationRequest(
+            return UNNotificationRequest(
                 identifier: dayPrefix + day.formatted(.iso8601.year().month().day()),
                 content: content(body: count > 0 ? placesBody(count: count) : defaultBody),
                 trigger: trigger
             )
-            try? await center.add(request)
         }
     }
 
+    /// Adds `requests` (replacing any with the same identifier), then removes the reminder's others.
+    private static func replace(with requests: [UNNotificationRequest]) async {
+        let center = UNUserNotificationCenter.current()
+        for request in requests {
+            do {
+                try await center.add(request)
+            } catch {
+                logger.error("Reminder couldn't be scheduled: \(error.localizedDescription, privacy: .public)")
+            }
+        }
+        let kept = Set(requests.map(\.identifier))
+        let stale = await center.pendingNotificationRequests().map(\.identifier)
+            .filter { ($0 == identifier || $0.hasPrefix(dayPrefix)) && !kept.contains($0) }
+        center.removePendingNotificationRequests(withIdentifiers: stale)
+    }
+
     static func cancel() {
-        Task { await removeAll() }
+        let previous = pending
+        pending = Task {
+            await previous?.value
+            await replace(with: [])
+        }
     }
 
     private static let dayPrefix = "daily-reminder-"
@@ -97,12 +131,5 @@ enum ReminderScheduler {
         content.body = body
         content.sound = .default
         return content
-    }
-
-    private static func removeAll() async {
-        let center = UNUserNotificationCenter.current()
-        let ids = await center.pendingNotificationRequests().map(\.identifier)
-            .filter { $0 == identifier || $0.hasPrefix(dayPrefix) }
-        center.removePendingNotificationRequests(withIdentifiers: ids)
     }
 }
