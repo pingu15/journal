@@ -236,10 +236,11 @@ enum DayMapSnapshots {
         options.size = CGSize(width: width, height: height)
         // The smallest labels: at the usual size a snapshot names the whole city in big type across
         // the places.
-        options.traitCollection = UITraitCollection(traitsFrom: [
-            UITraitCollection(userInterfaceStyle: style),
-            UITraitCollection(preferredContentSizeCategory: .extraSmall),
-        ])
+        let style = style
+        options.traitCollection = UITraitCollection { traits in
+            traits.userInterfaceStyle = style
+            traits.preferredContentSizeCategory = .extraSmall
+        }
         let configuration = MKStandardMapConfiguration()
         configuration.pointOfInterestFilter = .excludingAll
         options.preferredConfiguration = configuration
