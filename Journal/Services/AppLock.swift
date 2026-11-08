@@ -78,10 +78,15 @@ final class SystemPrompts {
 
     func during<T>(_ work: () async throws -> T) async rethrows -> T {
         activeCount += 1
-        // The prompt's result can arrive a beat before the scene is active again; hold on briefly.
+        // The prompt's result arrives before the app is active again (Face ID's checkmark stays up a
+        // moment); hold on until it is, or the shield shows for that moment.
         defer {
             Task { @MainActor in
-                try? await Task.sleep(for: .milliseconds(500))
+                let deadline = ContinuousClock.now + .seconds(3)
+                while UIApplication.shared.applicationState != .active, ContinuousClock.now < deadline {
+                    try? await Task.sleep(for: .milliseconds(50))
+                }
+                try? await Task.sleep(for: .milliseconds(150))
                 activeCount -= 1
             }
         }
