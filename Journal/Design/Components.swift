@@ -370,12 +370,12 @@ private struct PageTitle: ViewModifier {
     /// From the card's resting place up to just below the notch.
     private var fullScreenDistance: CGFloat { titleHeight + barHeight }
 
-    /// A short bar centered at the card's top, like a sheet's, in a strip as tall as the space above
-    /// the pages' first content; dragging it moves the card (VoiceOver gets an action instead).
+    /// A short bar centered at the card's top, like a sheet's, in a strip across the card as tall as
+    /// the space above the pages' first content; dragging anywhere on the strip moves the card
+    /// (VoiceOver gets an action instead).
     private var grabber: some View {
         Grabber()
-            // No wider than it needs to be: touches beside it reach the page's content (the map's top).
-            .frame(width: 120, height: Spacing.l, alignment: .top)
+            .frame(maxWidth: .infinity, minHeight: Spacing.l, maxHeight: Spacing.l, alignment: .top)
             .contentShape(.rect)
             .gesture(
                 // On screen, not on the card, which moves under the finger.
