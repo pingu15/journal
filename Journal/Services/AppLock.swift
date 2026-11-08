@@ -39,10 +39,6 @@ final class AppLock {
         }
     }
 
-    func lock() {
-        isUnlocked = false
-    }
-
     /// Must be called while the app is active — LocalAuthentication refuses to prompt otherwise.
     @discardableResult
     func unlock() async -> Bool {

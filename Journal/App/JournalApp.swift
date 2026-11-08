@@ -144,7 +144,7 @@ struct RootView: View {
             }
             switch phase {
             case .background:
-                lock.lock()
+                // Unlocked stays unlocked until the app is closed: only a fresh launch asks again.
                 hasPromptedSinceForeground = false
             case .active:
                 Task {
