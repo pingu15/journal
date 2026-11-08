@@ -35,6 +35,42 @@ nonisolated final class ImageAttachment: NSTextAttachment {
         fatalError("init(coder:) is not supported")
     }
 
+    /// The screen's scale, set by the editor; the photo is prepared at this many pixels per point.
+    nonisolated(unsafe) static var displayScale: CGFloat = 3
+
+    /// `image` prepared at the exact size it's drawn, in 8-bit color. The text redraws the photo's
+    /// line on every keystroke near it; drawing `image` itself meant scaling it and converting its
+    /// color each time, which made typing lag.
+    private var displayed: (size: CGSize, image: UIImage)?
+
+    private func displayImage(for size: CGSize) -> UIImage? {
+        guard let image, size.width > 0, size.height > 0 else { return image }
+        if let displayed, displayed.size == size { return displayed.image }
+        let format = UIGraphicsImageRendererFormat()
+        format.scale = Self.displayScale
+        format.preferredRange = .standard
+        let result = UIGraphicsImageRenderer(size: size, format: format).image { _ in
+            image.draw(in: CGRect(origin: .zero, size: size))
+        }
+        displayed = (size, result)
+        return result
+    }
+
+    // TextKit 2
+    override func image(
+        for bounds: CGRect,
+        attributes: [NSAttributedString.Key: Any] = [:],
+        location: any NSTextLocation,
+        textContainer: NSTextContainer?
+    ) -> UIImage? {
+        displayImage(for: bounds.size)
+    }
+
+    // TextKit 1
+    override func image(forBounds imageBounds: CGRect, textContainer: NSTextContainer?, characterIndex charIndex: Int) -> UIImage? {
+        displayImage(for: imageBounds.size)
+    }
+
     // TextKit 2
     override func attachmentBounds(
         for attributes: [NSAttributedString.Key: Any],

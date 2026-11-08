@@ -24,6 +24,9 @@ struct MarkdownEditor<Header: View>: UIViewRepresentable {
 
     func makeUIView(context: Context) -> MarkdownTextView {
         let textView = MarkdownTextView()
+        if textView.traitCollection.displayScale > 0 {
+            ImageAttachment.displayScale = textView.traitCollection.displayScale
+        }
         textView.delegate = context.coordinator
         textView.textStorage.delegate = context.coordinator
         textView.textDragDelegate = context.coordinator
