@@ -144,7 +144,9 @@ struct RootView: View {
             }
             switch phase {
             case .background:
-                // Unlocked stays unlocked until the app is closed: only a fresh launch asks again.
+                // Once the app has been left for the home screen or another app. Only inactive in the
+                // app switcher (or under Control Center), so a look there doesn't lock it.
+                lock.lock()
                 hasPromptedSinceForeground = false
             case .active:
                 Task {

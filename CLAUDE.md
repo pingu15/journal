@@ -71,7 +71,7 @@ App Store: **Today: Daily Journal**. Home screen / Siri / permission prompts: **
 ## Gotchas
 - Wrap every permission prompt in `SystemPrompts.shared.during { … }` so the privacy shield doesn't flash.
 - Nothing asks for a permission on launch. Each permission is asked the first time it's needed.
-- The lock is iOS's own Face ID prompt over a blurred cover with the logo, in its own `UIWindow` (`PrivacyShield`); a tap on the cover asks again. The same cover hides the app in the app switcher. Face ID is asked only on a fresh launch, not on a return from the background. Request it only once the scene is `.active`.
+- The lock is iOS's own Face ID prompt over a blurred cover with the logo, in its own `UIWindow` (`PrivacyShield`); a tap on the cover asks again. The same cover hides the app in the app switcher. Face ID is asked again once the app has gone to the background (home screen, another app), not after a look at the app switcher, which only makes it inactive. Request it only once the scene is `.active`.
 - Place tracking uses background updates only with Always. With While Using, iOS shows a Dynamic Island live activity.
 - Don't push onto a `NavigationStack` while `.searchable` is dismissing: the push gets dropped.
 - Hide the tab bar from the tab's `NavigationStack`, not from the pushed editor, or it comes back late.
