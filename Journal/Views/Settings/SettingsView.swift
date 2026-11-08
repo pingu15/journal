@@ -195,7 +195,7 @@ struct SettingsView: View {
             return Text("Sign in to iCloud in Settings to sync your journal.")
         }
         if sync.lastError != nil {
-            return Text("Couldn't sync just now. Journal will try again.")
+            return Text("Couldn't sync just now.")
         }
         let places = Text(" Visited places stay on this iPhone.")
         guard let lastSynced = sync.lastSynced else {
