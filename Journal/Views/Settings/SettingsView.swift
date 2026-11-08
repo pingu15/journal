@@ -194,7 +194,7 @@ struct SettingsView: View {
         if !sync.accountAvailable {
             return Text("Sign in to iCloud in Settings to sync your journal.")
         }
-        if sync.lastError != nil {
+        if sync.isFailing() {
             return Text("Couldn't sync just now.")
         }
         guard let lastSynced = sync.lastSynced else {

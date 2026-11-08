@@ -33,6 +33,20 @@ final class ICloudSync {
     private(set) var lastSynced: Date?
     /// Why the last attempt failed, cleared by the next one that works.
     private(set) var lastError: String?
+    /// When attempts started failing with none working since.
+    private(set) var failingSince: Date?
+
+    /// How long sync has to keep failing before Settings says so. A single failure is common (a weak
+    /// network, iOS deferring the work, a setup step that's retried) and CloudKit retries it by
+    /// itself, but after a failed setup nothing else is attempted for a while, so a one-off would
+    /// otherwise show for minutes.
+    static let failureGrace: Duration = .seconds(10 * 60)
+
+    /// Sync has kept failing for longer than `failureGrace`.
+    func isFailing(at now: Date = .now) -> Bool {
+        guard lastError != nil, let failingSince else { return false }
+        return now.timeIntervalSince(failingSince) >= Double(Self.failureGrace.components.seconds)
+    }
     /// Whether iCloud can be used at all: signed in, and not restricted.
     private(set) var accountAvailable = true
     /// When a download from iCloud last finished, this run.
@@ -76,6 +90,7 @@ final class ICloudSync {
                 self.container = container
                 isSyncing = mirrored
                 lastError = nil
+                failingSince = nil
             }
             try? await Task.sleep(for: .milliseconds(50))
             withoutAnimation { isSwapping = false }
@@ -180,8 +195,10 @@ final class ICloudSync {
                     if type != .setup { self.lastSynced = .now }
                     if type == .import { self.lastImportEnded = .now }
                     self.lastError = nil
+                    self.failingSince = nil
                 } else {
                     self.lastError = message
+                    if self.failingSince == nil { self.failingSince = .now }
                 }
             }
         }
