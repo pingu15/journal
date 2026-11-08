@@ -197,11 +197,10 @@ struct SettingsView: View {
         if sync.lastError != nil {
             return Text("Couldn't sync just now.")
         }
-        let places = Text(" Visited places stay on this iPhone.")
         guard let lastSynced = sync.lastSynced else {
-            return Text("Your entries and photos sync to your private iCloud.") + places
+            return Text("Your entries and photos sync to your private iCloud.")
         }
-        return Text("Last synced \(lastSynced.formatted(.relative(presentation: .named))).") + places
+        return Text("Last synced \(lastSynced.formatted(.relative(presentation: .named))).")
     }
 
     /// Turning the lock on requires a successful authentication first,
