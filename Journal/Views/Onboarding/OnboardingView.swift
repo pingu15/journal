@@ -445,7 +445,7 @@ private struct ReminderOption: View {
                     if canAsk {
                         Task { await ask() }
                     } else {
-                        openURL(.appSettings)
+                        openURL(.notificationSettings)
                     }
                 }
                 .buttonStyle(.borderless)

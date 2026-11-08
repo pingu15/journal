@@ -512,8 +512,11 @@ enum AccessLink {
 }
 
 extension URL {
-    /// Journal's page in iOS's Settings.
+    /// Journal's page in iOS's Settings, which lists Location, Photos and Calendars: iOS has no
+    /// public link to those switches themselves (`App-prefs:` ones are private and get rejected).
     static let appSettings = URL(string: UIApplication.openSettingsURLString)!
+    /// Journal's Notifications page in iOS's Settings.
+    static let notificationSettings = URL(string: UIApplication.openNotificationSettingsURLString)!
 }
 
 struct SheetEntryRow: View {

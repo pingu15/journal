@@ -365,8 +365,8 @@ struct SettingsView: View {
             Button {
                 if notificationsCanAsk {
                     Task { await askForNotifications() }
-                } else if let url = URL(string: UIApplication.openSettingsURLString) {
-                    openURL(url)
+                } else {
+                    openURL(.notificationSettings)
                 }
             } label: {
                 Text("Notifications are off. ") + Text(AccessLink.title(canAsk: notificationsCanAsk)).underline()
