@@ -89,8 +89,9 @@ final class SystemPrompts {
     }
 }
 
-/// Covers the whole app — including sheets and full-screen covers — with the lock screen.
-/// Lives in its own window above everything else in the scene.
+/// Covers the whole app — including sheets and full-screen covers — with a plain page while locked or
+/// in the app switcher, so iOS's own Face ID prompt is the only lock UI. Lives in its own window above
+/// everything else in the scene.
 final class PrivacyShield {
     private var window: UIWindow?
 
@@ -116,9 +117,28 @@ final class PrivacyShield {
         let window = UIWindow(windowScene: scene)
         window.windowLevel = .alert + 1
         window.overrideUserInterfaceStyle = Appearance.current.userInterfaceStyle
-        let host = UIHostingController(rootView: LockView().environment(lock))
+        let host = UIHostingController(rootView: LockCover().environment(lock))
         host.view.backgroundColor = UITheme.background
         window.rootViewController = host
         return window
+    }
+}
+
+/// Nothing but the background, so no entry shows behind Face ID or in the app switcher. A tap asks
+/// again after Face ID was cancelled or failed.
+private struct LockCover: View {
+    @Environment(AppLock.self) private var lock
+
+    var body: some View {
+        Theme.background
+            .ignoresSafeArea()
+            .contentShape(.rect)
+            .onTapGesture {
+                Task { await lock.unlock() }
+            }
+            .accessibilityElement()
+            .accessibilityLabel("Locked")
+            .accessibilityHint("Unlocks with \(lock.biometryName)")
+            .accessibilityAddTraits(.isButton)
     }
 }

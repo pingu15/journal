@@ -109,7 +109,6 @@ enum Typography {
     /// In a row's swipe buttons.
     static let smallIcon = Font.system(.subheadline).weight(.medium)
     static let icon = Font.system(.title2)
-    static let largeIcon = Font.system(.title)
 
     // Numbers.
     static let dayNumber = Font.system(.title2, design: .serif)

@@ -37,7 +37,7 @@ App Store: **Today: Daily Journal**. Home screen / Siri / permission prompts: **
 
 ## Design rules
 - Minimal and editorial: lots of whitespace, restrained color, no ornament.
-- **Serif (`design: .serif`) in exactly three places:** page titles (`LargePageTitle`, lock screen), entry-list day numbers (`Typography.dayNumber`), Insights tile numbers. Everything else is SF sans. Never add serif elsewhere. (The exported PDF is the one holdout.)
+- **Serif (`design: .serif`) in exactly three places:** page titles (`LargePageTitle`), entry-list day numbers (`Typography.dayNumber`), Insights tile numbers. Everything else is SF sans. Never add serif elsewhere. (The exported PDF is the one holdout.)
 - Never hardcode colors, fonts or spacing. Use `Theme` / `UITheme` / `Typography` / `Spacing` / `Radius` from `Design/Theme.swift`. `Typography` is the whole type scale: a new role gets a new token. Settings is the exception and keeps iOS's own fonts.
 - Palette: ink `#343434`, stone `#8E8B82`, sand `#D4B48C`, paper `#F3F3F3`, night `#121212`.
   - **Sand** is the single accent, for solid fills only, with white content on top (`Theme.onAccent`).
@@ -71,7 +71,7 @@ App Store: **Today: Daily Journal**. Home screen / Siri / permission prompts: **
 ## Gotchas
 - Wrap every permission prompt in `SystemPrompts.shared.during { … }` so the privacy shield doesn't flash.
 - Nothing asks for a permission on launch. Each permission is asked the first time it's needed.
-- The lock screen is its own `UIWindow` (`PrivacyShield`). Request Face ID only once the scene is `.active`.
+- The lock is iOS's own Face ID prompt over a blank cover in its own `UIWindow` (`PrivacyShield`); a tap on the cover asks again. Request Face ID only once the scene is `.active`.
 - Place tracking uses background updates only with Always. With While Using, iOS shows a Dynamic Island live activity.
 - Don't push onto a `NavigationStack` while `.searchable` is dismissing: the push gets dropped.
 - Hide the tab bar from the tab's `NavigationStack`, not from the pushed editor, or it comes back late.
