@@ -2,6 +2,7 @@ import CloudKit
 import CoreData
 import Foundation
 import Observation
+import OSLog
 import SwiftData
 import SwiftUI
 
@@ -18,6 +19,8 @@ final class ICloudSync {
     nonisolated static let containerID = "iCloud.com.maxsun.journal"
 
     nonisolated static var isEnabled: Bool { UserDefaults.standard.bool(forKey: enabledKey) }
+
+    nonisolated private static let logger = Logger(subsystem: "com.maxsun.journal", category: "icloud")
 
     /// The journal's store, mirrored to iCloud or not. Replaced when sync is switched, so every view's
     /// queries move to the new one at once.
@@ -168,6 +171,9 @@ final class ICloudSync {
             let succeeded = event.succeeded
             let message = event.error?.localizedDescription
             let type = event.type
+            if let error = event.error {
+                ICloudSync.log(error, during: type)
+            }
             MainActor.assumeIsolated {
                 guard let self else { return }
                 if succeeded {
@@ -179,5 +185,43 @@ final class ICloudSync {
                 }
             }
         }
+    }
+
+    /// Why an import, export or setup failed, with CloudKit's code and, for a partial failure, each
+    /// record's own error.
+    nonisolated private static func log(_ error: Error, during type: NSPersistentCloudKitContainer.EventType) {
+        let stage = switch type {
+        case .setup: "setup"
+        case .import: "import"
+        case .export: "export"
+        @unknown default: "event \(type.rawValue)"
+        }
+        var lines = ["iCloud \(stage) failed: \(describe(error))"]
+        if let partial = (error as? CKError)?.partialErrorsByItemID {
+            for (item, itemError) in partial.prefix(5) {
+                lines.append("  \(item): \(describe(itemError))")
+            }
+        }
+        #if DEBUG
+        lines.append("  userInfo: \((error as NSError).userInfo)")
+        #endif
+        let text = lines.joined(separator: "\n")
+        logger.error("\(text, privacy: .public)")
+        #if DEBUG
+        print(text)
+        #endif
+    }
+
+    nonisolated private static func describe(_ error: Error) -> String {
+        let ns = error as NSError
+        var text = "\(ns.domain) \(ns.code): \(ns.localizedDescription)"
+        if let ck = error as? CKError {
+            text += " [CKError \(ck.code)]"
+            if let retry = ck.retryAfterSeconds { text += " retry after \(Int(retry))s" }
+        }
+        if let underlying = ns.userInfo[NSUnderlyingErrorKey] as? Error {
+            text += " ← " + describe(underlying)
+        }
+        return text
     }
 }
