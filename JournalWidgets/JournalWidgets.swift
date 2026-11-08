@@ -266,26 +266,31 @@ struct TodayWidget: Widget {
 
 struct TodayView: View {
     let entry: JournalEntry
+    /// The collage's share of the widget's width.
+    private static let collageShare: CGFloat = 0.61
 
     var body: some View {
         let day = entry.snapshot.day(entry.date)
-        HStack(spacing: 0) {
-            // Sized to fit the widget's height with the same 12pt inset as the collage (the full-size
-            // counts were taller than the widget and pushed the collage to its edges).
-            VStack(alignment: .leading, spacing: 6) {
-                Text("Today")
-                    .font(.headline)
-                    .foregroundStyle(WidgetStyle.primaryText)
-                DayCounts(day: day, compact: true)
+        GeometryReader { proxy in
+            HStack(spacing: 0) {
+                // Sized to fit the widget's height with the same 12pt inset as the collage (the full-size
+                // counts were taller than the widget and pushed the collage to its edges).
+                VStack(alignment: .leading, spacing: 6) {
+                    Text("Today")
+                        .font(.headline)
+                        .foregroundStyle(WidgetStyle.primaryText)
+                    DayCounts(day: day, compact: true)
+                }
+                .padding(.leading, 16)
+                .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .leading)
+                // The same inset as the text on its three outer sides, its corners following the widget's.
+                // A little over half the width, so the counts aren't left beside a wide empty gap.
+                Collage(files: entry.snapshot.isLocked ? [] : day.photoFiles, isLocked: entry.snapshot.isLocked)
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
+                    .padding(12)
+                    .frame(width: proxy.size.width * Self.collageShare)
             }
-            .padding(.leading, 16)
-            .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .leading)
-            // The same inset as the text on its three outer sides, its corners following the widget's.
-            Collage(files: entry.snapshot.isLocked ? [] : day.photoFiles, isLocked: entry.snapshot.isLocked)
-                .frame(maxWidth: .infinity, maxHeight: .infinity)
-                .padding(12)
         }
-        .frame(maxWidth: .infinity, maxHeight: .infinity)
     }
 }
 
