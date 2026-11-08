@@ -186,10 +186,12 @@ struct EntryEditorView: View {
         return Self.picture(of: attachment)
     }
 
-    /// What the text shows for a photo or video: a video's first frame carries a play button.
+    /// What the text shows for a photo or video: a video's first frame carries a play button. It's
+    /// cropped as the text would crop it first, so its length stays in the corner.
     private static func picture(of attachment: Attachment) -> UIImage? {
         guard let image = attachment.imageData.flatMap(UIImage.init(data:)) else { return nil }
-        return attachment.isVideo ? VideoProcessing.badged(image, duration: attachment.videoDuration) : image
+        guard attachment.isVideo else { return image }
+        return VideoProcessing.badged(ImageAttachment.croppedToMaxAspect(image), duration: attachment.videoDuration)
     }
 
     /// Photos and videos from the library, in the order picked.

@@ -50,7 +50,13 @@ nonisolated final class ImageAttachment: NSTextAttachment {
         format.scale = Self.displayScale
         format.preferredRange = .standard
         let result = UIGraphicsImageRenderer(size: size, format: format).image { _ in
-            image.draw(in: CGRect(origin: .zero, size: size))
+            // Aspect-fill: a portrait taller than the cap is cropped top and bottom, around its middle.
+            let fill = max(size.width / image.size.width, size.height / image.size.height)
+            let drawn = CGSize(width: image.size.width * fill, height: image.size.height * fill)
+            let rect = CGRect(origin: .zero, size: size)
+            UIBezierPath(roundedRect: rect, cornerRadius: size.width * 0.025).addClip()
+            image.draw(in: CGRect(x: (size.width - drawn.width) / 2, y: (size.height - drawn.height) / 2,
+                                  width: drawn.width, height: drawn.height))
         }
         displayed = (size, result)
         return result
@@ -92,20 +98,29 @@ nonisolated final class ImageAttachment: NSTextAttachment {
         displayBounds(for: lineFrag.width)
     }
 
-    /// Fill the measure, but keep tall portraits from swallowing the page.
+    /// The tallest a photo is shown, as height over width; taller ones are cropped to it.
+    static let maxAspect: CGFloat = 1.25
+
+    /// `image` cropped around its middle to `maxAspect`, as the text shows it.
+    static func croppedToMaxAspect(_ image: UIImage) -> UIImage {
+        let size = image.size
+        guard size.width > 0, size.height / size.width > maxAspect else { return image }
+        let cropped = CGSize(width: size.width, height: size.width * maxAspect)
+        let format = UIGraphicsImageRendererFormat.default()
+        format.scale = image.scale
+        return UIGraphicsImageRenderer(size: cropped, format: format).image { _ in
+            image.draw(at: CGPoint(x: 0, y: -(size.height - cropped.height) / 2))
+        }
+    }
+
+    /// Always the full width of the text; tall portraits are cropped so they don't swallow the page.
     private func displayBounds(for available: CGFloat) -> CGRect {
         let width = max(available - 1, 40)
         guard let size = image?.size, size.width > 0, size.height > 0 else {
             return CGRect(x: 0, y: 0, width: width, height: width * 0.66)
         }
-        var displayWidth = width
-        var displayHeight = width * size.height / size.width
-        let maxHeight = width * 1.25
-        if displayHeight > maxHeight {
-            displayHeight = maxHeight
-            displayWidth = displayHeight * size.width / size.height
-        }
-        return CGRect(x: 0, y: 0, width: displayWidth, height: displayHeight)
+        let height = width * min(size.height / size.width, Self.maxAspect)
+        return CGRect(x: 0, y: 0, width: width, height: height)
     }
 
     private static func rounded(_ image: UIImage) -> UIImage {
