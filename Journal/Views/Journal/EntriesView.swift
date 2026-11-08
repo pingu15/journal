@@ -600,9 +600,11 @@ private struct TrashList<Header: View>: View {
     @ViewBuilder let header: Header
 
     @Environment(\.modelContext) private var context
+    @Environment(AppRouter.self) private var router
     @State private var labelTops = LabelTops()
     /// The row swiped open to show its buttons, if any.
     @State private var swipedOpen: PersistentIdentifier?
+    @State private var taps = 0
     /// Asked about before it goes: unlike moving an entry here, this can't be undone.
     @State private var deleting: Entry?
 
@@ -652,15 +654,25 @@ private struct TrashList<Header: View>: View {
     }
 
     private func row(for entry: Entry) -> some View {
-        // A tap only closes an open row: these open nothing.
+        // Opens the entry to read (the editor is read-only until it's restored); a tap while a row
+        // is swiped open just closes it.
         Button {
-            swipedOpen = nil
+            if swipedOpen != nil {
+                swipedOpen = nil
+            } else if router.journalPath.isEmpty {
+                // The press shows first, then the entry opens.
+                taps += 1
+                Task {
+                    try? await Task.sleep(for: SwipeRowButtonStyle.tapDuration)
+                    if router.journalPath.isEmpty { router.journalPath.append(entry) }
+                }
+            }
         } label: {
             EntryRow(entry: entry, warning: entry.daysUntilPurge == 1 ? "1 day left" : "\(entry.daysUntilPurge) days left")
                 .entryRowPadding()
         }
         .buttonStyle(SwipeRowButtonStyle())
-        .accessibilityRemoveTraits(.isButton)
+        .environment(\.rowTaps, taps)
         .rowSwipeActions(
             id: entry.persistentModelID,
             openRow: $swipedOpen,

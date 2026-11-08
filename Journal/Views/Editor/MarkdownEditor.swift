@@ -9,6 +9,8 @@ struct MarkdownEditor<Header: View>: UIViewRepresentable {
     @Binding var isEditing: Bool
     let controller: MarkdownEditorController
     var autofocus = false
+    /// False for an entry in Recently Deleted: it can be read, not changed.
+    var isEditable = true
     let image: (UUID) -> UIImage?
     let onImageTap: (UUID) -> Void
     /// A photo token pasted from elsewhere: returns the id to use in this entry (copying the photo
@@ -43,6 +45,7 @@ struct MarkdownEditor<Header: View>: UIViewRepresentable {
 
         load(text, into: textView, coordinator: context.coordinator)
         setHeader(on: textView)
+        textView.isEditable = isEditable
 
         if autofocus {
             // A new entry starts on its title.
@@ -54,6 +57,9 @@ struct MarkdownEditor<Header: View>: UIViewRepresentable {
 
     func updateUIView(_ textView: MarkdownTextView, context: Context) {
         context.coordinator.parent = self
+        if textView.isEditable != isEditable {
+            textView.isEditable = isEditable
+        }
         // The keyboard bar floats a little above the keyboard; the last line stays well clear of it.
         let toolbarClearance: CGFloat = isEditing ? MarkdownToolbar.height + Spacing.s + Spacing.l : 0
         if textView.contentInset.bottom != toolbarClearance {

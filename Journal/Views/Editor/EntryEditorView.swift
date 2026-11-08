@@ -13,6 +13,7 @@ struct EntryEditorView: View {
     @State private var editor = MarkdownEditorController()
     @State private var isTrashed = false
     @State private var confirmingDelete = false
+    @State private var confirmingPermanentDelete = false
     @State private var editingDate = false
     @State private var editingLocation = false
     @State private var viewingDay = false
@@ -43,6 +44,7 @@ struct EntryEditorView: View {
             isEditing: $isEditing,
             controller: editor,
             autofocus: startsEmpty,
+            isEditable: !isDeleted,
             image: image(for:),
             onImageTap: { viewingPhoto = PhotoSelection(id: $0) },
             resolvePastedImage: resolvePastedImage,
@@ -52,8 +54,8 @@ struct EntryEditorView: View {
         ) {
             EntryHeader(
                 entry: entry,
-                onEditDate: { editingDate = true },
-                onEditLocation: { editingLocation = true }
+                onEditDate: { if !isDeleted { editingDate = true } },
+                onEditLocation: { if !isDeleted { editingLocation = true } }
             )
         }
         .ignoresSafeArea(.container, edges: .bottom)
@@ -85,18 +87,34 @@ struct EntryEditorView: View {
         .navigationBarTitleDisplayMode(.inline)
         .hidesBackButtonMenu()
         .deleteEntryAlert(isPresented: $confirmingDelete, action: moveToTrash)
+        // As in Recently Deleted's list.
+        .alert("Delete this entry?", isPresented: $confirmingPermanentDelete) {
+            Button("Cancel", role: .cancel) {}
+            Button("Delete", role: .destructive, action: deletePermanently)
+        } message: {
+            Text("It will be deleted permanently. This can't be undone.")
+        }
         .toolbar {
-            ToolbarItem(placement: .topBarTrailing) {
-                Menu("More", systemImage: "ellipsis") {
-                    Section {
-                        Button("View Day", systemImage: "calendar") { viewingDay = true }
-                        Button("Share", systemImage: "square.and.arrow.up", action: sharePDF)
-                        // Asks first, as from the list.
-                        Button("Delete Entry", systemImage: "trash", role: .destructive) { confirmingDelete = true }
-                    }
-                    Section {
-                        Text("\(entry.wordCount) words · \(entry.readingMinutes) min read")
-                        Text("Edited \(entry.updatedAt.formatted(.relative(presentation: .named)))")
+            if isDeleted {
+                ToolbarItem(placement: .topBarTrailing) {
+                    Button("Restore", systemImage: "arrow.uturn.backward", action: restore)
+                }
+                ToolbarItem(placement: .topBarTrailing) {
+                    Button("Delete Permanently", systemImage: "trash") { confirmingPermanentDelete = true }
+                }
+            } else {
+                ToolbarItem(placement: .topBarTrailing) {
+                    Menu("More", systemImage: "ellipsis") {
+                        Section {
+                            Button("View Day", systemImage: "calendar") { viewingDay = true }
+                            Button("Share", systemImage: "square.and.arrow.up", action: sharePDF)
+                            // Asks first, as from the list.
+                            Button("Delete Entry", systemImage: "trash", role: .destructive) { confirmingDelete = true }
+                        }
+                        Section {
+                            Text("\(entry.wordCount) words · \(entry.readingMinutes) min read")
+                            Text("Edited \(entry.updatedAt.formatted(.relative(presentation: .named)))")
+                        }
                     }
                 }
             }
@@ -137,12 +155,14 @@ struct EntryEditorView: View {
                 photos: entry.photos.map(ViewerPhoto.init),
                 initialID: selection.id,
                 coverID: entry.coverPhoto?.identifier,
-                onSetCover: { entry.coverImageID = $0 },
-                onDelete: { editor.removeImage($0) }
+                onSetCover: isDeleted ? nil : { entry.coverImageID = $0 },
+                onDelete: isDeleted ? nil : { editor.removeImage($0) }
             )
         }
         .onAppear {
             router.openEntries.insert(entry.persistentModelID)
+            // A deleted entry is only read: nothing is added to it.
+            guard !isDeleted else { return }
             entry.embedLoosePhotos()
             if entry.location != nil && entry.weather == nil {
                 Task { await refreshWeather() }
@@ -157,7 +177,7 @@ struct EntryEditorView: View {
         .onDisappear {
             router.openEntries.remove(entry.persistentModelID)
             autoPlaceTask?.cancel()
-            guard !isTrashed else { return }
+            guard !isTrashed, !isDeleted else { return }
             entry.removeUnreferencedPhotos(in: context)
             if autoPlaced && !entry.hasText && entry.photos.isEmpty {
                 entry.clearPlace()
@@ -165,6 +185,27 @@ struct EntryEditorView: View {
             if entry.isBlank {
                 context.delete(entry)
             }
+            try? context.save()
+        }
+    }
+
+    /// In Recently Deleted, so read-only until restored.
+    private var isDeleted: Bool { entry.deletedAt != nil }
+
+    /// Back in the journal, and editable again here.
+    private func restore() {
+        entry.restore()
+        try? context.save()
+    }
+
+    private func deletePermanently() {
+        isTrashed = true
+        dismiss()
+        // Once the editor has gone: it reads the entry until then.
+        let entry = entry
+        Task {
+            try? await Task.sleep(for: .milliseconds(600))
+            context.delete(entry)
             try? context.save()
         }
     }
