@@ -39,7 +39,7 @@ App Store: **Today: Daily Journal**. Home screen / Siri / permission prompts: **
 - Minimal and editorial: lots of whitespace, restrained color, no ornament.
 - **Serif (`design: .serif`) in exactly three places:** page titles (`LargePageTitle`), entry-list day numbers (`Typography.dayNumber`), Insights tile numbers. Everything else is SF sans. Never add serif elsewhere. (The exported PDF is the one holdout.)
 - Never hardcode colors, fonts or spacing. Use `Theme` / `UITheme` / `Typography` / `Spacing` / `Radius` from `Design/Theme.swift`. `Typography` is the whole type scale: a new role gets a new token. Settings is the exception and keeps iOS's own fonts.
-- Palette: ink `#343434`, stone `#8E8B82`, sand `#D4B48C`, paper `#F3F3F3`, night `#121212`.
+- Palette: ink `#343434`, stone `#8E8B82`, sand `#DEAA73`, paper `#F3F3F3`, night `#121212`.
   - **Sand** is the single accent, for solid fills only, with white content on top (`Theme.onAccent`).
   - Quiet fills and highlights are stone washes (`Theme.surface`, `rowHighlight`, `card`), never sand.
   - Stone is only for secondary or meta text, never body copy.
