@@ -2,7 +2,10 @@ import CoreLocation
 import MapKit
 import Observation
 
-/// One-shot "where am I" lookups for tagging an entry with the current place.
+/// One-shot "where am I" lookups for tagging an entry with the current place. Observable, so views
+/// that say whether location is allowed follow iOS's answer, which arrives a moment after a prompt
+/// or a trip to Settings ends.
+@Observable
 final class LocationService: NSObject, CLLocationManagerDelegate {
     enum Failure: LocalizedError {
         case denied
@@ -16,23 +19,26 @@ final class LocationService: NSObject, CLLocationManagerDelegate {
     /// Settings: tag new entries with the current place.
     static let autoTagKey = "autoTagLocation"
 
-    private let manager = CLLocationManager()
-    private var authorizationWaiters: [CheckedContinuation<Void, Never>] = []
-    private var locationWaiters: [CheckedContinuation<CLLocation, Error>] = []
+    @ObservationIgnored private let manager = CLLocationManager()
+    @ObservationIgnored private var authorizationWaiters: [CheckedContinuation<Void, Never>] = []
+    @ObservationIgnored private var locationWaiters: [CheckedContinuation<CLLocation, Error>] = []
+    /// iOS's answer, kept up to date from `locationManagerDidChangeAuthorization`.
+    private(set) var authorizationStatus: CLAuthorizationStatus
 
     override private init() {
+        authorizationStatus = manager.authorizationStatus
         super.init()
         manager.delegate = self
         manager.desiredAccuracy = kCLLocationAccuracyHundredMeters
     }
 
     var isAuthorized: Bool {
-        [.authorizedWhenInUse, .authorizedAlways].contains(manager.authorizationStatus)
+        [.authorizedWhenInUse, .authorizedAlways].contains(authorizationStatus)
     }
 
     /// Always, which tracking visited places needs to carry on in the background.
     var allowsAlways: Bool {
-        manager.authorizationStatus == .authorizedAlways
+        authorizationStatus == .authorizedAlways
     }
 
     /// The last location the system has, at once, though it may be out of date.
@@ -47,12 +53,12 @@ final class LocationService: NSObject, CLLocationManagerDelegate {
 
     /// Whether iOS will still show its prompt: it hasn't been asked yet.
     var canAsk: Bool {
-        manager.authorizationStatus == .notDetermined
+        authorizationStatus == .notDetermined
     }
 
     /// Asks for permission if it hasn't been asked yet; true when location is allowed.
     func requestAuthorization() async -> Bool {
-        if manager.authorizationStatus == .notDetermined {
+        if authorizationStatus == .notDetermined {
             await SystemPrompts.shared.during {
                 await withCheckedContinuation { continuation in
                     authorizationWaiters.append(continuation)
@@ -84,6 +90,7 @@ final class LocationService: NSObject, CLLocationManagerDelegate {
     nonisolated func locationManagerDidChangeAuthorization(_ manager: CLLocationManager) {
         let status = manager.authorizationStatus
         MainActor.assumeIsolated {
+            authorizationStatus = status
             guard status != .notDetermined else { return }
             authorizationWaiters.forEach { $0.resume() }
             authorizationWaiters.removeAll()

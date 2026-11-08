@@ -24,9 +24,10 @@ struct SettingsView: View {
     @State private var notificationsCanAsk = false
     @State private var locationDenied = false
     /// For the Location note: tracking on without access says so, like the reminder without notifications.
-    @State private var locationAllowed = LocationService.shared.isAuthorized
-    @State private var locationCanAsk = LocationService.shared.canAsk
-    @State private var locationAlways = LocationService.shared.allowsAlways
+    // Read live: iOS's answer comes a moment after its prompt closes or Settings is left.
+    private var locationAllowed: Bool { LocationService.shared.isAuthorized }
+    private var locationCanAsk: Bool { LocationService.shared.canAsk }
+    private var locationAlways: Bool { LocationService.shared.allowsAlways }
 
     var body: some View {
         NavigationStack {
@@ -88,7 +89,7 @@ struct SettingsView: View {
                     // says so here until it's allowed: location off altogether, or only While Using,
                     // short of the Always tracking needs (which only iOS's Settings can give once
                     // it's been asked).
-                    if locationDenied || (trackPlaces && !locationAllowed) {
+                    if (locationDenied || trackPlaces) && !locationAllowed {
                         Button {
                             if locationCanAsk {
                                 Task {
@@ -302,9 +303,6 @@ struct SettingsView: View {
     }
 
     private func refreshLocationAccess() {
-        locationAllowed = LocationService.shared.isAuthorized
-        locationCanAsk = LocationService.shared.canAsk
-        locationAlways = LocationService.shared.allowsAlways
         if locationAllowed { locationDenied = false }
     }
 

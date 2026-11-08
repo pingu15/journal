@@ -365,11 +365,11 @@ private struct PreferencesPage: View {
 /// first time, with a note while it's off.
 private struct PlacesOption: View {
     @Environment(\.openURL) private var openURL
-    @Environment(\.scenePhase) private var scenePhase
     @AppStorage(PlaceTracker.enabledKey) private var trackPlaces = false
-    @State private var allowed = LocationService.shared.isAuthorized
-    @State private var canAsk = LocationService.shared.canAsk
-    @State private var always = LocationService.shared.allowsAlways
+    // Read live: iOS's answer comes a moment after its prompt closes.
+    private var allowed: Bool { LocationService.shared.isAuthorized }
+    private var canAsk: Bool { LocationService.shared.canAsk }
+    private var always: Bool { LocationService.shared.allowsAlways }
 
     var body: some View {
         OptionCard(
@@ -379,9 +379,7 @@ private struct PlacesOption: View {
         ) {
             note
         }
-        .task(id: scenePhase) {
-            if scenePhase == .active { refresh() }
-        }
+        .animation(.smooth, value: LocationService.shared.authorizationStatus)
     }
 
     @ViewBuilder
@@ -389,10 +387,7 @@ private struct PlacesOption: View {
         if trackPlaces && !allowed {
             AccessOffNote("Location access", canAsk: canAsk) {
                 if canAsk {
-                    Task {
-                        await PlaceTracker.shared.enable()
-                        refresh()
-                    }
+                    Task { await PlaceTracker.shared.enable() }
                 } else {
                     openURL(.appSettings)
                 }
@@ -420,17 +415,8 @@ private struct PlacesOption: View {
                 return
             }
             withAnimation(.smooth) { trackPlaces = true }
-            Task {
-                await PlaceTracker.shared.enable()
-                withAnimation(.smooth) { refresh() }
-            }
+            Task { await PlaceTracker.shared.enable() }
         }
-    }
-
-    private func refresh() {
-        allowed = LocationService.shared.isAuthorized
-        canAsk = LocationService.shared.canAsk
-        always = LocationService.shared.allowsAlways
     }
 }
 
