@@ -480,7 +480,7 @@ extension View {
 
 /// An entry as a row of a popup's inset-grouped list (the day sheet, a map group): highlighted while
 /// touched like any list row.
-/// A day sheet section's note when it can't show anything yet: "Photo access is off.
+/// A day sheet section's note when it can't show anything yet: "Photo gallery access is off.
 /// Grant Access" while the app hasn't asked (`canAsk`: the action asks in place), "Open Settings"
 /// once it has, as iOS asks only once (the action opens iOS's Settings).
 struct AccessOffNote: View {
