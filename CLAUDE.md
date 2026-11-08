@@ -10,8 +10,8 @@ xcodebuild -project Journal.xcodeproj -scheme Journal -destination 'platform=iOS
 # Launch with sample data (DEBUG launch args below)
 xcrun simctl launch booted com.maxsun.journal -seedSampleData
 
-# Read the store
-sqlite3 "$(xcrun simctl get_app_container booted com.maxsun.journal data)/Library/Application Support/default.store" "select ZTEXT from ZENTRY"
+# Read the store (it lives in the App Group container)
+sqlite3 "$(xcrun simctl get_app_container booted com.maxsun.journal group.com.maxsun.journal)/Library/Application Support/default.store" "select ZTEXT from ZENTRY"
 ```
 
 DEBUG launch arguments:
