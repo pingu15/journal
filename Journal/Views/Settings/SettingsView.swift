@@ -451,14 +451,13 @@ private struct ExportRow: View {
 /// page has a background of its own.
 private struct ThemeList: View {
     @Binding var selection: Appearance
-    @Environment(\.dismiss) private var dismiss
 
     var body: some View {
         Form {
             ForEach(Appearance.allCases) { option in
+                // Stays on this page, so the new theme can be seen and another tried.
                 Button {
                     selection = option
-                    dismiss()
                 } label: {
                     HStack {
                         Text(option.label)
