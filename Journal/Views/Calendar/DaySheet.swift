@@ -25,7 +25,8 @@ struct DaySheet: View {
     /// Where the weekday and the arrows (as the bar places them, level with the title) sit, so the
     /// arrows can be centered on the date and weekday together.
     @State private var weekdayMidY: CGFloat = 0
-    @State private var arrowMidY: CGFloat = 0
+    /// Where the bar puts the arrows' slots (level with the title), by direction.
+    @State private var arrowSlots: [Int: CGRect] = [:]
     private let calendar = Calendar.current
 
     init(day: Date, entries: [Entry], openedFrom: Entry? = nil, onSetPlace: @escaping () -> Void = {}) {
@@ -87,12 +88,13 @@ struct DaySheet: View {
                 if #available(iOS 26.0, *) {
                     // The bar's own glass stays level with the title, so each arrow draws its own and
                     // moves down with it, centered on the date and weekday together.
+                    // Only their places: the arrows themselves are drawn over the sheet (`dayArrows`).
                     ToolbarItem(placement: .topBarLeading) {
-                        DayArrow(title: "Previous Day", systemImage: "chevron.left", shift: arrowShift, midY: $arrowMidY) { shift(by: -1) }
+                        ArrowSlot { arrowSlots[-1] = $0 }
                     }
                     .sharedBackgroundVisibility(.hidden)
                     ToolbarItem(placement: .topBarTrailing) {
-                        DayArrow(title: "Next Day", systemImage: "chevron.right", shift: arrowShift, midY: $arrowMidY) { shift(by: 1) }
+                        ArrowSlot { arrowSlots[1] = $0 }
                     }
                     .sharedBackgroundVisibility(.hidden)
                 } else {
@@ -104,6 +106,9 @@ struct DaySheet: View {
                     }
                 }
             }
+        }
+        .overlay {
+            if #available(iOS 26.0, *) { dayArrows }
         }
         .tint(Theme.primaryText)
         .presentationDetents([.medium, .large])
@@ -123,10 +128,29 @@ struct DaySheet: View {
         }
     }
 
-    /// Halfway from the title down to the weekday.
-    private var arrowShift: CGFloat {
-        guard arrowMidY > 0, weekdayMidY > arrowMidY else { return 0 }
-        return (weekdayMidY - arrowMidY) / 2
+    /// The arrows, each where the bar puts its slot but moved halfway from the title down to the
+    /// weekday, centered on both. Drawn over the sheet rather than in the bar: moved down in the bar,
+    /// their lower half hung outside it and didn't take taps.
+    @available(iOS 26.0, *)
+    private var dayArrows: some View {
+        GeometryReader { proxy in
+            // Measured in the window, where the sheet's contents are scaled down while it's at half
+            // height; placed in the overlay's own, unscaled points.
+            let frame = proxy.frame(in: .global)
+            let scale = frame.width > 0 ? proxy.size.width / frame.width : 1
+            if let leading = arrowSlots[-1], let trailing = arrowSlots[1], leading.midY > 0 {
+                let titleY = leading.midY
+                let y = (weekdayMidY > titleY ? (titleY + weekdayMidY) / 2 : titleY) - frame.minY
+                ForEach([-1, 1], id: \.self) { direction in
+                    let slot = direction < 0 ? leading : trailing
+                    DayArrow(
+                        title: direction < 0 ? "Previous Day" : "Next Day",
+                        systemImage: direction < 0 ? "chevron.left" : "chevron.right"
+                    ) { shift(by: direction) }
+                    .position(x: (slot.midX - frame.minX) * scale, y: y * scale)
+                }
+            }
+        }
     }
 
     private var placeAction: DayPlacesSection.Action {
@@ -241,14 +265,24 @@ struct DaySheet: View {
     }
 }
 
-/// One of the day sheet's arrows: a glass circle like the bar's own, moved down by `shift`.
+/// Holds an arrow's place in the bar and reports where that is, in global coordinates.
+@available(iOS 26.0, *)
+private struct ArrowSlot: View {
+    let onChange: (CGRect) -> Void
+
+    var body: some View {
+        Color.clear
+            .frame(width: 44, height: 44)
+            .accessibilityHidden(true)
+            .onGeometryChange(for: CGRect.self) { $0.frame(in: .global) } action: { onChange($0) }
+    }
+}
+
+/// One of the day sheet's arrows: a glass circle like the bar's own.
 @available(iOS 26.0, *)
 private struct DayArrow: View {
     let title: String
     let systemImage: String
-    let shift: CGFloat
-    /// Where the bar puts it (level with the title), before the shift.
-    @Binding var midY: CGFloat
     let action: () -> Void
 
     var body: some View {
@@ -261,8 +295,6 @@ private struct DayArrow: View {
         .buttonStyle(.plain)
         .glassEffect(.regular.interactive(), in: .circle)
         .accessibilityLabel(title)
-        .offset(y: shift)
-        .onGeometryChange(for: CGFloat.self) { $0.frame(in: .global).midY } action: { midY = $0 }
     }
 }
 
