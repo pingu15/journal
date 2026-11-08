@@ -107,7 +107,7 @@ struct DateWidget: Widget {
                 .widgetURL(WidgetSnapshot.openURL)
         }
         .configurationDisplayName("Date")
-        .description("Today's date, and what the day holds so far.")
+        .description("What you've been up to today.")
         .supportedFamilies([.systemMedium])
     }
 }
@@ -367,7 +367,7 @@ struct ActivityWidget: Widget {
             .widgetURL(WidgetSnapshot.openURL)
         }
         .configurationDisplayName("Activity")
-        .description("Your streak, and every day you've written.")
+        .description("Your recent journaling history.")
         .supportedFamilies([.systemMedium])
     }
 }
@@ -385,7 +385,7 @@ struct WordsWidget: Widget {
             .widgetURL(WidgetSnapshot.openURL)
         }
         .configurationDisplayName("Words")
-        .description("Every word you've written, and every day you wrote.")
+        .description("Every word you've ever written.")
         .supportedFamilies([.systemMedium])
     }
 }
