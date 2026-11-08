@@ -90,9 +90,9 @@ final class SystemPrompts {
     }
 }
 
-/// Covers the whole app — including sheets and full-screen covers — with a plain page while locked or
-/// in the app switcher, so iOS's own Face ID prompt is the only lock UI. Lives in its own window above
-/// everything else in the scene.
+/// Covers the whole app — including sheets and full-screen covers — with a blur and the logo while
+/// locked or in the app switcher, so iOS's own Face ID prompt is the only lock UI. Lives in its own
+/// window above everything else in the scene.
 final class PrivacyShield {
     private var window: UIWindow?
 
@@ -119,27 +119,46 @@ final class PrivacyShield {
         window.windowLevel = .alert + 1
         window.overrideUserInterfaceStyle = Appearance.current.userInterfaceStyle
         let host = UIHostingController(rootView: LockCover().environment(lock))
-        host.view.backgroundColor = UITheme.background
+        // Clear, so the blur shows the app beneath.
+        host.view.backgroundColor = .clear
+        window.backgroundColor = .clear
         window.rootViewController = host
         return window
     }
 }
 
-/// Nothing but the background, so no entry shows behind Face ID or in the app switcher. A tap asks
-/// again after Face ID was cancelled or failed.
+/// The app blurred past reading, with the handwritten logo in the middle, behind Face ID and in the app
+/// switcher. A tap asks again after Face ID was cancelled or failed.
 private struct LockCover: View {
     @Environment(AppLock.self) private var lock
 
     var body: some View {
-        Theme.background
-            .ignoresSafeArea()
-            .contentShape(.rect)
-            .onTapGesture {
-                Task { await lock.unlock() }
-            }
-            .accessibilityElement()
-            .accessibilityLabel("Locked")
-            .accessibilityHint("Unlocks with \(lock.biometryName)")
-            .accessibilityAddTraits(.isButton)
+        ZStack {
+            CoverBlur()
+            Image("Signature")
+                .resizable()
+                .scaledToFit()
+                .foregroundStyle(Theme.primaryText)
+                .frame(width: 200)
+                .accessibilityHidden(true)
+        }
+        .ignoresSafeArea()
+        .contentShape(.rect)
+        .onTapGesture {
+            Task { await lock.unlock() }
+        }
+        .accessibilityElement()
+        .accessibilityLabel("Locked")
+        .accessibilityHint("Unlocks with \(lock.biometryName)")
+        .accessibilityAddTraits(.isButton)
     }
+}
+
+/// UIKit's blur, which blurs the app's windows beneath the shield's.
+private struct CoverBlur: UIViewRepresentable {
+    func makeUIView(context: Context) -> UIVisualEffectView {
+        UIVisualEffectView(effect: UIBlurEffect(style: .systemThickMaterial))
+    }
+
+    func updateUIView(_ view: UIVisualEffectView, context: Context) {}
 }
