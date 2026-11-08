@@ -378,7 +378,7 @@ struct WordsWidget: Widget {
             GridWidgetView(
                 entry: entry,
                 value: entry.snapshot.wordCount.formatted(),
-                label: entry.snapshot.wordCount == 1 ? "Word written" : "Words written"
+                label: entry.snapshot.wordCount == 1 ? "Word" : "Words"
             )
             .containerBackground(WidgetStyle.background, for: .widget)
             .widgetURL(WidgetSnapshot.openURL)
