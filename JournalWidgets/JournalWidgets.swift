@@ -281,7 +281,7 @@ struct TodayView: View {
                         .foregroundStyle(WidgetStyle.primaryText)
                     DayCounts(day: day, compact: true)
                 }
-                .padding(.leading, 16)
+                .padding(.leading, 20)
                 .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .leading)
                 // The same inset as the text on its three outer sides, its corners following the widget's.
                 // A little over half the width, so the counts aren't left beside a wide empty gap.
