@@ -15,7 +15,11 @@ extension ViewerPhoto where ID == UUID {
         self.init(
             id: attachment.identifier,
             video: attachment.isVideo ? { VideoProcessing.playableURL(for: attachment) } : nil
-        ) { attachment.imageData.flatMap(UIImage.init(data:)) }
+        ) {
+            // The data is read here, with the model; the decoding happens off the main thread.
+            guard let image = attachment.imageData.flatMap(UIImage.init(data:)) else { return nil }
+            return await image.byPreparingForDisplay() ?? image
+        }
     }
 }
 
@@ -40,6 +44,9 @@ struct PhotoViewer<ID: Hashable>: View {
     @State private var dismissProgress: CGFloat = 0
     /// A video's own controls are up: the close and ⋯ buttons step aside for them.
     @State private var videoControlsShown = false
+    /// Decoded photos: the one shown and its neighbors, loaded ahead so a swipe never waits on one
+    /// (a page swapping its spinner for the photo mid-swipe stopped the swipe halfway).
+    @State private var images: [ID: UIImage] = [:]
 
     init(
         photos: [ViewerPhoto<ID>],
@@ -67,7 +74,7 @@ struct PhotoViewer<ID: Hashable>: View {
                         VideoPage(url: video, isCurrent: selection == photo.id, controlsShown: $videoControlsShown)
                             .tag(photo.id)
                     } else {
-                    FullImage(load: photo.load, onDragDown: { progress in
+                    FullImage(image: images[photo.id], onDragDown: { progress in
                         // A cancelled swipe springs back; bring the backdrop back with it.
                         if progress == 0 {
                             withAnimation(.snappy) { dismissProgress = 0 }
@@ -82,6 +89,7 @@ struct PhotoViewer<ID: Hashable>: View {
             .tabViewStyle(.page(indexDisplayMode: photos.count > 1 ? .automatic : .never))
             .ignoresSafeArea()
         }
+        .task(id: selection) { await loadAround(selection) }
         .overlay(alignment: .top) {
             HStack(spacing: Spacing.s) {
                 Button { dismiss() } label: {
@@ -128,6 +136,24 @@ struct PhotoViewer<ID: Hashable>: View {
         .statusBarHidden()
         // Lets the editor (or day sheet) show through as the photo is swiped down.
         .presentationBackground(.clear)
+    }
+
+    /// The photo shown first, then the ones either side of it.
+    private func loadAround(_ id: ID) async {
+        guard let index = photos.firstIndex(where: { $0.id == id }) else { return }
+        for offset in [0, 1, -1] {
+            let neighbor = index + offset
+            guard photos.indices.contains(neighbor) else { continue }
+            let photo = photos[neighbor]
+            guard photo.video == nil, images[photo.id] == nil else { continue }
+            if let image = await photo.load() {
+                images[photo.id] = image
+            }
+            if Task.isCancelled { return }
+        }
+        // Only a few full-size photos held at once.
+        let kept = Set(photos.indices.filter { abs($0 - index) <= 2 }.map { photos[$0].id })
+        images = images.filter { kept.contains($0.key) }
     }
 
     private var isVideo: Bool {
@@ -250,10 +276,9 @@ private struct GlassIcon: View {
 /// One photo, fitted to the screen. Pinch or double-tap to zoom; at normal size, swiping down
 /// closes it (`onDragDown` reports how far, 0–1), and so does a tap on the black around it.
 private struct FullImage: View {
-    let load: () async -> UIImage?
+    let image: UIImage?
     let onDragDown: (CGFloat) -> Void
     let onClose: () -> Void
-    @State private var image: UIImage?
 
     var body: some View {
         Group {
@@ -268,9 +293,6 @@ private struct FullImage: View {
                     .contentShape(.rect)
                     .onTapGesture(perform: onClose)
             }
-        }
-        .task {
-            image = await load()
         }
     }
 }
