@@ -44,9 +44,10 @@ struct PhotoViewer<ID: Hashable>: View {
     @State private var dismissProgress: CGFloat = 0
     /// A video's own controls are up: the close and ⋯ buttons step aside for them.
     @State private var videoControlsShown = false
-    /// Decoded photos: the one shown and its neighbors, loaded ahead so a swipe never waits on one
-    /// (a page swapping its spinner for the photo mid-swipe stopped the swipe halfway).
-    @State private var images: [ID: UIImage] = [:]
+    /// Decoded photos: the one shown and its neighbors, loaded ahead so a swipe rarely waits on one.
+    /// Kept outside the viewer's own state and read only by each page, so a photo arriving updates
+    /// that page alone, never the pager mid-swipe (which stopped the swipe halfway).
+    @State private var images = LoadedPhotos<ID>()
 
     init(
         photos: [ViewerPhoto<ID>],
@@ -74,7 +75,7 @@ struct PhotoViewer<ID: Hashable>: View {
                         VideoPage(url: video, isCurrent: selection == photo.id, controlsShown: $videoControlsShown)
                             .tag(photo.id)
                     } else {
-                    FullImage(image: images[photo.id], onDragDown: { progress in
+                    FullImage(images: images, id: photo.id, onDragDown: { progress in
                         // A cancelled swipe springs back; bring the backdrop back with it.
                         if progress == 0 {
                             withAnimation(.snappy) { dismissProgress = 0 }
@@ -145,15 +146,15 @@ struct PhotoViewer<ID: Hashable>: View {
             let neighbor = index + offset
             guard photos.indices.contains(neighbor) else { continue }
             let photo = photos[neighbor]
-            guard photo.video == nil, images[photo.id] == nil else { continue }
+            guard photo.video == nil, images.byID[photo.id] == nil else { continue }
             if let image = await photo.load() {
-                images[photo.id] = image
+                images.byID[photo.id] = image
             }
             if Task.isCancelled { return }
         }
         // Only a few full-size photos held at once.
         let kept = Set(photos.indices.filter { abs($0 - index) <= 2 }.map { photos[$0].id })
-        images = images.filter { kept.contains($0.key) }
+        images.byID = images.byID.filter { kept.contains($0.key) }
     }
 
     private var isVideo: Bool {
@@ -273,45 +274,47 @@ private struct GlassIcon: View {
     }
 }
 
+/// The viewer's decoded photos, by ID.
+@Observable
+final class LoadedPhotos<ID: Hashable> {
+    var byID: [ID: UIImage] = [:]
+}
+
 /// One photo, fitted to the screen. Pinch or double-tap to zoom; at normal size, swiping down
 /// closes it (`onDragDown` reports how far, 0–1), and so does a tap on the black around it.
-private struct FullImage: View {
-    let image: UIImage?
+/// The same view before and after its photo has loaded (a spinner until then), so a photo arriving
+/// mid-swipe changes only what's drawn, not the page.
+private struct FullImage<ID: Hashable>: View {
+    let images: LoadedPhotos<ID>
+    let id: ID
     let onDragDown: (CGFloat) -> Void
     let onClose: () -> Void
 
     var body: some View {
-        Group {
-            if let image {
-                ZoomableImage(image: image, onDragDown: onDragDown, onClose: onClose)
-                    // The whole screen, under the notch and the home indicator: a tall photo fills
-                    // its height, a wide one its width.
-                    .ignoresSafeArea()
-            } else {
-                ProgressView().tint(.white)
-                    .frame(maxWidth: .infinity, maxHeight: .infinity)
-                    .contentShape(.rect)
-                    .onTapGesture(perform: onClose)
-            }
-        }
+        ZoomableImage(image: images.byID[id], onDragDown: onDragDown, onClose: onClose)
+            // The whole screen, under the notch and the home indicator: a tall photo fills its
+            // height, a wide one its width.
+            .ignoresSafeArea()
     }
 }
 
 /// A `UIScrollView` for the zooming, plus a pan that only starts for a downward swipe at normal size,
 /// so it leaves sideways swipes to the page view and pans of a zoomed photo to the scroll view.
 private struct ZoomableImage: UIViewRepresentable {
-    let image: UIImage
+    let image: UIImage?
     let onDragDown: (CGFloat) -> Void
     let onClose: () -> Void
 
     func makeUIView(context: Context) -> ZoomView {
-        let view = ZoomView(image: image)
+        let view = ZoomView()
+        view.image = image
         view.onDragDown = onDragDown
         view.onClose = onClose
         return view
     }
 
     func updateUIView(_ view: ZoomView, context: Context) {
+        if view.image !== image { view.image = image }
         view.onDragDown = onDragDown
         view.onClose = onClose
     }
@@ -319,14 +322,25 @@ private struct ZoomableImage: UIViewRepresentable {
     final class ZoomView: UIScrollView, UIScrollViewDelegate, UIGestureRecognizerDelegate {
         var onDragDown: (CGFloat) -> Void = { _ in }
         var onClose: () -> Void = {}
-        private let imageView: UIImageView
+        private let imageView = UIImageView()
+        private let spinner = UIActivityIndicatorView(style: .medium)
         private let dismissPan = UIPanGestureRecognizer()
         /// The drag a swipe-down needs to close the photo, and the drag that fully fades the backdrop.
         private let closeDistance: CGFloat = 120
         private let fadeDistance: CGFloat = 300
 
-        init(image: UIImage) {
-            imageView = UIImageView(image: image)
+        /// Nil while it loads, with a spinner in its place.
+        var image: UIImage? {
+            get { imageView.image }
+            set {
+                imageView.image = newValue
+                newValue == nil ? spinner.startAnimating() : spinner.stopAnimating()
+                setZoomScale(minimumZoomScale, animated: false)
+                setNeedsLayout()
+            }
+        }
+
+        init() {
             super.init(frame: .zero)
             delegate = self
             minimumZoomScale = 1
@@ -337,6 +351,10 @@ private struct ZoomableImage: UIViewRepresentable {
             backgroundColor = .clear
             imageView.contentMode = .scaleAspectFit
             addSubview(imageView)
+            spinner.color = .white
+            spinner.hidesWhenStopped = true
+            spinner.startAnimating()
+            addSubview(spinner)
 
             let doubleTap = UITapGestureRecognizer(target: self, action: #selector(doubleTapped(_:)))
             doubleTap.numberOfTapsRequired = 2
@@ -358,13 +376,16 @@ private struct ZoomableImage: UIViewRepresentable {
             imageView.frame = CGRect(origin: .zero, size: fittedSize())
             contentSize = imageView.frame.size
             centerContent()
+            spinner.center = CGPoint(x: bounds.midX - contentInset.left, y: bounds.midY - contentInset.top)
         }
 
-        /// The image's size fitted inside the bounds.
+        /// The image's size fitted inside the bounds. Never past them, even by a rounding error: a
+        /// photo a fraction wider than the screen made this scroll view take sideways swipes from
+        /// the pager.
         private func fittedSize() -> CGSize {
-            guard let size = imageView.image?.size, size.width > 0, size.height > 0 else { return bounds.size }
+            guard let size = imageView.image?.size, size.width > 0, size.height > 0 else { return .zero }
             let scale = min(bounds.width / size.width, bounds.height / size.height)
-            return CGSize(width: size.width * scale, height: size.height * scale)
+            return CGSize(width: min(size.width * scale, bounds.width), height: min(size.height * scale, bounds.height))
         }
 
         /// Centers the photo with insets while it's smaller than the screen in either direction.
