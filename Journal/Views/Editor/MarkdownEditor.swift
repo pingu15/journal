@@ -129,6 +129,10 @@ struct MarkdownEditor<Header: View>: UIViewRepresentable {
 
         func textViewDidChangeSelection(_ textView: UITextView) {
             guard !isProcessing else { return }
+            // Carried only while the caret stays on that empty line.
+            if let carried = parent.controller.emptyLineInline, carried.location != textView.selectedRange.location {
+                parent.controller.emptyLineInline = nil
+            }
             parent.controller.updateTypingAttributes()
             parent.controller.refreshState()
         }
@@ -198,6 +202,14 @@ struct MarkdownEditor<Header: View>: UIViewRepresentable {
         /// Return continues a list (or ends it on an empty item), leaves a title or heading for body
         /// text, and stays in a quote until an empty line.
         func textView(_ textView: UITextView, shouldChangeTextIn range: NSRange, replacementText text: String) -> Bool {
+            if !isProcessing, textView.markedTextRange == nil {
+                // Deleting text keeps its formatting for the caret, should that leave the line empty.
+                if text.isEmpty, range.length > 0, NSMaxRange(range) <= textView.textStorage.length {
+                    parent.controller.emptyLineInline = (range.location, textView.textStorage.inlineStyle(at: range.location))
+                } else if text != "\n" {
+                    parent.controller.emptyLineInline = nil
+                }
+            }
             if range.length > 0, !text.isEmpty, text != "\n", !isProcessing, textView.markedTextRange == nil,
                NSMaxRange(range) <= textView.textStorage.length {
                 let storage = textView.textStorage
@@ -255,8 +267,13 @@ struct MarkdownEditor<Header: View>: UIViewRepresentable {
                 return false
             }
 
+            // Return at the end of a line carries its bold, italic and so on to the new, empty line.
+            let inline = parent.controller.emptyLineInline?.location == range.location
+                ? parent.controller.emptyLineInline?.inline ?? []
+                : (range.location > lineStart ? storage.inlineStyle(at: range.location - 1) : [])
             textView.replace(range, with: "\n")
             let caret = range.location + 1
+            parent.controller.emptyLineInline = range.location == contentEnd && block?.isHeading != true ? (caret, inline) : nil
             // Return at the end of a title or heading starts body text; splitting one keeps the style.
             let next: BlockStyle? = block?.isHeading == true && range.location == contentEnd ? nil : block
             parent.controller.applyBlock(next, toParagraphAt: caret)
@@ -699,6 +716,10 @@ final class MarkdownEditorController {
     @ObservationIgnored var didEdit: (() -> Void)?
     /// The paragraph style chosen for an empty last line, which has no characters to carry it.
     @ObservationIgnored private var emptyLineBlock: (location: Int, block: BlockStyle?)?
+    /// The bold, italic and so on carried onto an empty line from the text it came from: the line
+    /// a return was typed at the end of, or the text just deleted from it. An empty line has no
+    /// characters to hold it, so without this the caret lost it, and what was typed next too.
+    @ObservationIgnored var emptyLineInline: (location: Int, inline: InlineStyle)?
 
     func endEditing() {
         textView?.resignFirstResponder()
@@ -726,12 +747,16 @@ final class MarkdownEditorController {
         if location < ns.length {
             // Start of a paragraph: its first character (or, for an empty one, its line break).
             let isEmpty = ns.character(at: location) == 0x0A
-            return (isEmpty ? [] : storage.inlineStyle(at: location), storage.blockStyle(at: location))
+            return (isEmpty ? carriedInline(at: location) : storage.inlineStyle(at: location), storage.blockStyle(at: location))
         }
         if let pending = emptyLineBlock, pending.location == location {
-            return ([], pending.block)
+            return (carriedInline(at: location), pending.block)
         }
-        return ([], nil)
+        return (carriedInline(at: location), nil)
+    }
+
+    private func carriedInline(at location: Int) -> InlineStyle {
+        emptyLineInline?.location == location ? emptyLineInline?.inline ?? [] : []
     }
 
     /// Typing continues the formatting around the caret (never a link).
@@ -787,6 +812,8 @@ final class MarkdownEditorController {
             let block = (attributes[.blockStyle] as? Int).flatMap(BlockStyle.init(rawValue:))
             attributes = MarkdownStyler.typingAttributes(block: block, inline: current.symmetricDifference(style))
             textView.typingAttributes = attributes
+            // Turned off (or on) on an empty line, it stays that way.
+            emptyLineInline = (selection.location, current.symmetricDifference(style))
             refreshState()
             return
         }
