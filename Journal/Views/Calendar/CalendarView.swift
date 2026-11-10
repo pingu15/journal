@@ -104,7 +104,6 @@ struct CalendarView: View {
                 }
             }
         }
-        .sensoryFeedback(.selection, trigger: openDay?.day)
         .sheet(item: $openDay) { selection in
             DaySheet(day: selection.day, entries: entries)
         }
