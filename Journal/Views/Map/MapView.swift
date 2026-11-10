@@ -29,6 +29,7 @@ struct MapView: View {
                     }
                     ToolbarItem(placement: .topBarTrailing) {
                         Button("Current Location", systemImage: "location", action: recenter)
+                            .onSandBar()
                     }
                     ToolbarItem(placement: .topBarTrailing) {
                         SettingsButton()

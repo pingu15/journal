@@ -245,6 +245,14 @@ extension View {
             .ignoresSafeArea(.container, edges: .top)
     }
 
+    /// A button in a tab's bar, which sits on sand: white in both modes. Left to the bar's dark
+    /// scheme, the icons took the app's tint in paper, which Liquid Glass on a device blended into
+    /// the sand.
+    func onSandBar() -> some View {
+        tint(Theme.onAccent)
+            .foregroundStyle(Theme.onAccent)
+    }
+
     /// Liquid Glass on iOS 26, a material before it — for custom controls that sit in the bar.
     @ViewBuilder
     func glassBackground(in shape: some Shape) -> some View {
@@ -613,6 +621,7 @@ struct InsightsButton: View {
 
     var body: some View {
         Button("Insights", systemImage: "chart.bar.xaxis") { showing = true }
+            .onSandBar()
             .sheet(isPresented: $showing) { InsightsView().sheetBackdrop() }
     }
 }
@@ -622,6 +631,7 @@ struct SettingsButton: View {
 
     var body: some View {
         Button("Settings", systemImage: "gearshape") { showing = true }
+            .onSandBar()
             .sheet(isPresented: $showing, onDismiss: {
                 // A switched sync takes effect once Settings has closed (`ICloudSync.applySetting`).
                 ICloudSync.shared.applySetting()

@@ -113,11 +113,13 @@ struct EntriesView: View {
         }
         ToolbarItem(placement: .topBarTrailing) {
             Button("Search", systemImage: "magnifyingglass", action: openSearch)
+                .onSandBar()
                 .onGeometryChange(for: CGRect.self) { $0.frame(in: .global) } action: { searchButtonFrame = $0 }
                 .id(searchButtonID)
         }
         ToolbarItem(placement: .topBarTrailing) {
             filterMenu
+                .onSandBar()
         }
         ToolbarItem(placement: .topBarTrailing) {
             SettingsButton()

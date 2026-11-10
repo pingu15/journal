@@ -98,6 +98,7 @@ struct CalendarView: View {
                     Button("Today", systemImage: "\(calendar.component(.day, from: .now)).square") {
                         showThisMonth()
                     }
+                    .onSandBar()
                 }
                 ToolbarItem(placement: .topBarTrailing) {
                     SettingsButton()
