@@ -276,7 +276,7 @@ private struct GlassIcon: View {
 
 /// The viewer's decoded photos, by ID.
 @Observable
-final class LoadedPhotos<ID: Hashable> {
+nonisolated final class LoadedPhotos<ID: Hashable> {
     var byID: [ID: UIImage] = [:]
 }
 
