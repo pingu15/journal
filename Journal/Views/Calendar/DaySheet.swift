@@ -27,6 +27,8 @@ struct DaySheet: View {
     @State private var weekdayMidY: CGFloat = 0
     /// Where the bar puts the arrows' slots (level with the title), by direction.
     @State private var arrowSlots: [Int: CGRect] = [:]
+    /// How far the current sideways swipe has gone.
+    @State private var swipeDistance: CGFloat = 0
     private let calendar = Calendar.current
 
     init(day: Date, entries: [Entry], openedFrom: Entry? = nil, onSetPlace: @escaping () -> Void = {}) {
@@ -67,6 +69,8 @@ struct DaySheet: View {
                 // Everything in it dims while touched, like the app's other buttons.
                 .buttonStyle(.borderless)
             }
+            // Swiping sideways goes to the day before or after, like the arrows.
+            .gesture(SidewaysPan(outranksScrolling: true, onChange: { swipeDistance = $0 }, onEnd: endSwipe(velocity:)))
             .background(Theme.background)
             // Rows pass under the header with a clean edge, `Spacing.m` below the weekday.
             .hidesTopScrollEdgeEffect()
@@ -251,6 +255,17 @@ struct DaySheet: View {
             }
         } header: {
             MetaLabel("Entries", systemImage: "book")
+        }
+    }
+
+    /// Far enough or fast enough: right for the day before, left for the day after.
+    private func endSwipe(velocity: CGFloat) {
+        let distance = swipeDistance
+        swipeDistance = 0
+        if distance > 60 || velocity > 500 {
+            shift(by: -1)
+        } else if distance < -60 || velocity < -500 {
+            shift(by: 1)
         }
     }
 

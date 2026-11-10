@@ -271,11 +271,17 @@ private struct SwipeButtons: View, @MainActor Animatable {
 }
 
 /// A pan that only starts when it's mostly sideways, so vertical drags still scroll the list.
-private struct SidewaysPan: UIGestureRecognizerRepresentable {
+/// Also the day sheet's swipe between days.
+struct SidewaysPan: UIGestureRecognizerRepresentable {
+    /// Over a whole list rather than in a row: the list's scrolling waits for it to fail, which a
+    /// vertical drag makes it do at once, or the list takes every drag.
+    var outranksScrolling = false
     let onChange: (CGFloat) -> Void
     let onEnd: (CGFloat) -> Void
 
-    func makeCoordinator(converter: CoordinateSpaceConverter) -> Coordinator { Coordinator() }
+    func makeCoordinator(converter: CoordinateSpaceConverter) -> Coordinator {
+        Coordinator(outranksScrolling: outranksScrolling)
+    }
 
     func makeUIGestureRecognizer(context: Context) -> UIPanGestureRecognizer {
         let pan = UIPanGestureRecognizer()
@@ -295,6 +301,19 @@ private struct SidewaysPan: UIGestureRecognizerRepresentable {
     }
 
     final class Coordinator: NSObject, UIGestureRecognizerDelegate {
+        let outranksScrolling: Bool
+
+        init(outranksScrolling: Bool) {
+            self.outranksScrolling = outranksScrolling
+        }
+
+        func gestureRecognizer(
+            _ gesture: UIGestureRecognizer,
+            shouldBeRequiredToFailBy other: UIGestureRecognizer
+        ) -> Bool {
+            outranksScrolling && other.view is UIScrollView
+        }
+
         func gestureRecognizerShouldBegin(_ gesture: UIGestureRecognizer) -> Bool {
             guard let pan = gesture as? UIPanGestureRecognizer else { return true }
             let velocity = pan.velocity(in: pan.view)
