@@ -445,6 +445,23 @@ final class MarkdownTextView: UITextView {
         if textContainerInset != inset {
             textContainerInset = inset
         }
+        clipBelowStatusBar()
+    }
+
+    /// Shows the page under the bar's buttons but not under the status bar: it's cut off at the
+    /// status bar's bottom edge. Rerun on every scroll, as the mask moves with `bounds`.
+    private let statusBarMask = CALayer()
+
+    private func clipBelowStatusBar() {
+        guard let window else { return }
+        let statusBar = window.windowScene?.statusBarManager?.statusBarFrame.height ?? window.safeAreaInsets.top
+        let top = max(0, statusBar - convert(bounds.origin, to: window).y)
+        CATransaction.begin()
+        CATransaction.setDisableActions(true)
+        statusBarMask.backgroundColor = UIColor.black.cgColor
+        statusBarMask.frame = CGRect(x: bounds.minX, y: bounds.minY + top, width: bounds.width, height: max(bounds.height - top, 0))
+        if layer.mask !== statusBarMask { layer.mask = statusBarMask }
+        CATransaction.commit()
     }
 
     /// Takes the keyboard once the push transition has finished, so it rises from the bottom rather
