@@ -71,7 +71,9 @@ struct CalendarView: View {
                 .scrollPosition($position)
                 .onScrollGeometryChange(for: [Int].self) { geometry in
                     let visible = geometry.visibleRect
-                    let layout = layout(width: width)
+                    // From the geometry, not `width`: that's set (and the scroll moved) in the same
+                    // frame, which made this update twice per frame.
+                    let layout = layout(width: geometry.containerSize.width)
                     let shown = layout.months(from: visible.minY - visible.height, to: visible.maxY + visible.height)
                     let top = layout.months(from: visible.minY, to: visible.minY).lowerBound
                     return [shown.lowerBound, shown.upperBound, top]
