@@ -58,7 +58,9 @@ struct EntryEditorView: View {
                 onEditLocation: { if !isDeleted { editingLocation = true } }
             )
         }
-        .ignoresSafeArea(.container, edges: .bottom)
+        // Runs to the screen's top edge: the page scrolls up under the bar's buttons, with no band
+        // kept for them. The text view still starts below the bar (its inset adjusts for it).
+        .ignoresSafeArea(.container, edges: [.top, .bottom])
         .overlay(alignment: .bottom) {
             // Rides on the keyboard's top edge (the overlay respects the keyboard safe area).
             if isEditing {

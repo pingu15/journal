@@ -427,6 +427,10 @@ final class MarkdownTextView: UITextView {
         inlinePredictionType = .no
         // "---" and "--" are Markdown, not punctuation.
         smartDashesType = .no
+        // The page scrolls out under the bar's buttons as is, without iOS 26's soft fade at the top.
+        if #available(iOS 26.0, *) {
+            topEdgeEffect.isHidden = true
+        }
     }
 
     required init?(coder: NSCoder) {
