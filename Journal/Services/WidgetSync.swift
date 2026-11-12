@@ -6,7 +6,7 @@ import WidgetKit
 
 /// Writes the widgets' snapshot (`WidgetSnapshot`) to the App Group container and asks WidgetKit to
 /// redraw them: on launch, when an entry closes, and when the app leaves the foreground (after the
-/// save there).
+/// save there). The daily reminder is rescheduled from it too, for its streak.
 enum WidgetSync {
     /// Today's library photos kept for the collage.
     static let collageLimit = 3
@@ -54,6 +54,8 @@ enum WidgetSync {
         guard let url = WidgetSnapshot.fileURL, let data = try? JSONEncoder().encode(snapshot) else { return }
         try? data.write(to: url, options: .atomic)
         WidgetCenter.shared.reloadAllTimelines()
+        // The reminder names the streak, which this snapshot has just recounted.
+        Task { await ReminderScheduler.refresh() }
     }
 
     /// The day's newest few photos, kept by their asset (written once each); any others in the folder

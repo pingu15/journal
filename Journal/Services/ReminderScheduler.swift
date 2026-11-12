@@ -9,6 +9,7 @@ enum ReminderScheduler {
     static let minutesKey = "reminderMinutes"
     static let defaultMinutes = 21 * 60
 
+    /// The single repeating request it used to be; removed wherever it's still pending.
     private static let identifier = "daily-reminder"
     private static let logger = Logger(subsystem: "com.maxsun.journal", category: "notifications")
 
@@ -39,19 +40,25 @@ enum ReminderScheduler {
         await schedule(minutesAfterMidnight: minutes)
     }
 
-    /// What it says: how many places the day took in, once Track Visited Places has noted some, else
-    /// a nudge. Used for the onboarding's picture of it too.
+    /// What it says: how many places the day took in, once Track Visited Places has noted some; else
+    /// the streak it would keep going; else a nudge to start one.
     static let title = "Take a moment to write"
-    static let defaultBody = "A few lines about today is enough."
+    static let newStreakBody = "Start a new journaling streak today."
+
+    static func streakBody(days: Int) -> String {
+        "Keep your \(days.formatted()) day streak going."
+    }
 
     static func placesBody(count: Int) -> String {
         count == 1 ? "You visited 1 place today." : "You visited \(count) places today."
     }
 
-    /// With tracking off, one request repeating every day. With it on, a day's words depend on its
-    /// places, and a request's words are fixed when it's scheduled — so each of the next days gets its
-    /// own, today's saying how many places so far, redone whenever `PlaceTracker` notes a sample (and
-    /// when the app comes back); later days start with the nudge until their places come in.
+    /// A day's words depend on its places and the streak, and a request's words are fixed when it's
+    /// scheduled — so each of the next days gets its own. A day's streak is the one it would have if
+    /// nothing more were written (from the widget snapshot, so redone whenever `WidgetSync` writes
+    /// one), which only today and tomorrow can have. Today's places are redone whenever
+    /// `PlaceTracker` notes a sample (and when the app comes back); later days start with the streak
+    /// or the nudge until their places come in.
     ///
     /// The new requests replace the old ones in place (same identifiers), and only then are leftovers
     /// removed. Clearing first left nothing scheduled whenever iOS suspended the app in between, which
@@ -70,29 +77,31 @@ enum ReminderScheduler {
     private static var pending: Task<Void, Never>?
 
     private static func requests(minutesAfterMidnight minutes: Int) -> [UNNotificationRequest] {
-        guard UserDefaults.standard.bool(forKey: PlaceTracker.enabledKey) else {
-            var components = DateComponents()
-            components.hour = minutes / 60
-            components.minute = minutes % 60
-            let trigger = UNCalendarNotificationTrigger(dateMatching: components, repeats: true)
-            return [UNNotificationRequest(identifier: identifier, content: content(body: defaultBody), trigger: trigger)]
-        }
-
         let calendar = Calendar.current
         let today = calendar.startOfDay(for: .now)
+        let snapshot = WidgetSnapshot.load()
+        let tracksPlaces = UserDefaults.standard.bool(forKey: PlaceTracker.enabledKey)
         return (0..<daysAhead).compactMap { offset in
             guard let day = calendar.date(byAdding: .day, value: offset, to: today),
                   let fire = calendar.date(bySettingHour: minutes / 60, minute: minutes % 60, second: 0, of: day),
                   fire > .now
             else { return nil }
-            let count = offset == 0 ? DayPlaces.places(on: day).count : 0
+            let streak = snapshot.currentStreak(on: day, calendar: calendar)
+            let places = tracksPlaces && offset == 0 ? DayPlaces.places(on: day).count : 0
+            let body = if places > 0 {
+                placesBody(count: places)
+            } else if streak > 0 {
+                streakBody(days: streak)
+            } else {
+                newStreakBody
+            }
             let trigger = UNCalendarNotificationTrigger(
                 dateMatching: calendar.dateComponents([.year, .month, .day, .hour, .minute], from: fire),
                 repeats: false
             )
             return UNNotificationRequest(
                 identifier: dayPrefix + day.formatted(.iso8601.year().month().day()),
-                content: content(body: count > 0 ? placesBody(count: count) : defaultBody),
+                content: content(body: body),
                 trigger: trigger
             )
         }
@@ -123,7 +132,9 @@ enum ReminderScheduler {
     }
 
     private static let dayPrefix = "daily-reminder-"
-    private static let daysAhead = 14
+    /// Enough that it keeps coming for a month without the app being opened. With On This Day's 30,
+    /// that's 60 of the 64 requests iOS keeps pending.
+    private static let daysAhead = 30
 
     private static func content(body: String) -> UNMutableNotificationContent {
         let content = UNMutableNotificationContent()
