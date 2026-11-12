@@ -197,9 +197,24 @@ private final class EntryAnnotation: NSObject, MKAnnotation {
     }
 }
 
+/// A dot's layer, which drops MapKit's animations as groups split and merge: it slides dots between
+/// a group's spot and their own with additive transform animations, and fades out the dots being
+/// replaced. Without them a group splits and merges at once. The dot's own `pulse()` isn't
+/// additive, so it still plays.
+nonisolated private final class StillDotLayer: CALayer {
+    override func add(_ animation: CAAnimation, forKey key: String?) {
+        if let property = animation as? CAPropertyAnimation {
+            if property.keyPath == "opacity" { return }
+            if property.keyPath == "transform", property.isAdditive { return }
+        }
+        super.add(animation, forKey: key)
+    }
+}
+
 /// An entry, or several close together: a sand dot ringed in white with their count, always the
 /// same size.
 private final class EntryDotView: MKAnnotationView {
+    override class var layerClass: AnyClass { StillDotLayer.self }
     static let reuseID = "entry"
     private static let size: CGFloat = 36
     private let label = UILabel()
