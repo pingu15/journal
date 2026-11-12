@@ -21,8 +21,9 @@ enum Onboarding {
     }
 }
 
-/// The first-launch introduction, over the tabs: the handwritten logo, then the journal's name, then
-/// its options (places, the daily reminder, iCloud, the lock), then the journal being prepared, ending
+/// The first-launch introduction, over the tabs: a welcome (the handwritten logo, what the journal
+/// offers, Get Started), then the journal's name, then its options (places, the daily reminder,
+/// iCloud, the lock), then the journal being prepared, ending
 /// on "You're All Set". Moved through with its buttons only (no swiping): Back at the top beside a line
 /// for each page, Continue at the bottom. Nothing is asked of iOS until a switch is turned on, and every
 /// choice can be changed later in Settings.
@@ -32,54 +33,37 @@ struct OnboardingView: View {
     @AppStorage(JournalName.storageKey) private var journalName = JournalName.default
     /// The name as typed. There's no default: the first page can't be left without one.
     @State private var nameDraft = ""
-    @State private var page = Page.name
+    @State private var page = Page.welcome
     /// Which way the pages slide: on to the next, or back.
     @State private var forward = true
-    /// The handwritten logo, until it has been written and faded away.
-    @State private var showsIntro = true
+    /// The welcome's logo has been written and its promises are in: Get Started can rise.
+    @State private var welcomed = false
     /// The preparing page has finished, and says so: Start Writing can be pressed.
     @State private var ready = false
     @FocusState private var nameFocused: Bool
 
     enum Page: Int, CaseIterable {
-        case name, preferences, preparing
+        case welcome, name, preferences, preparing
     }
 
     var body: some View {
         ZStack {
             Theme.background.ignoresSafeArea()
 
-            // Built as the logo fades, so the first page rises in as it goes rather than behind it.
-            if !showsIntro {
-                VStack(spacing: 0) {
-                    topBar
-                        .rise(delay: 0.1)
+            VStack(spacing: 0) {
+                topBar
 
-                    ZStack {
-                        pageView
-                            .id(page)
-                            .transition(.asymmetric(
-                                insertion: .move(edge: forward ? .trailing : .leading).combined(with: .opacity),
-                                removal: .move(edge: forward ? .leading : .trailing).combined(with: .opacity)
-                            ))
-                    }
-                    .frame(maxWidth: .infinity, maxHeight: .infinity)
+                ZStack {
+                    pageView
+                        .id(page)
+                        .transition(.asymmetric(
+                            insertion: .move(edge: forward ? .trailing : .leading).combined(with: .opacity),
+                            removal: .move(edge: forward ? .leading : .trailing).combined(with: .opacity)
+                        ))
+                }
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
 
-                    bottomButton
-                        .rise(delay: 0.3)
-                }
-            }
-        }
-        .overlay {
-            if showsIntro {
-                IntroLogo {
-                    withAnimation(.easeInOut(duration: 0.7)) { showsIntro = false }
-                    Task { @MainActor in
-                        try? await Task.sleep(for: .milliseconds(800))
-                        if page == .name { nameFocused = true }
-                    }
-                }
-                .transition(.opacity)
+                bottomButton
             }
         }
     }
@@ -87,6 +71,10 @@ struct OnboardingView: View {
     @ViewBuilder
     private var pageView: some View {
         switch page {
+        case .welcome:
+            WelcomePage {
+                withAnimation(.smooth(duration: 1.2)) { welcomed = true }
+            }
         case .name: NamePage(draft: $nameDraft, focused: $nameFocused, submit: advance)
         case .preferences: PreferencesPage()
         case .preparing:
@@ -96,13 +84,16 @@ struct OnboardingView: View {
         }
     }
 
-    /// A line for each page, filled up to this one. Gone while the journal is prepared.
+    /// A line for each page, filled up to this one, nearly as wide as the page. On the welcome it
+    /// comes in with the promises, once the logo is up; gone while the journal is prepared.
     private var topBar: some View {
-        ProgressLines(count: Page.allCases.count, current: page.rawValue)
+        let hidden = page == .preparing || (page == .welcome && !welcomed)
+        return ProgressLines(count: Page.allCases.count, current: page.rawValue)
             .frame(height: 44)
-            .padding(.horizontal, Spacing.page + Spacing.l)
-            .opacity(page == .preparing ? 0 : 1)
-            .accessibilityHidden(page == .preparing)
+            .padding(.horizontal, Spacing.page)
+            .opacity(hidden ? 0 : 1)
+            .offset(y: page == .welcome && !welcomed ? 12 : 0)
+            .accessibilityHidden(hidden)
             .animation(.easeInOut(duration: 0.3), value: page)
     }
 
@@ -110,12 +101,12 @@ struct OnboardingView: View {
     /// Start Writing lands where Continue was); while the journal is prepared Continue waits out of sight, then rises as
     /// Start Writing.
     private var bottomButton: some View {
-        let waiting = page == .preparing && !ready
+        let waiting = (page == .preparing && !ready) || (page == .welcome && !welcomed)
         let blocked = page == .name && enteredName.isEmpty
         let canGoBack = page == .preferences
         return VStack(spacing: Spacing.s + 2) {
             Button(action: advance) {
-                Text(page == .preparing ? "Start Writing" : "Continue")
+                Text(buttonTitle)
                     .frame(maxWidth: .infinity)
                     .contentTransition(.opacity)
             }
@@ -127,8 +118,9 @@ struct OnboardingView: View {
             .opacity(blocked ? 0.4 : 1)
             .accessibilityHidden(waiting)
 
-            // Not on the name, so Continue sits right above the keyboard there.
-            if page != .name {
+            // Not on the welcome, where Get Started stands alone, nor on the name, so Continue sits
+            // right above the keyboard there.
+            if page != .name && page != .welcome {
                 // Outlined, under the filled Continue.
                 Button {
                     go(to: page.rawValue - 1)
@@ -152,10 +144,18 @@ struct OnboardingView: View {
         .padding(.bottom, page == .name ? Spacing.m : 0)
         .padding(.horizontal, Spacing.page)
         .padding(.top, Spacing.m)
-        .animation(.smooth(duration: 0.5), value: waiting)
+        .animation(.smooth(duration: page == .welcome ? 1.2 : 0.5), value: waiting)
         .animation(.easeInOut(duration: 0.2), value: blocked)
         .animation(.easeInOut(duration: 0.25), value: canGoBack)
         .animation(.smooth(duration: 0.45), value: page == .name)
+    }
+
+    private var buttonTitle: String {
+        switch page {
+        case .welcome: "Get Started"
+        case .name, .preferences: "Continue"
+        case .preparing: "Start Writing"
+        }
     }
 
     private var enteredName: String {
@@ -164,6 +164,9 @@ struct OnboardingView: View {
 
     private func advance() {
         switch page {
+        case .welcome:
+            guard welcomed else { return }
+            go(to: Page.name.rawValue)
         case .name:
             // Return with nothing typed keeps the field, rather than going on.
             guard !enteredName.isEmpty else {
@@ -198,40 +201,121 @@ struct OnboardingView: View {
 
 // MARK: - Pages
 
-/// A blank screen, then the journal's name written out by hand, as on the app's icon; a moment after
-/// it's written (`done`) it fades away to the first page.
-private struct IntroLogo: View {
-    let done: () -> Void
+/// The first page: the logo written out by hand at the page's center, as on the app's icon, then
+/// floating up to its place, and then three short promises coming in together under it. `shown` a
+/// moment later, for the lines at the top and Get Started to follow them in.
+private struct WelcomePage: View {
+    let shown: () -> Void
 
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @State private var written = false
+    /// The logo has floated up to its place.
+    @State private var settled = false
+    /// The promises are in, once the logo is up.
+    @State private var promisesIn = false
+    /// The promises' height, to hold the logo at the page's center until they come in.
+    @State private var promisesHeight: CGFloat = 0
+
+    private let gap = Spacing.l + Spacing.l
 
     var body: some View {
-        Image("Signature")
-            .resizable()
-            .scaledToFit()
-            .foregroundStyle(Theme.primaryText)
-            .frame(width: 260)
-            // Wiped in from the left, as if being written.
-            .mask(alignment: .leading) {
-                GeometryReader { proxy in
-                    Rectangle().frame(width: written ? proxy.size.width : 0)
-                }
+        // Centered, scrolling only if large text can't fit.
+        GeometryReader { proxy in
+            ScrollView {
+                content
+                    .frame(maxWidth: .infinity, minHeight: proxy.size.height)
             }
-            .accessibilityLabel("Welcome to Today")
-            .frame(maxWidth: .infinity, maxHeight: .infinity)
-            .background(Theme.background.ignoresSafeArea())
-            .task {
-                if reduceMotion {
-                    written = true
-                    try? await Task.sleep(for: .seconds(1))
-                } else {
-                    try? await Task.sleep(for: .milliseconds(400))
-                    withAnimation(.easeInOut(duration: 1.4)) { written = true }
-                    try? await Task.sleep(for: .milliseconds(2000))
-                }
-                done()
+            .scrollBounceBehavior(.basedOnSize)
+        }
+        .task {
+            if reduceMotion {
+                written = true
+                settled = true
+                promisesIn = true
+                try? await Task.sleep(for: .seconds(0.4))
+            } else {
+                try? await Task.sleep(for: .milliseconds(400))
+                withAnimation(.easeInOut(duration: 1.4)) { written = true }
+                try? await Task.sleep(for: .milliseconds(1800))
+                withAnimation(.smooth(duration: 0.9)) { settled = true }
+                try? await Task.sleep(for: .milliseconds(700))
+                withAnimation(.smooth(duration: 1.2)) { promisesIn = true }
+                // The lines at the top and Get Started a moment after the promises.
+                try? await Task.sleep(for: .milliseconds(450))
             }
+            shown()
+        }
+    }
+
+    private var content: some View {
+        VStack(spacing: gap) {
+            Image("Signature")
+                .resizable()
+                .scaledToFit()
+                .foregroundStyle(Theme.primaryText)
+                .frame(width: 220)
+                // Wiped in from the left, as if being written.
+                .mask(alignment: .leading) {
+                    GeometryReader { proxy in
+                        Rectangle().frame(width: written ? proxy.size.width : 0)
+                    }
+                }
+                // At the page's center (half of what's below it, down) until the promises come in.
+                .offset(y: settled ? 0 : (gap + promisesHeight) / 2)
+                .accessibilityLabel("Today")
+                .accessibilityAddTraits(.isHeader)
+
+            VStack(alignment: .leading, spacing: Spacing.l) {
+                Promise(
+                    symbol: "text.page", title: "Remember each day",
+                    message: "Add words, photos, and videos"
+                )
+                Promise(
+                    symbol: "mappin.and.ellipse", title: "Keep track of your activity",
+                    message: "See all the places you visit."
+                )
+                Promise(
+                    symbol: "lock", title: "Private by Design",
+                    message: "No account, no ads, and free forever."
+                )
+            }
+            // As wide as its widest promise, so the block sits centered under the logo.
+            .onGeometryChange(for: CGFloat.self) { $0.size.height } action: { promisesHeight = $0 }
+            .opacity(promisesIn ? 1 : 0)
+            .offset(y: promisesIn ? 0 : 24)
+            .accessibilityHidden(!promisesIn)
+        }
+        .padding(.horizontal, Spacing.page)
+        .padding(.vertical, Spacing.l)
+    }
+}
+
+/// One of the welcome's promises: a symbol centered beside a title and a line about it.
+private struct Promise: View {
+    let symbol: String
+    let title: String
+    let message: String
+
+    @ScaledMetric(relativeTo: .body) private var symbolWidth: CGFloat = 28
+
+    var body: some View {
+        HStack(alignment: .center, spacing: Spacing.m) {
+            Image(systemName: symbol)
+                .font(Typography.icon)
+                .foregroundStyle(Theme.primaryText)
+                .frame(width: symbolWidth)
+                .accessibilityHidden(true)
+            VStack(alignment: .leading, spacing: 2) {
+                Text(title)
+                    .font(Typography.rowTitle)
+                    .foregroundStyle(Theme.primaryText)
+                Text(message)
+                    .font(Typography.detail)
+                    .foregroundStyle(Theme.secondaryText)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+        }
+        .accessibilityElement(children: .combine)
     }
 }
 
@@ -278,7 +362,8 @@ private struct NamePage: View {
     }
 }
 
-/// The name as typed, in a field like iOS's own, with a count under it as it nears the limit.
+/// The name as typed, large and centered over a single hairline, as on a notebook's title page, with
+/// a count under it as it nears the limit.
 private struct NameField: View {
     @Binding var draft: String
     var focused: FocusState<Bool>.Binding
@@ -286,40 +371,35 @@ private struct NameField: View {
 
     var body: some View {
         VStack(spacing: Spacing.s + 2) {
-            // Like iOS's own: body text in a rounded box, with a clear button while
-            // there's something to clear. Leading-aligned, as a centered field ignored trailing
-            // spaces and stopped following the caret once the name outgrew the box.
-            HStack(spacing: Spacing.s) {
-                // A prompt, in the system's placeholder grey: not a default name.
-                TextField("Journal name", text: $draft)
-                    .font(Typography.body)
-                    .foregroundStyle(Theme.primaryText)
-                    .tint(Theme.primaryText)
-                    // A name: words capitalized, nothing "corrected" into another word.
-                    .textInputAutocapitalization(.words)
-                    .autocorrectionDisabled()
-                    .submitLabel(.continue)
-                    .onSubmit(submit)
-                    .focused(focused)
-                    .accessibilityLabel("Journal Name")
-                if !draft.isEmpty {
-                    Button {
-                        draft = ""
-                    } label: {
-                        Image(systemName: "xmark.circle.fill")
-                            .font(Typography.body)
-                            .foregroundStyle(Theme.secondaryText.opacity(0.6))
-                    }
-                    .buttonStyle(.borderless)
-                    .accessibilityLabel("Clear")
-                }
+            // Vertical, so a long name wraps rather than scrolling out of sight, and centered text
+            // keeps its trailing spaces (a one-line centered field hides them).
+            TextField(
+                "Journal Name", text: $draft,
+                prompt: Text("Untitled").foregroundStyle(Theme.secondaryText.opacity(0.6)),
+                axis: .vertical
+            )
+            .font(Typography.title)
+            .foregroundStyle(Theme.primaryText)
+            .tint(Theme.primaryText)
+            .multilineTextAlignment(.center)
+            .lineLimit(1...3)
+            // A name: words capitalized, nothing "corrected" into another word.
+            .textInputAutocapitalization(.words)
+            .autocorrectionDisabled()
+            .submitLabel(.continue)
+            .onSubmit(submit)
+            .focused(focused)
+            .onChange(of: draft) { _, name in
+                // Return goes on rather than starting a new line.
+                guard name.contains(where: \.isNewline) else { return }
+                draft = name.filter { !$0.isNewline }
+                submit()
             }
-            .padding(.horizontal, Spacing.m)
-            .frame(minHeight: 52)
-            // The page's own color, outlined so it still reads as a field.
-            .background(Theme.background, in: .rect(cornerRadius: Radius.card))
-            .overlay {
-                RoundedRectangle(cornerRadius: Radius.card).strokeBorder(Theme.hairline, lineWidth: 1)
+            .padding(.bottom, Spacing.s)
+            .overlay(alignment: .bottom) {
+                Rectangle()
+                    .fill(Theme.hairline)
+                    .frame(height: 1)
             }
             .contentShape(.rect)
             .onTapGesture { focused.wrappedValue = true }
@@ -332,7 +412,6 @@ private struct NameField: View {
                 .opacity(draft.count > JournalName.maxLength - 10 ? 1 : 0)
                 .animation(.easeInOut(duration: 0.2), value: draft.count > JournalName.maxLength - 10)
                 .accessibilityHidden(true)
-                .padding(.horizontal, Spacing.xs)
         }
     }
 }
