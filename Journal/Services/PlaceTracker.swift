@@ -14,6 +14,24 @@ struct LocationSample: Codable {
     }
 }
 
+/// A stay iOS noticed on its own (`CLVisit`). Kept only for its times: iOS knows when the user
+/// arrived and left even while the app wasn't running, so `DayPlaces` stretches the stays it found in
+/// the samples out to them. It never makes a place of its own.
+struct PlaceVisit: Codable {
+    /// Nil when iOS doesn't know.
+    var arrival: Date?
+    /// Nil while the user is still there.
+    var departure: Date?
+    var latitude: Double
+    var longitude: Double
+    /// Horizontal accuracy, in meters.
+    var accuracy: Double
+
+    var location: CLLocation {
+        CLLocation(latitude: latitude, longitude: longitude)
+    }
+}
+
 /// Notes where the user is through the day — a sample every five minutes, in the background too —
 /// so a day can show the places they spent time (`DayPlaces`). Off until it's turned on, in
 /// Settings or from a day's Places card. The samples stay on this iPhone, a file a day.
@@ -75,6 +93,7 @@ final class PlaceTracker: NSObject, CLLocationManagerDelegate {
         Task { await ReminderScheduler.refresh() }
         manager.stopUpdatingLocation()
         manager.stopMonitoringSignificantLocationChanges()
+        manager.stopMonitoringVisits()
         clock?.invalidate()
         clock = nil
     }
@@ -103,6 +122,8 @@ final class PlaceTracker: NSObject, CLLocationManagerDelegate {
         // Relaunches the app after it's been closed, which only Always allows.
         if manager.authorizationStatus == .authorizedAlways {
             manager.startMonitoringSignificantLocationChanges()
+            // Arrive and leave times, for the stays the samples find (`PlaceVisit`).
+            manager.startMonitoringVisits()
         }
     }
 
@@ -134,6 +155,25 @@ final class PlaceTracker: NSObject, CLLocationManagerDelegate {
         Task { await ReminderScheduler.refresh() }
     }
 
+    private func recordVisit(arrival: Date, departure: Date, coordinate: CLLocationCoordinate2D, accuracy: Double) {
+        guard accuracy >= 0, accuracy <= Self.maximumInaccuracy else { return }
+        let new = PlaceVisit(
+            arrival: arrival == .distantPast ? nil : arrival,
+            departure: departure == .distantFuture ? nil : departure,
+            latitude: coordinate.latitude,
+            longitude: coordinate.longitude,
+            accuracy: accuracy
+        )
+        var visits = Self.visits
+        // The departure comes later, as the same visit again.
+        if let arrival = new.arrival, let index = visits.lastIndex(where: { $0.arrival == arrival }) {
+            visits[index] = new
+        } else {
+            visits.append(new)
+        }
+        Self.saveVisits(visits)
+    }
+
     // MARK: Storage
 
     private static var folder: URL {
@@ -158,6 +198,30 @@ final class PlaceTracker: NSObject, CLLocationManagerDelegate {
         // Readable while the phone is locked, after the first unlock: most samples are taken then.
         try? data.write(to: file(on: day), options: [.atomic, .completeFileProtectionUntilFirstUserAuthentication])
         DayPlaces.forget(day)
+    }
+
+    private static var visitsFile: URL {
+        folder.appending(path: "visits.json")
+    }
+
+    private static var cachedVisits: [PlaceVisit]?
+
+    /// Every visit iOS has reported, in the order it reported them.
+    static var visits: [PlaceVisit] {
+        if let cachedVisits { return cachedVisits }
+        let data = try? Data(contentsOf: visitsFile)
+        let visits = data.flatMap { try? JSONDecoder().decode([PlaceVisit].self, from: $0) } ?? []
+        cachedVisits = visits
+        return visits
+    }
+
+    private static func saveVisits(_ visits: [PlaceVisit]) {
+        cachedVisits = visits
+        guard let data = try? JSONEncoder().encode(visits) else { return }
+        try? FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
+        try? data.write(to: visitsFile, options: [.atomic, .completeFileProtectionUntilFirstUserAuthentication])
+        // A visit can span days.
+        DayPlaces.forgetAll()
     }
 
     #if DEBUG
@@ -204,6 +268,15 @@ final class PlaceTracker: NSObject, CLLocationManagerDelegate {
             for location in locations {
                 record(location, at: location.timestamp)
             }
+        }
+    }
+
+    nonisolated func locationManager(_ manager: CLLocationManager, didVisit visit: CLVisit) {
+        // CLVisit isn't Sendable: its values are taken out here.
+        let arrival = visit.arrivalDate, departure = visit.departureDate
+        let coordinate = visit.coordinate, accuracy = visit.horizontalAccuracy
+        MainActor.assumeIsolated {
+            recordVisit(arrival: arrival, departure: departure, coordinate: coordinate, accuracy: accuracy)
         }
     }
 

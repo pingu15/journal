@@ -18,7 +18,8 @@ struct VisitedPlace: Identifiable {
 
 /// Works out a day's places from `PlaceTracker`'s samples: a stay is at least `minimumSamples`
 /// readings in a row within `radius` of each other (ten minutes or more, a reading every five), and
-/// stays close together are the same place.
+/// stays close together are the same place. iOS's own visits (`PlaceVisit`) then set when the user
+/// arrived and left.
 enum DayPlaces {
     static let radius: CLLocationDistance = 120
     static let minimumSamples = 3
@@ -31,7 +32,7 @@ enum DayPlaces {
     static func places(on day: Date) -> [VisitedPlace] {
         let key = Calendar.current.startOfDay(for: day)
         if let places = cache[key] { return places }
-        let places = places(from: PlaceTracker.samples(on: day))
+        let places = places(from: PlaceTracker.samples(on: day), visits: PlaceTracker.visits, on: day)
         cache[key] = places
         return places
     }
@@ -40,7 +41,11 @@ enum DayPlaces {
         cache[Calendar.current.startOfDay(for: day)] = nil
     }
 
-    static func places(from samples: [LocationSample]) -> [VisitedPlace] {
+    static func forgetAll() {
+        cache = [:]
+    }
+
+    static func places(from samples: [LocationSample], visits: [PlaceVisit], on day: Date) -> [VisitedPlace] {
         let samples = samples.sorted { $0.time < $1.time }
         var stays: [Cluster] = []
         var run = Cluster()
@@ -71,6 +76,7 @@ enum DayPlaces {
             index += 1
         }
         endRun()
+        stays = timed(stays, by: visits, on: day)
 
         var places: [Cluster] = []
         for stay in stays {
@@ -83,6 +89,49 @@ enum DayPlaces {
         return places.enumerated().map { index, place in
             VisitedPlace(id: index, coordinate: place.location.coordinate, visits: place.visits)
         }
+    }
+
+    /// Moves each stay's ends out to when iOS says the user arrived and left. Samples come every five
+    /// minutes, and none at all while iOS has stopped the app, so a stay's first and last samples can
+    /// be well inside it. A stay only stretches into the time around it, never past the samples of the
+    /// stays on either side; a visit with no stay of its own adds nothing.
+    private static func timed(_ stays: [Cluster], by visits: [PlaceVisit], on day: Date) -> [Cluster] {
+        guard !visits.isEmpty, let dayInterval = Calendar.current.dateInterval(of: .day, for: day) else { return stays }
+        let latest = min(dayInterval.end, .now)
+        var timed: [Cluster] = []
+        for (index, stay) in stays.enumerated() {
+            guard let first = stay.first, let last = stay.last else { continue }
+            var start = first, end = last
+            for visit in visits where visit.location.distance(from: stay.location) <= radius + visit.accuracy {
+                // Only a visit that overlaps the stay is the same one.
+                guard visit.arrival ?? .distantPast <= last, first <= visit.departure ?? .distantFuture else { continue }
+                if let arrival = visit.arrival { start = min(start, arrival) }
+                if let departure = visit.departure { end = max(end, departure) }
+            }
+            let previousLast = index > 0 ? stays[index - 1].last : nil
+            let nextFirst = index + 1 < stays.count ? stays[index + 1].first : nil
+            start = max(start, previousLast ?? dayInterval.start, dayInterval.start)
+            end = max(start, min(end, nextFirst ?? latest, latest))
+            var stay = stay
+            stay.visits = [DateInterval(start: start, end: end)]
+            // Both stretched into the time between them.
+            if let previous = timed.last, let before = previous.visits.first, before.end > start {
+                if previous.location.distance(from: stay.location) <= radius {
+                    // The same stay, split by stray readings.
+                    var merged = previous
+                    merged.merge(stay)
+                    merged.visits = [DateInterval(start: before.start, end: max(before.end, end))]
+                    timed[timed.count - 1] = merged
+                    continue
+                }
+                let middle = Date(timeIntervalSinceReferenceDate:
+                    (before.end.timeIntervalSinceReferenceDate + start.timeIntervalSinceReferenceDate) / 2)
+                timed[timed.count - 1].visits = [DateInterval(start: before.start, end: middle)]
+                stay.visits = [DateInterval(start: middle, end: max(middle, end))]
+            }
+            timed.append(stay)
+        }
+        return timed
     }
 
     /// Samples kept as running sums, so the center of a growing run doesn't go back over all of it.
