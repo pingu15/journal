@@ -74,6 +74,7 @@ App Store: **Today: Daily Journal**. Home screen / Siri / permission prompts: **
 - The lock is iOS's own Face ID prompt over a blurred cover with the logo, in its own `UIWindow` (`PrivacyShield`); a tap on the cover asks again. The same cover hides the app in the app switcher. Face ID is asked again once the app has gone to the background (home screen, another app), not after a look at the app switcher, which only makes it inactive. Request it only once the scene is `.active`.
 - Place tracking uses background updates only with Always. With While Using, iOS shows a Dynamic Island live activity.
 - Don't push onto a `NavigationStack` while `.searchable` is dismissing: the push gets dropped.
+- In the editor, don't decide anything from the text view's `typingAttributes`: UIKit resets them to the line above's after the editor sets them. Ask the controller (`context(at:)`, `emptyLineAttributes(at:)`). The caret on an empty line is computed from those, not taken from UIKit (`MarkdownTextView.caretRect`).
 - Hide the tab bar from the tab's `NavigationStack`, not from the pushed editor, or it comes back late.
 - Calendar months are positioned by computation (`MonthLayout`), not measurement. Don't switch to `LazyVStack`.
 - WeatherKit `WDSJWTAuthenticatorServiceListener.Errors error 2` means the build lacks team `L3957C4ZBL` or the WeatherKit entitlement.

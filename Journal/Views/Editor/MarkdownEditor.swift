@@ -34,6 +34,9 @@ struct MarkdownEditor<Header: View>: UIViewRepresentable {
         textView.textDragDelegate = context.coordinator
         textView.pasteHandler = context.coordinator
         controller.textView = textView
+        textView.emptyLineAttributes = { [weak controller] location in
+            controller?.emptyLineAttributes(at: location)
+        }
         controller.didEdit = { [weak coordinator = context.coordinator, weak textView] in
             guard let coordinator, let textView else { return }
             coordinator.textDidChange(in: textView)
@@ -404,6 +407,8 @@ protocol MarkdownPasteHandler: AnyObject {
 final class MarkdownTextView: UITextView {
     let headerHost = UIHostingController(rootView: AnyView(EmptyView()))
     weak var pasteHandler: MarkdownPasteHandler?
+    /// What text typed on the empty line at this offset will look like, for the caret there.
+    var emptyLineAttributes: ((Int) -> [NSAttributedString.Key: Any]?)?
     var headerHeight: CGFloat = 120 {
         didSet { if oldValue != headerHeight { setNeedsLayout() } }
     }
@@ -499,31 +504,52 @@ final class MarkdownTextView: UITextView {
         return nil
     }
 
-    /// Taps on the header belong to the header's controls, not the text.
-    /// The empty line at the very end of the text takes the paragraph style of the line above, so
-    /// after a photo or video (whose line is centered) the caret sat centered. It starts at the
-    /// left margin, like any empty line, and is as tall as on a line with text.
+    /// The caret on an empty line, placed and sized from what will be typed there.
+    ///
+    /// UIKit gets it wrong in several ways. It sizes the empty last line, which has no character of
+    /// its own, from `typingAttributes`, and UIKit itself resets those to the line above's (a
+    /// title's, say) after the editor has set them, so the caret came out title-sized, and lower by
+    /// the title's spacing. That line also takes the line above's paragraph style, so after a photo
+    /// or video it sat centered. And an empty line keeps its line spacing below the text rather than
+    /// above it, so the caret stood taller, and higher, than the text later typed there.
+    ///
+    /// So it's worked out the way TextKit lays out a typed line: below the line above and its
+    /// paragraph spacing, then the line's own spacing before and line spacing, as tall as a caret
+    /// on a line of text in the font that typing there will use.
     override func caretRect(for position: UITextPosition) -> CGRect {
-        var rect = super.caretRect(for: position)
+        let rect = super.caretRect(for: position)
         let text = textStorage.string as NSString
         let offset = self.offset(from: beginningOfDocument, to: position)
-        if offset == text.length, text.length >= 2,
-           text.character(at: text.length - 1) == 0x0A,
-           text.character(at: text.length - 2) == 0xFFFC {
-            rect.origin.x = textContainerInset.left + textContainer.lineFragmentPadding
+        guard offset >= 0, offset <= text.length,
+              offset == 0 || text.character(at: offset - 1) == 0x0A,
+              offset == text.length || text.character(at: offset) == 0x0A,
+              let attributes = emptyLineAttributes?(offset),
+              let font = attributes[.font] as? UIFont,
+              let style = attributes[.paragraphStyle] as? NSParagraphStyle
+        else { return rect }
+
+        var top: CGFloat = 0
+        if offset > 0 {
+            // The text line above (not the empty last line TextKit adds after a final line break).
+            guard let layout = textLayoutManager,
+                  let above = layout.location(layout.documentRange.location, offsetBy: offset - 1)
+            else { return rect }
+            layout.ensureLayout(for: NSTextRange(location: above))
+            guard let fragment = layout.textLayoutFragment(for: above),
+                  let line = fragment.textLineFragments.last(where: { $0.characterRange.length > 0 }),
+                  let aboveStyle = textStorage.attribute(.paragraphStyle, at: offset - 1, effectiveRange: nil) as? NSParagraphStyle
+            else { return rect }
+            top = fragment.layoutFragmentFrame.minY + line.typographicBounds.maxY
+                + aboveStyle.paragraphSpacing + style.paragraphSpacingBefore + style.lineSpacing
         }
-        // On an empty line the caret also took in the line spacing below the text, so it stood
-        // taller than on a line with text.
-        let isEmptyLine = (offset == 0 || text.character(at: offset - 1) == 0x0A)
-            && (offset == text.length || text.character(at: offset) == 0x0A)
-        // Only when it did: right after a return the line isn't laid out yet and the caret is the
-        // plain height, which trimming made too short.
-        if isEmptyLine, let style = typingAttributes[.paragraphStyle] as? NSParagraphStyle,
-           let font = typingAttributes[.font] as? UIFont,
-           rect.height - style.lineSpacing >= font.lineHeight {
-            rect.size.height -= style.lineSpacing
-        }
-        return rect
+        // A caret on a line of text reaches 1pt above the line and just short of 1pt below it.
+        let scale = max(traitCollection.displayScale, 1)
+        return CGRect(
+            x: textContainerInset.left + textContainer.lineFragmentPadding + style.firstLineHeadIndent,
+            y: textContainerInset.top + top - 1,
+            width: rect.width,
+            height: font.lineHeight + font.leading + 2 - 1 / scale
+        )
     }
 
     /// Typing a return has the text view scroll a block of the page around the caret into view,
@@ -540,6 +566,7 @@ final class MarkdownTextView: UITextView {
         super.scrollRectToVisible(caret, animated: animated)
     }
 
+    /// Taps on the header belong to the header's controls, not the text.
     override func gestureRecognizerShouldBegin(_ gestureRecognizer: UIGestureRecognizer) -> Bool {
         if gestureRecognizer !== panGestureRecognizer,
            headerHost.view.frame.contains(gestureRecognizer.location(in: self)) {
@@ -774,6 +801,12 @@ final class MarkdownEditorController {
             return (carriedInline(at: location), pending.block)
         }
         return (carriedInline(at: location), nil)
+    }
+
+    /// What text typed on the empty line at `location` will look like.
+    func emptyLineAttributes(at location: Int) -> [NSAttributedString.Key: Any] {
+        let (inline, block) = context(at: location)
+        return MarkdownStyler.displayAttributes(block: block, inline: inline)
     }
 
     private func carriedInline(at location: Int) -> InlineStyle {
