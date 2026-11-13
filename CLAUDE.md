@@ -1,4 +1,4 @@
-# Journal
+# Today: Daily Journal
 
 A minimal, editorial journaling app. Native iOS: Swift 6 + SwiftUI, **iPhone only**, iOS 18+, default actor isolation = MainActor. No third-party dependencies, no analytics.
 
