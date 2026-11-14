@@ -261,7 +261,7 @@ struct TodayWidget: Widget {
         .configurationDisplayName("Today")
         .description("The day so far, with its photos.")
         .supportedFamilies([.systemMedium])
-        // Its own margins: the text at the usual inset, the collage closer to the edge.
+        // Its own margins: the text at the usual inset, the collage to the edge.
         .contentMarginsDisabled()
     }
 }
@@ -348,8 +348,7 @@ struct TodayView: View {
         let shown = entry.shownDay
         GeometryReader { proxy in
             HStack(spacing: 0) {
-                // Sized to fit the widget's height with the same 12pt inset as the collage (the full-size
-                // counts were taller than the widget and pushed the collage to its edges).
+                // Compact, to fit the widget's height (the full-size counts were taller than it).
                 VStack(alignment: .leading, spacing: 6) {
                     Text(isYesterday ? "Yesterday" : "Today")
                         .font(.headline)
@@ -358,12 +357,11 @@ struct TodayView: View {
                 }
                 .padding(.leading, 20)
                 .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .leading)
-                // The same inset as the text on its three outer sides, its corners following the widget's.
-                // A little over half the width, so the counts aren't left beside a wide empty gap.
+                // Edge to edge on its three outer sides, square-cornered (the widget's own corners round
+                // its outer two). A little over half the width, so the counts aren't left beside a wide
+                // empty gap.
                 Collage(images: shown.images, emptyText: isYesterday ? "No photos" : "No photos yet")
-                    .frame(maxWidth: .infinity, maxHeight: .infinity)
-                    .padding(12)
-                    .frame(width: proxy.size.width * Self.collageShare)
+                    .frame(width: proxy.size.width * Self.collageShare, height: proxy.size.height)
             }
         }
     }
@@ -407,7 +405,7 @@ struct Collage: View {
                 }
             }
         }
-        .clipShape(ContainerRelativeShape())
+        .clipped()
     }
 
     private func tile(_ image: UIImage) -> some View {
