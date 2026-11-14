@@ -158,6 +158,9 @@ struct RootView: View {
                 hasPromptedSinceForeground = false
                 refreshWidgetsOnOpen = true
             case .active:
+                // Permissions may have changed in Settings meanwhile.
+                CalendarEvents.refreshStatus()
+                PhotoLibrary.refreshStatus()
                 // Opened again: the widgets catch up (on launch, `task` does it after its cleanup).
                 if refreshWidgetsOnOpen {
                     refreshWidgetsOnOpen = false

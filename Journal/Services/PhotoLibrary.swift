@@ -3,8 +3,12 @@ import UIKit
 
 /// Read-only access to the user's photo library, for showing the photos taken on a day.
 enum PhotoLibrary {
-    static var status: PHAuthorizationStatus {
-        PHPhotoLibrary.authorizationStatus(for: .readWrite)
+    /// Asked once and kept, as `CalendarEvents.status` is: the day sheet asks for every page it
+    /// builds. Asked again whenever the app becomes active and after the prompt.
+    private(set) static var status = PHPhotoLibrary.authorizationStatus(for: .readWrite)
+
+    static func refreshStatus() {
+        status = PHPhotoLibrary.authorizationStatus(for: .readWrite)
     }
 
     static var canRead: Bool {
@@ -14,9 +18,10 @@ enum PhotoLibrary {
     /// Asks for access if it hasn't been asked yet; returns the resulting status.
     static func requestAccess() async -> PHAuthorizationStatus {
         guard status == .notDetermined else { return status }
-        return await SystemPrompts.shared.during {
+        status = await SystemPrompts.shared.during {
             await PHPhotoLibrary.requestAuthorization(for: .readWrite)
         }
+        return status
     }
 
     /// Days already fetched, so a day sliding into the day sheet (fetched ahead, with its

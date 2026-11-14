@@ -5,8 +5,13 @@ import Foundation
 enum CalendarEvents {
     private static let store = EKEventStore()
 
-    static var status: EKAuthorizationStatus {
-        EKEventStore.authorizationStatus(for: .event)
+    /// Asked once and kept: iOS answers over IPC (6–8 ms on an iPhone 12), and the day sheet asks for
+    /// every page it builds. Asked again whenever the app becomes active (it may have been changed in
+    /// Settings) and after the prompt.
+    private(set) static var status = EKEventStore.authorizationStatus(for: .event)
+
+    static func refreshStatus() {
+        status = EKEventStore.authorizationStatus(for: .event)
     }
 
     static var canRead: Bool { status == .fullAccess }
@@ -17,6 +22,7 @@ enum CalendarEvents {
         _ = try? await SystemPrompts.shared.during {
             try await store.requestFullAccessToEvents()
         }
+        refreshStatus()
         fetched = [:]
         return canRead
     }
