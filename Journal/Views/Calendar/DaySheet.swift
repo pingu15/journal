@@ -18,6 +18,9 @@ struct DaySheet: View {
     private let firstDay: Date
     /// The page showing, in days from `firstDay`.
     @State private var page: Int? = 0
+    /// The page the date and weekday show. Follows `page` with the arrows' animation, which a
+    /// swipe (setting `page` through the scroll view, unanimated) wouldn't otherwise get.
+    @State private var titlePage = 0
     @State private var openEntry: Entry?
     /// An entry started here from a place, whose place is provisional.
     @State private var startedEntry: PersistentIdentifier?
@@ -45,7 +48,7 @@ struct DaySheet: View {
             .hidesTopScrollEdgeEffect()
             // Under the bar rather than in it, so the title stays exactly where every popup's is.
             .safeAreaInset(edge: .top, spacing: 0) {
-                MetaLabel(day.formatted(.dateTime.weekday(.wide)))
+                MetaLabel(titleDay.formatted(.dateTime.weekday(.wide)))
                     .frame(maxWidth: .infinity)
                     .onGeometryChange(for: CGFloat.self) { $0.frame(in: .global).midY } action: { weekdayMidY = $0 }
                     // Right under the title, into the bar's own space below it, then clear of the list.
@@ -55,7 +58,7 @@ struct DaySheet: View {
                     .background(Theme.background.ignoresSafeArea(edges: .top))
                     .accessibilityHidden(true)
             }
-            .sheetTitle(day.formatted(.dateTime.month(.wide).day().year()))
+            .sheetTitle(titleDay.formatted(.dateTime.month(.wide).day().year()))
             .toolbarBackground(.hidden, for: .navigationBar)
             .toolbar {
                 if #available(iOS 26.0, *) {
@@ -87,6 +90,9 @@ struct DaySheet: View {
         .presentationDetents([.medium, .large])
         .sheetBackdrop(grabber: true)
         .sensoryFeedback(.selection, trigger: day)
+        .onChange(of: page) { _, page in
+            withAnimation(.snappy) { titlePage = page ?? 0 }
+        }
         // The days either side, so their photos and places are already there as they slide in.
         .task(id: day) {
             for offset in [1, -1] {
@@ -175,6 +181,10 @@ struct DaySheet: View {
     /// The day showing.
     private var day: Date {
         date(atPage: page ?? 0)
+    }
+
+    private var titleDay: Date {
+        date(atPage: titlePage)
     }
 
     private func date(atPage page: Int) -> Date {
