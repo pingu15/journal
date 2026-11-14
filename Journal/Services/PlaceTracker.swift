@@ -14,9 +14,10 @@ struct LocationSample: Codable {
     }
 }
 
-/// A stay iOS noticed on its own (`CLVisit`). Kept only for its times: iOS knows when the user
+/// A stay iOS noticed on its own (`CLVisit`). Kept mostly for its times: iOS knows when the user
 /// arrived and left even while the app wasn't running, so `DayPlaces` stretches the stays it found in
-/// the samples out to them. It never makes a place of its own.
+/// the samples out to them. It makes a place of its own only where a sample agrees and the samples
+/// found none (`DayPlaces.visitStays`).
 struct PlaceVisit: Codable {
     /// Nil when iOS doesn't know.
     var arrival: Date?

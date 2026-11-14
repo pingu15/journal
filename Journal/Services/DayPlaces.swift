@@ -19,7 +19,7 @@ struct VisitedPlace: Identifiable {
 /// Works out a day's places from `PlaceTracker`'s samples: a stay is at least `minimumSamples`
 /// readings in a row within `radius` of each other (ten minutes or more, a reading every five), and
 /// stays close together are the same place. iOS's own visits (`PlaceVisit`) then set when the user
-/// arrived and left.
+/// arrived and left, and add the stays whose readings wandered too much to make one.
 enum DayPlaces {
     static let radius: CLLocationDistance = 120
     static let minimumSamples = 3
@@ -76,6 +76,8 @@ enum DayPlaces {
             index += 1
         }
         endRun()
+        stays += visitStays(visits, besides: stays, samples: samples, on: day)
+        stays.sort { ($0.first ?? .distantPast) < ($1.first ?? .distantPast) }
         stays = timed(stays, by: visits, on: day)
 
         var places: [Cluster] = []
@@ -91,10 +93,44 @@ enum DayPlaces {
         }
     }
 
+    /// Stays the samples missed, from iOS's visits: readings that wander more than `radius` while the
+    /// user stays put (a walk around a park, a big building) never make a run. A visit counts when iOS
+    /// knows both ends (or it's the latest, still open: an older open one is a departure iOS never sent),
+    /// it's as long as a stay, no stay from the samples falls in it, and a sample in it agrees, so a
+    /// guess from cell towers alone adds nothing.
+    private static func visitStays(
+        _ visits: [PlaceVisit], besides stays: [Cluster], samples: [LocationSample], on day: Date
+    ) -> [Cluster] {
+        guard let dayInterval = Calendar.current.dateInterval(of: .day, for: day) else { return [] }
+        let latestArrival = visits.compactMap(\.arrival).max()
+        let minimum = TimeInterval(minimumSamples - 1) * PlaceTracker.interval
+        var added: [Cluster] = []
+        for visit in visits.sorted(by: { ($0.arrival ?? .distantPast) < ($1.arrival ?? .distantPast) }) {
+            guard let arrival = visit.arrival, visit.departure != nil || arrival == latestArrival else { continue }
+            let start = max(arrival, dayInterval.start)
+            let end = min(visit.departure ?? .now, dayInterval.end, .now)
+            guard end.timeIntervalSince(start) >= minimum else { continue }
+            func overlaps(_ cluster: Cluster) -> Bool {
+                guard let first = cluster.first, let last = cluster.last else { return false }
+                return first < end && start < last
+            }
+            // Covered already (iOS sent the same visit twice, too).
+            guard !stays.contains(where: overlaps), !added.contains(where: overlaps) else { continue }
+            guard samples.contains(where: {
+                (start...end).contains($0.time) && $0.location.distance(from: visit.location) <= radius + visit.accuracy
+            }) else { continue }
+            var stay = Cluster()
+            stay.add(LocationSample(time: start, latitude: visit.latitude, longitude: visit.longitude, accuracy: visit.accuracy))
+            stay.last = end
+            added.append(stay)
+        }
+        return added
+    }
+
     /// Moves each stay's ends out to when iOS says the user arrived and left. Samples come every five
     /// minutes, and none at all while iOS has stopped the app, so a stay's first and last samples can
     /// be well inside it. A stay only stretches into the time around it, never past the samples of the
-    /// stays on either side; a visit with no stay of its own adds nothing.
+    /// stays on either side.
     private static func timed(_ stays: [Cluster], by visits: [PlaceVisit], on day: Date) -> [Cluster] {
         guard !visits.isEmpty, let dayInterval = Calendar.current.dateInterval(of: .day, for: day) else { return stays }
         let latest = min(dayInterval.end, .now)
