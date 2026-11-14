@@ -60,6 +60,14 @@ final class AppRouter {
     var journalPath: [Entry] = []
     /// Set by `NewEntryIntent`; the journal screen consumes it once it has a model context.
     var pendingNewEntry = false
+    /// A day to open in the day sheet (a widget or the reminder tapped); the calendar consumes it.
+    var pendingDay: Date?
     /// Entries with an editor on screen, so blank-entry cleanup never removes one mid-edit.
     var openEntries: Set<PersistentIdentifier> = []
+
+    /// The Calendar tab, with the day sheet open on `day`.
+    func openDay(_ day: Date) {
+        selectedTab = .calendar
+        pendingDay = Calendar.current.startOfDay(for: day)
+    }
 }

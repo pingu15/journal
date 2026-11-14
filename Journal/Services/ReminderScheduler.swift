@@ -132,6 +132,11 @@ enum ReminderScheduler {
     }
 
     private static let dayPrefix = "daily-reminder-"
+
+    /// Whether a delivered notification is the daily reminder.
+    static func isReminder(_ identifier: String) -> Bool {
+        identifier == self.identifier || identifier.hasPrefix(dayPrefix)
+    }
     /// Enough that it keeps coming for a month without the app being opened. With On This Day's 30,
     /// that's 60 of the 64 requests iOS keeps pending.
     private static let daysAhead = 30

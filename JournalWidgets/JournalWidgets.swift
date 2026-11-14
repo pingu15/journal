@@ -104,7 +104,7 @@ struct DateWidget: Widget {
         StaticConfiguration(kind: "Date", provider: JournalProvider()) { entry in
             DateView(entry: entry)
                 .containerBackground(WidgetStyle.background, for: .widget)
-                .widgetURL(WidgetSnapshot.openURL)
+                .widgetURL(WidgetSnapshot.dayURL())
         }
         .configurationDisplayName("Date")
         .description("What you've been up to today.")
@@ -144,7 +144,7 @@ struct StreakWidget: Widget {
         StaticConfiguration(kind: "Streak", provider: JournalProvider()) { entry in
             StreakView(entry: entry)
                 .containerBackground(WidgetStyle.background, for: .widget)
-                .widgetURL(WidgetSnapshot.newEntryURL)
+                .widgetURL(WidgetSnapshot.dayURL())
         }
         .configurationDisplayName("Streak")
         .description("Days in a row you've written.")
@@ -255,7 +255,8 @@ struct TodayWidget: Widget {
         StaticConfiguration(kind: "TodayPhotos", provider: TodayProvider()) { entry in
             TodayView(entry: entry)
                 .containerBackground(WidgetStyle.background, for: .widget)
-                .widgetURL(WidgetSnapshot.openURL)
+                // The day it shows: yesterday's sheet on a morning it shows yesterday.
+                .widgetURL(WidgetSnapshot.dayURL(entry.unwrittenYesterday))
         }
         .configurationDisplayName("Today")
         .description("The day so far, with its photos.")
@@ -432,7 +433,7 @@ struct ActivityWidget: Widget {
                 label: "Day streak"
             )
             .containerBackground(WidgetStyle.background, for: .widget)
-            .widgetURL(WidgetSnapshot.openURL)
+            .widgetURL(WidgetSnapshot.dayURL())
         }
         .configurationDisplayName("Activity")
         .description("Your recent journaling history.")
@@ -450,7 +451,7 @@ struct WordsWidget: Widget {
                 label: entry.snapshot.wordCount == 1 ? "Word" : "Words"
             )
             .containerBackground(WidgetStyle.background, for: .widget)
-            .widgetURL(WidgetSnapshot.openURL)
+            .widgetURL(WidgetSnapshot.dayURL())
         }
         .configurationDisplayName("Words")
         .description("Every word you've ever written.")

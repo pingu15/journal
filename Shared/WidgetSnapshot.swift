@@ -8,10 +8,24 @@ import Foundation
 /// Compiled into both the app and the widget extension (the `Shared` folder).
 nonisolated struct WidgetSnapshot: Codable, Sendable {
     static let appGroup = "group.com.maxsun.journal"
-    /// Opens a blank entry for today (`widgetURL`, handled in `RootView.onOpenURL`).
+    /// Opens a blank entry for today (handled in `RootView.onOpenURL`).
     static let newEntryURL = URL(string: "todayjournal://new")!
-    /// Just opens the journal.
-    static let openURL = URL(string: "todayjournal://open")!
+    static let dayHost = "day"
+
+    /// Opens the day sheet on `day` in the Calendar tab; without one, on whatever day it is when
+    /// tapped (`widgetURL`, handled in `RootView.onOpenURL`).
+    static func dayURL(_ day: Date? = nil) -> URL {
+        var url = URL(string: "todayjournal://\(dayHost)")!
+        if let day { url.append(path: dayKey(day)) }
+        return url
+    }
+
+    /// The day a `dayURL` names, or nil for today.
+    static func day(from url: URL, calendar: Calendar = .current) -> Date? {
+        let parts = url.lastPathComponent.split(separator: "-").compactMap { Int($0) }
+        guard parts.count == 3 else { return nil }
+        return calendar.date(from: DateComponents(year: parts[0], month: parts[1], day: parts[2]))
+    }
 
     /// A day as the day sheet sees it: what was written, where you were, what was on, what was taken.
     struct Day: Codable, Sendable, Hashable {

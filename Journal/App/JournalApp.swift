@@ -129,9 +129,13 @@ struct RootView: View {
         .onChange(of: isShielded, initial: true) { _, shielded in
             shield.setVisible(shielded, lock: lock)
         }
-        // The widgets' links: a blank entry for today, or just the journal.
+        // The widgets' links: the day sheet on a day (today unless one is named), or a blank entry.
         .onOpenURL { url in
             guard url.scheme == WidgetSnapshot.newEntryURL.scheme else { return }
+            if url.host() == WidgetSnapshot.dayHost {
+                router.openDay(WidgetSnapshot.day(from: url) ?? .now)
+                return
+            }
             router.selectedTab = .journal
             if url.host() == WidgetSnapshot.newEntryURL.host() {
                 router.pendingNewEntry = true

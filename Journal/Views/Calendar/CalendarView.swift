@@ -19,6 +19,7 @@ struct CalendarView: View {
     @State private var topMonth: Int?
     @State private var scrollPhase = ScrollPhase.idle
     @State private var openDay: DaySelection?
+    @Environment(AppRouter.self) private var router
     /// Each month's title row, fixed so a month's height is known before it's built.
     @ScaledMetric(relativeTo: .caption2) private var titleHeight: CGFloat = 34
 
@@ -109,6 +110,15 @@ struct CalendarView: View {
         }
         .sheet(item: $openDay) { selection in
             DaySheet(day: selection.day, entries: entries)
+        }
+        // A widget or the reminder tapped: that day's month, with its sheet open.
+        .onChange(of: router.pendingDay, initial: true) { _, day in
+            guard let day else { return }
+            router.pendingDay = nil
+            let month = Self.weeks.index(of: day)
+            topMonth = month
+            if width > 0 { position.scrollTo(y: layout(width: width).top(month)) }
+            openDay = DaySelection(day: day)
         }
     }
 
