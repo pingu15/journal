@@ -248,10 +248,11 @@ struct WeekDots: View {
 
 // MARK: - Today
 
-/// "Today" over the day's counts on the left; on the right, a collage of the day's photos.
+/// "Today" over the day's counts on the left; on the right, a collage of the day's photos. On a morning
+/// after a day with nothing written, yesterday instead, until noon.
 struct TodayWidget: Widget {
     var body: some WidgetConfiguration {
-        StaticConfiguration(kind: "TodayPhotos", provider: JournalProvider()) { entry in
+        StaticConfiguration(kind: "TodayPhotos", provider: TodayProvider()) { entry in
             TodayView(entry: entry)
                 .containerBackground(WidgetStyle.background, for: .widget)
                 .widgetURL(WidgetSnapshot.openURL)
@@ -264,28 +265,101 @@ struct TodayWidget: Widget {
     }
 }
 
+struct TodayEntry: TimelineEntry {
+    let date: Date
+    let snapshot: WidgetSnapshot
+    /// Yesterday's and today's photos as of the reload, by `WidgetSnapshot.dayKey`; nil without
+    /// access to the library (the snapshot's counts then, and no collage).
+    let photos: [String: DayPhotos]?
+
+    /// Yesterday, before noon on a day after one with nothing written.
+    var unwrittenYesterday: Date? {
+        let calendar = Calendar.current
+        guard calendar.component(.hour, from: date) < 12,
+              let yesterday = calendar.date(byAdding: .day, value: -1, to: calendar.startOfDay(for: date)),
+              !snapshot.hasWritten(on: yesterday)
+        else { return nil }
+        return yesterday
+    }
+
+    /// The day shown, with the library's counts where they were read.
+    var shownDay: (day: WidgetSnapshot.Day, images: [UIImage]) {
+        let date = unwrittenYesterday ?? date
+        var day = snapshot.day(date)
+        guard let photos, let loaded = photos[WidgetSnapshot.dayKey(date)] else { return (day, []) }
+        day.photos = loaded.photos
+        day.videos = loaded.videos
+        return (day, loaded.images)
+    }
+}
+
+/// Reloads every 15 minutes, reading the library for new photos (the app also reloads it whenever it's
+/// opened). The coming noon and midnight are in each timeline too, so the switch between yesterday and
+/// today happens on time even when iOS holds a reload back.
+struct TodayProvider: TimelineProvider {
+    static let reloadInterval: TimeInterval = 15 * 60
+
+    func placeholder(in context: Context) -> TodayEntry {
+        TodayEntry(date: .now, snapshot: .preview, photos: nil)
+    }
+
+    func getSnapshot(in context: Context, completion: @escaping (TodayEntry) -> Void) {
+        let snapshot = WidgetSnapshot.load()
+        let preview = context.isPreview && snapshot.writtenDays.isEmpty
+        completion(TodayEntry(date: .now, snapshot: preview ? .preview : snapshot, photos: Self.loadPhotos(at: .now)))
+    }
+
+    func getTimeline(in context: Context, completion: @escaping (Timeline<TodayEntry>) -> Void) {
+        let snapshot = WidgetSnapshot.load()
+        let now = Date.now
+        let photos = Self.loadPhotos(at: now)
+        let calendar = Calendar.current
+        let today = calendar.startOfDay(for: now)
+        let boundaries = [12, 24, 36].compactMap { calendar.date(byAdding: .hour, value: $0, to: today) }
+            .filter { $0 > now }
+            .prefix(2)
+        let entries = [TodayEntry(date: now, snapshot: snapshot, photos: photos)]
+            + boundaries.map { TodayEntry(date: $0, snapshot: snapshot, photos: photos) }
+        completion(Timeline(entries: entries, policy: .after(now.addingTimeInterval(Self.reloadInterval))))
+    }
+
+    /// Yesterday's and today's photos, the two days the widget can show.
+    private static func loadPhotos(at date: Date) -> [String: DayPhotos]? {
+        let calendar = Calendar.current
+        guard DayPhotos.canRead,
+              let yesterday = calendar.date(byAdding: .day, value: -1, to: calendar.startOfDay(for: date))
+        else { return nil }
+        var photos: [String: DayPhotos] = [:]
+        for day in [yesterday, date] {
+            photos[WidgetSnapshot.dayKey(day)] = DayPhotos.load(on: day)
+        }
+        return photos
+    }
+}
+
 struct TodayView: View {
-    let entry: JournalEntry
+    let entry: TodayEntry
     /// The collage's share of the widget's width.
     private static let collageShare: CGFloat = 0.61
 
     var body: some View {
-        let day = entry.snapshot.day(entry.date)
+        let isYesterday = entry.unwrittenYesterday != nil
+        let shown = entry.shownDay
         GeometryReader { proxy in
             HStack(spacing: 0) {
                 // Sized to fit the widget's height with the same 12pt inset as the collage (the full-size
                 // counts were taller than the widget and pushed the collage to its edges).
                 VStack(alignment: .leading, spacing: 6) {
-                    Text("Today")
+                    Text(isYesterday ? "Yesterday" : "Today")
                         .font(.headline)
                         .foregroundStyle(WidgetStyle.primaryText)
-                    DayCounts(day: day, compact: true)
+                    DayCounts(day: shown.day, compact: true)
                 }
                 .padding(.leading, 20)
                 .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .leading)
                 // The same inset as the text on its three outer sides, its corners following the widget's.
                 // A little over half the width, so the counts aren't left beside a wide empty gap.
-                Collage(files: day.photoFiles)
+                Collage(images: shown.images, emptyText: isYesterday ? "No photos" : "No photos yet")
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
                     .padding(12)
                     .frame(width: proxy.size.width * Self.collageShare)
@@ -297,16 +371,11 @@ struct TodayView: View {
 /// Up to three photos, as the day sheet lays them out: one alone, two side by side, three as one on
 /// the left and two stacked on the right.
 struct Collage: View {
-    let files: [String]
+    let images: [UIImage]
+    var emptyText = "No photos yet"
     private let gap: CGFloat = 3
 
-    private var images: [UIImage] {
-        guard let folder = WidgetSnapshot.photosFolder else { return [] }
-        return files.compactMap { UIImage(contentsOfFile: folder.appending(path: $0).path) }
-    }
-
     var body: some View {
-        let images = images
         Group {
             switch images.count {
             case 0:
@@ -315,7 +384,7 @@ struct Collage: View {
                     VStack(spacing: 6) {
                         Image(systemName: "photo.on.rectangle")
                             .font(.title3)
-                        Text("No photos yet")
+                        Text(emptyText)
                             .font(WidgetStyle.note)
                     }
                     .foregroundStyle(WidgetStyle.secondaryText)

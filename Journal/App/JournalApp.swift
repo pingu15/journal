@@ -45,6 +45,9 @@ struct RootView: View {
     @State private var showsOnboarding = Onboarding.isNeeded
     /// One automatic Face ID prompt per trip to the foreground; after that the user taps Unlock.
     @State private var hasPromptedSinceForeground = false
+    /// Set on going to the background, so the widgets refresh when the app is opened again (not
+    /// after Face ID or a look at the app switcher, which only make it inactive).
+    @State private var refreshWidgetsOnOpen = false
 
     /// Locked, or leaving the app (inactive covers the app switcher) — but not merely because one of
     /// our own permission prompts made the scene inactive.
@@ -149,7 +152,13 @@ struct RootView: View {
                 // app switcher (or under Control Center), so a look there doesn't lock it.
                 lock.lock()
                 hasPromptedSinceForeground = false
+                refreshWidgetsOnOpen = true
             case .active:
+                // Opened again: the widgets catch up (on launch, `task` does it after its cleanup).
+                if refreshWidgetsOnOpen {
+                    refreshWidgetsOnOpen = false
+                    WidgetSync.update(in: context)
+                }
                 Task {
                     await ReminderScheduler.refresh()
                     // The coming month's, with whatever was written or deleted since.

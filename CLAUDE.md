@@ -33,7 +33,7 @@ App Store: **Today: Daily Journal**. Home screen / Siri / permission prompts: **
 - `Journal.xcodeproj` uses a file-system-synchronized group: files added under `Journal/` join the target automatically. Don't edit `project.pbxproj` for that.
 - `App/` entry, tabs, lock, router, intents · `Models/` SwiftData (`Entry`, `Attachment`) · `Design/` theme tokens + shared components · `Views/<Feature>/` · `Services/` non-UI logic.
 - The root `Info.plist` holds what the generated plist can't (`UIBackgroundModes`, URL types, alternative app names). A plist under `Journal/` would be copied in as a resource.
-- `JournalWidgets/` is the widget extension. Widgets read a JSON `WidgetSnapshot` (`Shared/`, compiled into both targets) from App Group `group.com.maxsun.journal`, written by `WidgetSync.update(in:)`; they never read the store. Style them with `WidgetStyle`, since the extension can't use `Theme`.
+- `JournalWidgets/` is the widget extension. Widgets read a JSON `WidgetSnapshot` (`Shared/`, compiled into both targets) from App Group `group.com.maxsun.journal`, written by `WidgetSync.update(in:)` (on launch, on every return to the foreground, and when an entry closes); they never read the store. The Today widget reads its photos from the library itself (`DayPhotos`, sharing the app's Photos access) and reloads every 15 minutes. Style them with `WidgetStyle`, since the extension can't use `Theme`.
 
 ## Design rules
 - Minimal and editorial: lots of whitespace, restrained color, no ornament.

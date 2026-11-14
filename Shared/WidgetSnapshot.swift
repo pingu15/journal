@@ -20,15 +20,13 @@ nonisolated struct WidgetSnapshot: Codable, Sendable {
         var events = 0
         var photos = 0
         var videos = 0
-        /// The day's first few photos from the library, files in `photosFolder` (today only).
-        var photoFiles: [String] = []
     }
 
     var journalName: String
     /// Start of every day written on (the last 30 weeks or so: the grid and any streak shown).
     var writtenDays: [Date]
     var wordCount: Int
-    /// Today and the coming week, keyed by `dayKey` (a day after the last one reads as empty).
+    /// Yesterday, today and the coming week, keyed by `dayKey` (a day outside them reads as empty).
     var days: [String: Day]
 
     static let empty = WidgetSnapshot(journalName: "Journal", writtenDays: [], wordCount: 0, days: [:])
@@ -38,7 +36,6 @@ nonisolated struct WidgetSnapshot: Codable, Sendable {
     }
 
     static var fileURL: URL? { containerURL?.appending(path: "widget-snapshot.json") }
-    static var photosFolder: URL? { containerURL?.appending(path: "WidgetPhotos", directoryHint: .isDirectory) }
 
     static func load() -> WidgetSnapshot {
         guard let url = fileURL, let data = try? Data(contentsOf: url),
