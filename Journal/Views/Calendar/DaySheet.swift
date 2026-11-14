@@ -3,7 +3,7 @@ import SwiftData
 import SwiftUI
 
 /// A day from the calendar, in a sheet that swipes down to close: the date in the bar with arrows to
-/// the day before and after, then a list of that day's entries, the photos taken that day from the
+/// the day before and after (or swipe sideways, page by page), then a list of that day's entries, the photos taken that day from the
 /// photo library, the places the user spent time and the events in their calendar (those with nothing
 /// to show moved to the end, `sectionOrder`). Also opened from an entry (the editor's View Day), which is then
 /// left out of the list, and a place tapped becomes its place.
@@ -14,25 +14,24 @@ struct DaySheet: View {
     /// After a place is set on `openedFrom`.
     let onSetPlace: () -> Void
 
-    @State private var day: Date
+    /// The day the sheet opened on; pages are counted in days from it.
+    private let firstDay: Date
+    /// The page showing, in days from `firstDay`.
+    @State private var page: Int? = 0
     @State private var openEntry: Entry?
     /// An entry started here from a place, whose place is provisional.
     @State private var startedEntry: PersistentIdentifier?
     @Environment(\.modelContext) private var context
     @Environment(\.dismiss) private var dismiss
-    /// Which way the last arrow went, so the day slides out that way.
-    @State private var movingForward = true
     /// Where the weekday and the arrows (as the bar places them, level with the title) sit, so the
     /// arrows can be centered on the date and weekday together.
     @State private var weekdayMidY: CGFloat = 0
     /// Where the bar puts the arrows' slots (level with the title), by direction.
     @State private var arrowSlots: [Int: CGRect] = [:]
-    /// How far the current sideways swipe has gone.
-    @State private var swipeDistance: CGFloat = 0
     private let calendar = Calendar.current
 
     init(day: Date, entries: [Entry], openedFrom: Entry? = nil, onSetPlace: @escaping () -> Void = {}) {
-        _day = State(initialValue: Calendar.current.startOfDay(for: day))
+        firstDay = Calendar.current.startOfDay(for: day)
         self.entries = entries
         self.openedFrom = openedFrom
         self.onSetPlace = onSetPlace
@@ -40,37 +39,7 @@ struct DaySheet: View {
 
     var body: some View {
         NavigationStack {
-            slidingDay {
-                List {
-                    ForEach(sectionOrder, id: \.self) { section in
-                        switch section {
-                        case .entries:
-                            entriesSection
-                        case .photos:
-                            Section {
-                                DayPhotos(day: day)
-                            } header: {
-                                MetaLabel("Photos", systemImage: "photo.on.rectangle")
-                            }
-                        case .places:
-                            DayPlacesSection(day: day, current: openedFrom.flatMap { entry in
-                                entry.location.map { ($0, entry.createdAt) }
-                            }, action: placeAction)
-                        case .events:
-                            DayEventsSection(day: day, action: eventAction)
-                        }
-                    }
-                    // White at every height: left to the system, rows went grey while the sheet was at
-                    // half height (its glass) and white only at full.
-                    .listRowBackground(Theme.card)
-                }
-                .scrollContentBackground(.hidden)
-                .listSectionSpacing(Spacing.m)
-                // Everything in it dims while touched, like the app's other buttons.
-                .buttonStyle(.borderless)
-            }
-            // Swiping sideways goes to the day before or after, like the arrows.
-            .gesture(SidewaysPan(outranksScrolling: true, onChange: { swipeDistance = $0 }, onEnd: endSwipe(velocity:)))
+            pagedDays
             .background(Theme.background)
             // Rows pass under the header with a clean edge, `Spacing.m` below the weekday.
             .hidesTopScrollEdgeEffect()
@@ -203,16 +172,64 @@ struct DaySheet: View {
         withTransaction(transaction) { openEntry = entry }
     }
 
-    /// The day's list, sliding across the sheet when the day changes (the sheet's edges clip it).
-    private func slidingDay<Content: View>(@ViewBuilder _ content: () -> Content) -> some View {
-        ZStack(alignment: .top) {
-            content()
-                .id(day)
-                .transition(.asymmetric(
-                    insertion: .move(edge: movingForward ? .trailing : .leading),
-                    removal: .move(edge: movingForward ? .leading : .trailing)
-                ))
+    /// The day showing.
+    private var day: Date {
+        date(atPage: page ?? 0)
+    }
+
+    private func date(atPage page: Int) -> Date {
+        calendar.date(byAdding: .day, value: page, to: firstDay) ?? firstDay
+    }
+
+    /// How many days either side of the first one the sheet pages through.
+    private static let pageRange = 3650
+
+    /// The days side by side, a page each, swiped between like any paged view in iOS: the day
+    /// before or after follows the finger in and settles on a whole page (the arrows scroll there
+    /// too). Only the days on screen are built.
+    private var pagedDays: some View {
+        ScrollView(.horizontal) {
+            LazyHStack(spacing: 0) {
+                ForEach(-Self.pageRange...Self.pageRange, id: \.self) { page in
+                    dayList(for: date(atPage: page))
+                        .containerRelativeFrame(.horizontal)
+                }
+            }
+            .scrollTargetLayout()
         }
+        .scrollTargetBehavior(.paging)
+        .scrollPosition(id: $page)
+        .scrollIndicators(.hidden)
+    }
+
+    private func dayList(for day: Date) -> some View {
+        List {
+            ForEach(sectionOrder(on: day), id: \.self) { section in
+                switch section {
+                case .entries:
+                    entriesSection(on: day)
+                case .photos:
+                    Section {
+                        DayPhotos(day: day)
+                    } header: {
+                        MetaLabel("Photos", systemImage: "photo.on.rectangle")
+                    }
+                case .places:
+                    DayPlacesSection(day: day, current: openedFrom.flatMap { entry in
+                        entry.location.map { ($0, entry.createdAt) }
+                    }, action: placeAction)
+                case .events:
+                    DayEventsSection(day: day, action: eventAction)
+                }
+            }
+            // White at every height: left to the system, rows went grey while the sheet was at
+            // half height (its glass) and white only at full.
+            .listRowBackground(Theme.card)
+        }
+        .scrollContentBackground(.hidden)
+        .listSectionSpacing(Spacing.m)
+        // Everything in it dims while touched, like the app's other buttons.
+        .buttonStyle(.borderless)
     }
 
     private enum DaySection: CaseIterable {
@@ -221,10 +238,10 @@ struct DaySheet: View {
 
     /// Entries, Photos, Places, Events — but those with nothing to show (none that day, or no
     /// access yet) go to the end, still in that order among themselves.
-    private var sectionOrder: [DaySection] {
+    private func sectionOrder(on day: Date) -> [DaySection] {
         let empty: Set<DaySection> = Set(DaySection.allCases.filter { section in
             switch section {
-            case .entries: dayEntries.isEmpty
+            case .entries: dayEntries(on: day).isEmpty
             case .photos: PhotoLibrary.photos(on: day).isEmpty
             case .places: DayPlaces.places(on: day).isEmpty
             case .events: CalendarEvents.events(on: day).isEmpty
@@ -234,13 +251,13 @@ struct DaySheet: View {
     }
 
     /// The day's entries, but the one this was opened from.
-    private var dayEntries: [Entry] {
+    private func dayEntries(on day: Date) -> [Entry] {
         entries.filter { calendar.isDate($0.createdAt, inSameDayAs: day) && $0 != openedFrom }
     }
 
     @ViewBuilder
-    private var entriesSection: some View {
-        let dayEntries = dayEntries
+    private func entriesSection(on day: Date) -> some View {
+        let dayEntries = dayEntries(on: day)
         let isOpenedFromDay = openedFrom.map { calendar.isDate($0.createdAt, inSameDayAs: day) } ?? false
 
         Section {
@@ -258,25 +275,8 @@ struct DaySheet: View {
         }
     }
 
-    /// Far enough or fast enough: right for the day before, left for the day after.
-    private func endSwipe(velocity: CGFloat) {
-        let distance = swipeDistance
-        swipeDistance = 0
-        if distance > 60 || velocity > 500 {
-            shift(by: -1)
-        } else if distance < -60 || velocity < -500 {
-            shift(by: 1)
-        }
-    }
-
     private func shift(by days: Int) {
-        guard let next = calendar.date(byAdding: .day, value: days, to: day) else { return }
-        movingForward = days > 0
-        // On the next turn: the outgoing day takes its transition from the last update, so the
-        // direction has to be in place before the day changes.
-        DispatchQueue.main.async {
-            withAnimation(.snappy) { day = next }
-        }
+        withAnimation(.snappy) { page = (page ?? 0) + days }
     }
 }
 
