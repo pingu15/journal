@@ -5,7 +5,7 @@ import SwiftUI
 /// A day from the calendar, in a sheet that swipes down to close: the date in the bar with arrows to
 /// the day before and after (or swipe sideways, page by page), then a list of that day's entries, the photos taken that day from the
 /// photo library, the places the user spent time and the events in their calendar (those with nothing
-/// to show moved to the end, `sectionOrder`). Also opened from an entry (the editor's View Day), which is then
+/// to show moved to the end, `DayPage`). Also opened from an entry (the editor's View Day), which is then
 /// left out of the list, and a place tapped becomes its place.
 struct DaySheet: View {
     let entries: [Entry]
@@ -206,7 +206,7 @@ struct DaySheet: View {
         ScrollView(.horizontal) {
             LazyHStack(spacing: 0) {
                 ForEach(windowCenter - Self.windowRadius...windowCenter + Self.windowRadius, id: \.self) { page in
-                    dayList(for: date(atPage: page))
+                    dayPage(for: date(atPage: page))
                         .containerRelativeFrame(.horizontal)
                 }
             }
@@ -220,22 +220,80 @@ struct DaySheet: View {
         }
     }
 
-    private func dayList(for day: Date) -> some View {
+    /// A day's page, rebuilt only when what it shows changes (`DayPage`): every change to the sheet
+    /// (the page, the title, the arrows' places, the calendar behind redrawing) rebuilt every page's
+    /// list, which froze the sheet for hundreds of milliseconds on a phone.
+    private func dayPage(for day: Date) -> some View {
+        DayPage(
+            day: day,
+            entries: entries.filter { calendar.isDate($0.createdAt, inSameDayAs: day) && $0 != openedFrom },
+            isOpenedFromDay: openedFrom.map { calendar.isDate($0.createdAt, inSameDayAs: day) } ?? false,
+            current: openedFrom.flatMap { entry in entry.location.map { ($0, entry.createdAt) } },
+            placeAction: placeAction,
+            eventAction: eventAction,
+            open: { show($0) }
+        )
+        .equatable()
+    }
+
+    private func shift(by days: Int) {
+        withAnimation(.snappy) { page = (page ?? 0) + days }
+    }
+}
+
+/// One day's list: Entries, Photos, Places, Events — but those with nothing to show (none that day,
+/// or no access yet) go to the end, still in that order among themselves. Compared by what it shows,
+/// not its actions, which only reach state that outlives a copy of the sheet.
+private struct DayPage: View, Equatable {
+    let day: Date
+    /// The day's entries, but the one the sheet was opened from.
+    let entries: [Entry]
+    let isOpenedFromDay: Bool
+    /// The place and time of the entry the sheet was opened from.
+    let current: (CLLocation, Date)?
+    let placeAction: DayPlacesSection.Action
+    let eventAction: DayEventsSection.Action
+    let open: (Entry) -> Void
+
+    static func == (lhs: DayPage, rhs: DayPage) -> Bool {
+        lhs.day == rhs.day
+            && lhs.entries.map(\.persistentModelID) == rhs.entries.map(\.persistentModelID)
+            && lhs.isOpenedFromDay == rhs.isOpenedFromDay
+            && lhs.current?.0.coordinate.latitude == rhs.current?.0.coordinate.latitude
+            && lhs.current?.0.coordinate.longitude == rhs.current?.0.coordinate.longitude
+            && lhs.current?.1 == rhs.current?.1
+    }
+
+    private enum Section: CaseIterable {
+        case entries, photos, places, events
+    }
+
+    private var sectionOrder: [Section] {
+        let empty: Set<Section> = Set(Section.allCases.filter { section in
+            switch section {
+            case .entries: entries.isEmpty
+            case .photos: PhotoLibrary.photos(on: day).isEmpty
+            case .places: DayPlaces.places(on: day).isEmpty
+            case .events: CalendarEvents.events(on: day).isEmpty
+            }
+        })
+        return Section.allCases.filter { !empty.contains($0) } + Section.allCases.filter { empty.contains($0) }
+    }
+
+    var body: some View {
         List {
-            ForEach(sectionOrder(on: day), id: \.self) { section in
+            ForEach(sectionOrder, id: \.self) { section in
                 switch section {
                 case .entries:
-                    entriesSection(on: day)
+                    entriesSection
                 case .photos:
-                    Section {
+                    SwiftUI.Section {
                         DayPhotos(day: day)
                     } header: {
                         MetaLabel("Photos", systemImage: "photo.on.rectangle")
                     }
                 case .places:
-                    DayPlacesSection(day: day, current: openedFrom.flatMap { entry in
-                        entry.location.map { ($0, entry.createdAt) }
-                    }, action: placeAction)
+                    DayPlacesSection(day: day, current: current, action: placeAction)
                 case .events:
                     DayEventsSection(day: day, action: eventAction)
                 }
@@ -250,51 +308,20 @@ struct DaySheet: View {
         .buttonStyle(.borderless)
     }
 
-    private enum DaySection: CaseIterable {
-        case entries, photos, places, events
-    }
-
-    /// Entries, Photos, Places, Events — but those with nothing to show (none that day, or no
-    /// access yet) go to the end, still in that order among themselves.
-    private func sectionOrder(on day: Date) -> [DaySection] {
-        let empty: Set<DaySection> = Set(DaySection.allCases.filter { section in
-            switch section {
-            case .entries: dayEntries(on: day).isEmpty
-            case .photos: PhotoLibrary.photos(on: day).isEmpty
-            case .places: DayPlaces.places(on: day).isEmpty
-            case .events: CalendarEvents.events(on: day).isEmpty
-            }
-        })
-        return DaySection.allCases.filter { !empty.contains($0) } + DaySection.allCases.filter { empty.contains($0) }
-    }
-
-    /// The day's entries, but the one this was opened from.
-    private func dayEntries(on day: Date) -> [Entry] {
-        entries.filter { calendar.isDate($0.createdAt, inSameDayAs: day) && $0 != openedFrom }
-    }
-
-    @ViewBuilder
-    private func entriesSection(on day: Date) -> some View {
-        let dayEntries = dayEntries(on: day)
-        let isOpenedFromDay = openedFrom.map { calendar.isDate($0.createdAt, inSameDayAs: day) } ?? false
-
-        Section {
-            if dayEntries.isEmpty {
+    private var entriesSection: some View {
+        SwiftUI.Section {
+            if entries.isEmpty {
                 Text(isOpenedFromDay ? "Nothing else written on this day." : "Nothing written on this day.")
                     .font(Typography.note)
                     .foregroundStyle(Theme.secondaryText)
             } else {
-                ForEach(dayEntries) { entry in
-                    SheetEntryRow(entry: entry) { show(entry) }
+                ForEach(entries) { entry in
+                    SheetEntryRow(entry: entry) { open(entry) }
                 }
             }
         } header: {
             MetaLabel("Entries", systemImage: "book")
         }
-    }
-
-    private func shift(by days: Int) {
-        withAnimation(.snappy) { page = (page ?? 0) + days }
     }
 }
 

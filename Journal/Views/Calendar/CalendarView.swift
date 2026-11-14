@@ -65,6 +65,7 @@ struct CalendarView: View {
                             ) { day in
                                 openDay = DaySelection(day: day)
                             }
+                            .equatable()
                             .offset(y: monthLayout.top(index))
                         }
                     }
@@ -248,7 +249,9 @@ private struct MonthLayout {
 }
 
 /// One month: its title over its grid of days.
-private struct MonthSection: View {
+/// Compared by what it shows, so selecting a day (or anything else that redraws the calendar)
+/// redraws only the months whose days changed, not every month built.
+private struct MonthSection: View, Equatable {
     let month: Date
     let days: [Date: DayInfo]
     let openDay: Date?
@@ -259,6 +262,23 @@ private struct MonthSection: View {
     let onSelect: (Date) -> Void
 
     private let calendar = Calendar.current
+
+    static func == (lhs: MonthSection, rhs: MonthSection) -> Bool {
+        guard lhs.month == rhs.month, lhs.titleHeight == rhs.titleHeight, lhs.cellSize == rhs.cellSize,
+              lhs.gap == rhs.gap, lhs.inset == rhs.inset,
+              lhs.selectedDay == rhs.selectedDay
+        else { return false }
+        return lhs.dates.allSatisfy { day in
+            let left = lhs.days[day], right = rhs.days[day]
+            return (left == nil) == (right == nil)
+                && left?.cover?.persistentModelID == right?.cover?.persistentModelID
+        }
+    }
+
+    /// The open day, if it's in this month.
+    private var selectedDay: Date? {
+        openDay.flatMap { calendar.isDate($0, equalTo: month, toGranularity: .month) ? calendar.startOfDay(for: $0) : nil }
+    }
 
     var body: some View {
         VStack(alignment: .leading, spacing: gap) {
