@@ -1,17 +1,4 @@
 {
-  "fill-specializations": [
-    {
-      "value": {
-        "solid": "srgb:0.95294,0.95294,0.95294,1.00000"
-      }
-    },
-    {
-      "appearance": "dark",
-      "value": {
-        "solid": "srgb:0.00000,0.00000,0.00000,1.00000"
-      }
-    }
-  ],
   "groups": [
     {
       "layers": [
@@ -47,5 +34,6 @@
     "squares": [
       "iOS"
     ]
-  }
+  },
+  "fill": "automatic"
 }
