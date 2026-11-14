@@ -23,6 +23,10 @@ struct DaySheet: View {
     @State private var titlePage = 0
     /// The page the filled pages are centered on, moved to the page showing whenever scrolling stops.
     @State private var windowCenter = 0
+    /// Pages built and on screen (or just beside it), by page.
+    @State private var loadedPages: Set<Int> = []
+    /// From an arrow or a swipe until the pages come to rest.
+    @State private var isMoving = false
     @State private var openEntry: Entry?
     /// An entry started here from a place, whose place is provisional.
     @State private var startedEntry: PersistentIdentifier?
@@ -212,6 +216,8 @@ struct DaySheet: View {
                     Group {
                         if abs(page - windowCenter) <= Self.windowRadius {
                             dayPage(for: date(atPage: page))
+                                .onAppear { loadedPages.insert(page) }
+                                .onDisappear { loadedPages.remove(page) }
                         } else {
                             Color.clear
                         }
@@ -225,6 +231,7 @@ struct DaySheet: View {
         .scrollPosition(id: $page)
         .scrollIndicators(.hidden)
         .onScrollPhaseChange { _, phase in
+            isMoving = phase != .idle
             if phase == .idle, let page, page != windowCenter { windowCenter = page }
         }
     }
@@ -245,8 +252,13 @@ struct DaySheet: View {
         .equatable()
     }
 
+    /// Only once the day showing has loaded and the pages are at rest: taps while a day was still
+    /// coming in queued up moves on top of it.
     private func shift(by days: Int) {
-        withAnimation(.snappy) { page = (page ?? 0) + days }
+        let current = page ?? 0
+        guard !isMoving, loadedPages.contains(current) else { return }
+        isMoving = true
+        withAnimation(.snappy) { page = current + days }
     }
 }
 
