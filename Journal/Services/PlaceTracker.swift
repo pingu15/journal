@@ -169,6 +169,12 @@ final class PlaceTracker: NSObject, CLLocationManagerDelegate {
         if let arrival = new.arrival, let index = visits.lastIndex(where: { $0.arrival == arrival }) {
             visits[index] = new
         } else {
+            // iOS doesn't always send the departure, and can send it with the arrival a few seconds off.
+            // A visit still open from before this one, or this one again, was left at a time it never
+            // said, and kept open it would claim every later stay there.
+            if let arrival = new.arrival {
+                visits.removeAll { $0.departure == nil && ($0.arrival ?? .distantPast) < arrival.addingTimeInterval(60) }
+            }
             visits.append(new)
         }
         Self.saveVisits(visits)

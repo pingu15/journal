@@ -102,9 +102,18 @@ enum DayPlaces {
         for (index, stay) in stays.enumerated() {
             guard let first = stay.first, let last = stay.last else { continue }
             var start = first, end = last
+            // The stays somewhere else on either side, where the user was instead. A stay at the same
+            // place is the same stay split by stray readings.
+            let previousElsewhere = stays[..<index].last { $0.location.distance(from: stay.location) > radius }?.last
+            let nextElsewhere = stays[(index + 1)...].first { $0.location.distance(from: stay.location) > radius }?.first
             for visit in visits where visit.location.distance(from: stay.location) <= radius + visit.accuracy {
                 // Only a visit that overlaps the stay is the same one.
                 guard visit.arrival ?? .distantPast <= last, first <= visit.departure ?? .distantFuture else { continue }
+                // Nor one that reaches back past a stay somewhere else, or on past one: the user was
+                // there in between, so it's an earlier or later visit here. An open visit whose
+                // departure iOS never sent would otherwise pull every later stay here back to it.
+                if let arrival = visit.arrival, let previousElsewhere, arrival < previousElsewhere { continue }
+                if let nextElsewhere, visit.departure ?? .distantFuture > nextElsewhere { continue }
                 if let arrival = visit.arrival { start = min(start, arrival) }
                 if let departure = visit.departure { end = max(end, departure) }
             }
