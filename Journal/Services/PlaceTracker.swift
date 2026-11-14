@@ -46,6 +46,10 @@ final class PlaceTracker: NSObject, CLLocationManagerDelegate {
     private let manager = CLLocationManager()
     private var lastSampleTime: Date?
     private var clock: Timer?
+    private static let tick: TimeInterval = 60
+    /// When the clock last ticked, and since when it has without missing any.
+    private var lastTick: Date?
+    private var tickingSince: Date?
     private var authorizationWaiters: [CheckedContinuation<Void, Never>] = []
 
     override private init() {
@@ -112,11 +116,10 @@ final class PlaceTracker: NSObject, CLLocationManagerDelegate {
         // Readings can stop coming while the phone doesn't move, which is just when a sample is wanted:
         // the last one still holds then. The app keeps running while it's tracking, so this fires.
         if clock == nil {
-            clock = Timer.scheduledTimer(withTimeInterval: 60, repeats: true) { _ in
-                MainActor.assumeIsolated {
-                    guard let location = self.manager.location else { return }
-                    self.record(location, at: .now)
-                }
+            tickingSince = .now
+            lastTick = .now
+            clock = Timer.scheduledTimer(withTimeInterval: Self.tick, repeats: true) { _ in
+                MainActor.assumeIsolated { self.tickClock() }
             }
         }
         // Relaunches the app after it's been closed, which only Always allows.
@@ -125,6 +128,19 @@ final class PlaceTracker: NSObject, CLLocationManagerDelegate {
             // Arrive and leave times, for the stays the samples find (`PlaceVisit`).
             manager.startMonitoringVisits()
         }
+    }
+
+    /// Notes the last reading again, as now. It still holds only if the app has been running all along
+    /// since it came: while iOS had the app stopped, the user may have gone anywhere, and the reading
+    /// from before would put them back where they were. Then it waits for a new one.
+    private func tickClock() {
+        let now = Date.now
+        // The clock missed ticks: the app was stopped.
+        if let lastTick, now.timeIntervalSince(lastTick) > Self.tick * 1.5 { tickingSince = now }
+        lastTick = now
+        guard let location = manager.location, let tickingSince,
+              location.timestamp >= tickingSince.addingTimeInterval(-Self.tick) else { return }
+        record(location, at: now)
     }
 
     /// iOS asks to change While Using to Always once, and doesn't call back if the answer leaves it
