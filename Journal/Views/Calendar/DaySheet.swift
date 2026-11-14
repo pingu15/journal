@@ -21,7 +21,7 @@ struct DaySheet: View {
     /// The page the date and weekday show. Follows `page` with the arrows' animation, which a
     /// swipe (setting `page` through the scroll view, unanimated) wouldn't otherwise get.
     @State private var titlePage = 0
-    /// The page the built pages are centered on, moved to the page showing whenever scrolling stops.
+    /// The page the filled pages are centered on, moved to the page showing whenever scrolling stops.
     @State private var windowCenter = 0
     @State private var openEntry: Entry?
     /// An entry started here from a place, whose place is provisional.
@@ -193,21 +193,30 @@ struct DaySheet: View {
         calendar.date(byAdding: .day, value: page, to: firstDay) ?? firstDay
     }
 
-    /// How many days either side of `windowCenter` are in the scroll view: room for a swipe or a
-    /// couple of quick arrow taps before the window catches up.
+    /// How many days either side of the first one the sheet pages through.
+    private static let pageRange = 3650
+    /// How many days either side of `windowCenter` are filled in: room for a swipe or an arrow tap
+    /// before the window catches up.
     private static let windowRadius = 2
 
     /// The days side by side, a page each, swiped between like any paged view in iOS: the day
     /// before or after follows the finger in and settles on a whole page (the arrows scroll there
-    /// too). Only a few days around the one showing are in it, the window moving along once scrolling
-    /// stops (the scroll view keeps the page showing in place, by its id); thousands of pages made
-    /// the sheet lay out from the first one and took seconds to open on a phone.
+    /// too). The pages never change, but only those near the one showing are filled in, the rest
+    /// empty: thousands of full pages took seconds to open on a phone, and a window of pages that
+    /// moved along (inserting days before the one showing) sometimes left the scroll a page off
+    /// from the day it named.
     private var pagedDays: some View {
         ScrollView(.horizontal) {
             LazyHStack(spacing: 0) {
-                ForEach(windowCenter - Self.windowRadius...windowCenter + Self.windowRadius, id: \.self) { page in
-                    dayPage(for: date(atPage: page))
-                        .containerRelativeFrame(.horizontal)
+                ForEach(-Self.pageRange...Self.pageRange, id: \.self) { page in
+                    Group {
+                        if abs(page - windowCenter) <= Self.windowRadius {
+                            dayPage(for: date(atPage: page))
+                        } else {
+                            Color.clear
+                        }
+                    }
+                    .containerRelativeFrame(.horizontal)
                 }
             }
             .scrollTargetLayout()
