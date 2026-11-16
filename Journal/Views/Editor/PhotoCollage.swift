@@ -17,70 +17,50 @@ nonisolated final class CollageAttachment: NSTextAttachment {
         fatalError("init(coder:) is not supported")
     }
 
-    /// The space between tiles.
-    static let gap = Spacing.xs
-    /// A tile is cropped to at most this wide (width over height); the tallest is `ImageAttachment.maxAspect`.
-    private static let widestTile: CGFloat = 2.2
+    /// The hairline between tiles, as in the day sheet's photos: the tiles read as one picture.
+    static let gap: CGFloat = 2
+    /// A row's height over the collage's width (a pair side by side, or a trio).
+    private static let rowAspect: CGFloat = 0.6
 
     // MARK: Layout
 
-    /// Rows of two or three, each scaled to the full width so its photos keep their shapes, and
-    /// grouped so rows come out as close as possible to a shared height.
-    static func layout(aspects: [CGFloat], width: CGFloat) -> (frames: [CGRect], height: CGFloat) {
-        let aspects = aspects.map { min(max($0, 1 / ImageAttachment.maxAspect), widestTile) }
-        let count = aspects.count
+    /// Laid out like the day sheet's photos: pairs side by side, and with an odd count the last
+    /// three as one row, the first of them tall on the left and the other two stacked beside it.
+    /// Each tile is filled (cropped around its middle), so the collage is one even block.
+    static func layout(count: Int, width: CGFloat) -> (frames: [CGRect], height: CGFloat) {
         guard count > 0, width > 0 else { return ([], 0) }
-        func rowHeight(_ row: ArraySlice<CGFloat>) -> CGFloat {
-            (width - gap * CGFloat(row.count - 1)) / row.reduce(0, +)
-        }
-
-        var rows: [Int]
-        if count == 1 {
-            rows = [1]
-        } else {
-            let target = width * 0.45
-            var best: [(cost: CGFloat, rows: [Int])] = Array(repeating: (.infinity, []), count: count + 1)
-            best[0] = (0, [])
-            for end in 2...count {
-                for size in 2...3 where end - size >= 0 && best[end - size].cost.isFinite {
-                    let miss = log(rowHeight(aspects[(end - size)..<end]) / target)
-                    let cost = best[end - size].cost + miss * miss
-                    if cost < best[end].cost { best[end] = (cost, best[end - size].rows + [size]) }
-                }
-            }
-            rows = best[count].rows
-        }
-
+        let rowHeight = (width * rowAspect).rounded()
+        let half = ((width - gap) / 2).rounded()
+        let right = width - half - gap
         var frames: [CGRect] = []
         var y: CGFloat = 0
-        var start = 0
-        for size in rows {
-            let row = aspects[start..<(start + size)]
-            let height = rowHeight(row).rounded()
-            var x: CGFloat = 0
-            for (offset, aspect) in row.enumerated() {
-                let tileWidth = offset == size - 1 ? width - x : (aspect * height).rounded()
-                frames.append(CGRect(x: x, y: y, width: tileWidth, height: height))
-                x += tileWidth + gap
+        var remaining = count
+        while remaining > 0 {
+            switch remaining {
+            case 1:
+                frames.append(CGRect(x: 0, y: y, width: width, height: rowHeight))
+                remaining = 0
+            case 3:
+                let upper = ((rowHeight - gap) / 2).rounded()
+                frames.append(CGRect(x: 0, y: y, width: half, height: rowHeight))
+                frames.append(CGRect(x: half + gap, y: y, width: right, height: upper))
+                frames.append(CGRect(x: half + gap, y: y + upper + gap, width: right, height: rowHeight - upper - gap))
+                remaining = 0
+            default:
+                frames.append(CGRect(x: 0, y: y, width: half, height: rowHeight))
+                frames.append(CGRect(x: half + gap, y: y, width: right, height: rowHeight))
+                remaining -= 2
             }
-            y += height + gap
-            start += size
+            y += rowHeight + gap
         }
-        return (frames, max(y - gap, 0))
-    }
-
-    private var aspects: [CGFloat] {
-        photos.map { photo in
-            guard let size = photo.image?.size, size.width > 0, size.height > 0 else { return 1.5 }
-            return size.width / size.height
-        }
+        return (frames, y - gap)
     }
 
     private var laidOut: (width: CGFloat, frames: [CGRect], height: CGFloat)?
 
     private func frames(for width: CGFloat) -> (frames: [CGRect], height: CGFloat) {
         if let laidOut, laidOut.width == width { return (laidOut.frames, laidOut.height) }
-        let result = Self.layout(aspects: aspects, width: width)
+        let result = Self.layout(count: photos.count, width: width)
         laidOut = (width, result.frames, result.height)
         return result
     }
@@ -107,13 +87,14 @@ nonisolated final class CollageAttachment: NSTextAttachment {
         let format = UIGraphicsImageRendererFormat()
         format.scale = ImageAttachment.displayScale
         format.preferredRange = .standard
-        // The single photo's corner, so a collage sits beside one without looking different.
+        // The single photo's corner, on the collage as a whole: the tiles inside meet square.
         let radius = size.width * 0.025
         let result = UIGraphicsImageRenderer(size: size, format: format).image { context in
+            UIBezierPath(roundedRect: CGRect(origin: .zero, size: size), cornerRadius: radius).addClip()
             for (photo, frame) in zip(photos, frames) {
                 guard let image = photo.image, image.size.width > 0, image.size.height > 0 else { continue }
                 context.cgContext.saveGState()
-                UIBezierPath(roundedRect: frame, cornerRadius: min(radius, frame.width / 6)).addClip()
+                context.cgContext.clip(to: frame)
                 // Aspect-fill around the middle.
                 let fill = max(frame.width / image.size.width, frame.height / image.size.height)
                 let drawn = CGSize(width: image.size.width * fill, height: image.size.height * fill)
