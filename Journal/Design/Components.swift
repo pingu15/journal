@@ -534,11 +534,16 @@ struct SheetEntryRow: View {
 
     var body: some View {
         Button(action: action) {
+            // Padded as the journal's rows are, with the list's own insets taken out.
             EntryRow(entry: entry, dateStyle: dateStyle)
-                .padding(.vertical, Spacing.xs)
+                .entryRowPadding()
                 .contentShape(.rect)
         }
         .buttonStyle(TapPressStyle(scale: TapPressStyle.rowScale))
+        .listRowInsets(EdgeInsets())
+        // The separator runs under the row's content, as in the journal.
+        .alignmentGuide(.listRowSeparatorLeading) { _ in Spacing.m }
+        .alignmentGuide(.listRowSeparatorTrailing) { d in d.width - EntriesView.contentInset }
     }
 }
 
