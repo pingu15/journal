@@ -2,32 +2,59 @@ import UIKit
 
 // MARK: - Inline images
 
+/// What the text shows for a photo or video: the picture, and for a video its length. A video's
+/// play button and length are drawn over the picture where it's shown, at that size, so a crop
+/// (a collage's tile) never cuts them off.
+nonisolated struct AttachmentPicture: Sendable {
+    let image: UIImage
+    var isVideo = false
+    var duration: Double?
+}
+
 /// An embedded photo inside the editor. Serialized back to `![](image:<imageID>)`.
 nonisolated final class ImageAttachment: NSTextAttachment {
     let imageID: UUID
+    private(set) var isVideo = false
+    private(set) var videoDuration: Double?
 
     /// Rounded, downsized renders, so reopening an entry doesn't redraw every photo.
     // NSCache is internally synchronized.
-    nonisolated(unsafe) private static let renderCache = NSCache<NSUUID, UIImage>()
+    nonisolated(unsafe) private static let renderCache = NSCache<NSUUID, Rendered>()
 
-    init(imageID: UUID, image: UIImage?) {
+    private final class Rendered {
+        let image: UIImage
+        let isVideo: Bool
+        let duration: Double?
+        init(image: UIImage, isVideo: Bool, duration: Double?) {
+            self.image = image
+            self.isVideo = isVideo
+            self.duration = duration
+        }
+    }
+
+    init(imageID: UUID, picture: AttachmentPicture?) {
         self.imageID = imageID
         super.init(data: nil, ofType: nil)
-        self.image = image.map { Self.rendered($0, id: imageID) }
+        guard let picture else { return }
+        isVideo = picture.isVideo
+        videoDuration = picture.duration
+        image = Self.rendered(picture, id: imageID)
     }
 
     /// Builds an attachment from the cache alone; nil if this photo hasn't been rendered yet.
     static func cached(imageID: UUID) -> ImageAttachment? {
-        guard let image = renderCache.object(forKey: imageID as NSUUID) else { return nil }
-        let attachment = ImageAttachment(imageID: imageID, image: nil)
-        attachment.image = image
+        guard let cached = renderCache.object(forKey: imageID as NSUUID) else { return nil }
+        let attachment = ImageAttachment(imageID: imageID, picture: nil)
+        attachment.image = cached.image
+        attachment.isVideo = cached.isVideo
+        attachment.videoDuration = cached.duration
         return attachment
     }
 
-    private static func rendered(_ image: UIImage, id: UUID) -> UIImage {
-        if let cached = renderCache.object(forKey: id as NSUUID) { return cached }
-        let result = rounded(image)
-        renderCache.setObject(result, forKey: id as NSUUID)
+    private static func rendered(_ picture: AttachmentPicture, id: UUID) -> UIImage {
+        if let cached = renderCache.object(forKey: id as NSUUID) { return cached.image }
+        let result = rounded(picture.image)
+        renderCache.setObject(Rendered(image: result, isVideo: picture.isVideo, duration: picture.duration), forKey: id as NSUUID)
         return result
     }
 
@@ -57,6 +84,7 @@ nonisolated final class ImageAttachment: NSTextAttachment {
             UIBezierPath(roundedRect: rect, cornerRadius: size.width * 0.025).addClip()
             image.draw(in: CGRect(x: (size.width - drawn.width) / 2, y: (size.height - drawn.height) / 2,
                                   width: drawn.width, height: drawn.height))
+            if isVideo { VideoProcessing.drawBadge(in: rect, duration: videoDuration) }
         }
         displayed = (size, result)
         return result
@@ -100,18 +128,6 @@ nonisolated final class ImageAttachment: NSTextAttachment {
 
     /// The tallest a photo is shown, as height over width; taller ones are cropped to it.
     static let maxAspect: CGFloat = 1.25
-
-    /// `image` cropped around its middle to `maxAspect`, as the text shows it.
-    static func croppedToMaxAspect(_ image: UIImage) -> UIImage {
-        let size = image.size
-        guard size.width > 0, size.height / size.width > maxAspect else { return image }
-        let cropped = CGSize(width: size.width, height: size.width * maxAspect)
-        let format = UIGraphicsImageRendererFormat.default()
-        format.scale = image.scale
-        return UIGraphicsImageRenderer(size: cropped, format: format).image { _ in
-            image.draw(at: CGPoint(x: 0, y: -(size.height - cropped.height) / 2))
-        }
-    }
 
     /// Always the full width of the text; tall portraits are cropped so they don't swallow the page.
     private func displayBounds(for available: CGFloat) -> CGRect {

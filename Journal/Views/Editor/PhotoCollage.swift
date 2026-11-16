@@ -100,6 +100,7 @@ nonisolated final class CollageAttachment: NSTextAttachment {
                 let drawn = CGSize(width: image.size.width * fill, height: image.size.height * fill)
                 image.draw(in: CGRect(x: frame.midX - drawn.width / 2, y: frame.midY - drawn.height / 2,
                                       width: drawn.width, height: drawn.height))
+                if photo.isVideo { VideoProcessing.drawBadge(in: frame, duration: photo.videoDuration) }
                 context.cgContext.restoreGState()
             }
         }

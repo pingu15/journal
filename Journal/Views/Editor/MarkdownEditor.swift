@@ -11,11 +11,11 @@ struct MarkdownEditor<Header: View>: UIViewRepresentable {
     var autofocus = false
     /// False for an entry in Recently Deleted: it can be read, not changed.
     var isEditable = true
-    let image: (UUID) -> UIImage?
+    let image: (UUID) -> AttachmentPicture?
     let onImageTap: (UUID) -> Void
     /// A photo token pasted from elsewhere: returns the id to use in this entry (copying the photo
     /// in if it belongs to another entry) and its image, or nil if the photo no longer exists.
-    let resolvePastedImage: (UUID) -> (id: UUID, image: UIImage)?
+    let resolvePastedImage: (UUID) -> (id: UUID, picture: AttachmentPicture)?
     /// Images pasted from another app.
     let onPasteImages: ([UIImage]) -> Void
     @ViewBuilder let header: () -> Header
@@ -98,7 +98,7 @@ struct MarkdownEditor<Header: View>: UIViewRepresentable {
     private func load(_ markdown: String, into textView: MarkdownTextView, coordinator: Coordinator) {
         let selection = textView.selectedRange
         let document = MarkdownDocument.attributed(from: markdown) { id in
-            ImageAttachment.cached(imageID: id) ?? ImageAttachment(imageID: id, image: image(id))
+            ImageAttachment.cached(imageID: id) ?? ImageAttachment(imageID: id, picture: image(id))
         }
         MarkdownDocument.collapsePhotoRuns(in: document)
         textView.textStorage.setAttributedString(document)
@@ -457,7 +457,7 @@ struct MarkdownEditor<Header: View>: UIViewRepresentable {
 
         // MARK: MarkdownPasteHandler
 
-        func resolvePastedImage(_ id: UUID) -> (id: UUID, image: UIImage)? {
+        func resolvePastedImage(_ id: UUID) -> (id: UUID, picture: AttachmentPicture)? {
             // It checks the entry's text for the photo.
             flushText()
             return parent.resolvePastedImage(id)
@@ -475,7 +475,7 @@ struct MarkdownEditor<Header: View>: UIViewRepresentable {
 
 /// Lets the text view hand pasted content back to the editor.
 protocol MarkdownPasteHandler: AnyObject {
-    func resolvePastedImage(_ id: UUID) -> (id: UUID, image: UIImage)?
+    func resolvePastedImage(_ id: UUID) -> (id: UUID, picture: AttachmentPicture)?
     func pasteImages(_ images: [UIImage])
     func didEditText(in textView: MarkdownTextView)
 }
@@ -693,7 +693,7 @@ final class MarkdownTextView: UITextView {
     private func pasteMarkdown(_ string: String) {
         let selection = selectedRange
         let pasted = MarkdownDocument.attributed(from: string) { [weak self] id in
-            self?.pasteHandler?.resolvePastedImage(id).map { ImageAttachment(imageID: $0.id, image: $0.image) }
+            self?.pasteHandler?.resolvePastedImage(id).map { ImageAttachment(imageID: $0.id, picture: $0.picture) }
         }
         let hasAttachments = pasted.string.contains("\u{FFFC}")
 
@@ -1111,7 +1111,7 @@ final class MarkdownEditorController {
     }
 
     /// Inserts photos as their own paragraphs at the caret.
-    func insertImages(_ images: [(id: UUID, image: UIImage)]) {
+    func insertImages(_ images: [(id: UUID, picture: AttachmentPicture)]) {
         guard let textView = prepare(), !images.isEmpty else { return }
         let storage = textView.textStorage
         let selection = textView.selectedRange
@@ -1122,7 +1122,7 @@ final class MarkdownEditorController {
             insertion.append(NSAttributedString(string: "\n"))
         }
         for item in images {
-            insertion.append(NSAttributedString(attachment: ImageAttachment(imageID: item.id, image: item.image)))
+            insertion.append(NSAttributedString(attachment: ImageAttachment(imageID: item.id, picture: item.picture)))
             insertion.append(NSAttributedString(string: "\n"))
         }
         insertion.addAttributes(MarkdownStyler.typingAttributes, range: NSRange(location: 0, length: insertion.length))

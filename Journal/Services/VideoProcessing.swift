@@ -69,7 +69,7 @@ enum VideoProcessing {
     }
 
     /// "0:42", "1:05:09".
-    static func formatted(_ seconds: Double) -> String {
+    nonisolated static func formatted(_ seconds: Double) -> String {
         let total = Int(seconds.rounded())
         let (hours, minutes, secs) = (total / 3600, total / 60 % 60, total % 60)
         return hours > 0
@@ -77,42 +77,35 @@ enum VideoProcessing {
             : String(format: "%d:%02d", minutes, secs)
     }
 
-    /// A video's picture as the editor shows it: its first frame with a play button and its length.
-    static func badged(_ poster: UIImage, duration: Double?) -> UIImage {
-        let size = poster.size
-        let format = UIGraphicsImageRendererFormat.default()
-        format.scale = poster.scale
-        return UIGraphicsImageRenderer(size: size, format: format).image { _ in
-            poster.draw(at: .zero)
-            let unit = min(size.width, size.height)
-            // The play button, centered.
-            let diameter = unit * 0.18
-            let circle = CGRect(x: (size.width - diameter) / 2, y: (size.height - diameter) / 2, width: diameter, height: diameter)
-            UIColor.black.withAlphaComponent(0.45).setFill()
-            UIBezierPath(ovalIn: circle).fill()
-            let configuration = UIImage.SymbolConfiguration(pointSize: diameter * 0.42, weight: .bold)
-            if let play = UIImage(systemName: "play.fill", withConfiguration: configuration)?
-                .withTintColor(.white, renderingMode: .alwaysOriginal) {
-                // Nudged right, as a triangle's weight sits left of its box's center.
-                play.draw(at: CGPoint(x: circle.midX - play.size.width / 2 + diameter * 0.04, y: circle.midY - play.size.height / 2))
-            }
-            // Its length, in the bottom-right corner.
-            if let duration {
-                let font = UIFont.systemFont(ofSize: unit * 0.06, weight: .semibold)
-                let text = formatted(duration) as NSString
-                let attributes: [NSAttributedString.Key: Any] = [.font: font, .foregroundColor: UIColor.white]
-                let textSize = text.size(withAttributes: attributes)
-                let padding = unit * 0.025
-                let pill = CGRect(
-                    x: size.width - textSize.width - padding * 4,
-                    y: size.height - textSize.height - padding * 3,
-                    width: textSize.width + padding * 2,
-                    height: textSize.height + padding
-                )
-                UIColor.black.withAlphaComponent(0.45).setFill()
-                UIBezierPath(roundedRect: pill, cornerRadius: pill.height / 2).fill()
-                text.draw(at: CGPoint(x: pill.minX + padding, y: pill.minY + padding / 2), withAttributes: attributes)
-            }
+    /// A video's play button, centered, and its length in the bottom-right corner, drawn over
+    /// `rect` (its picture, or a collage's tile) and sized to it.
+    nonisolated static func drawBadge(in rect: CGRect, duration: Double?) {
+        let unit = min(rect.width, rect.height)
+        let diameter = max(unit * 0.18, 28)
+        let circle = CGRect(x: rect.midX - diameter / 2, y: rect.midY - diameter / 2, width: diameter, height: diameter)
+        UIColor.black.withAlphaComponent(0.45).setFill()
+        UIBezierPath(ovalIn: circle).fill()
+        let configuration = UIImage.SymbolConfiguration(pointSize: diameter * 0.42, weight: .bold)
+        if let play = UIImage(systemName: "play.fill", withConfiguration: configuration)?
+            .withTintColor(.white, renderingMode: .alwaysOriginal) {
+            // Nudged right, as a triangle's weight sits left of its box's center.
+            play.draw(at: CGPoint(x: circle.midX - play.size.width / 2 + diameter * 0.04, y: circle.midY - play.size.height / 2))
         }
+        guard let duration else { return }
+        // Readable on a small tile too.
+        let font = UIFont.systemFont(ofSize: max(unit * 0.06, 11), weight: .semibold)
+        let text = formatted(duration) as NSString
+        let attributes: [NSAttributedString.Key: Any] = [.font: font, .foregroundColor: UIColor.white]
+        let textSize = text.size(withAttributes: attributes)
+        let padding = font.pointSize * 0.4
+        let pill = CGRect(
+            x: rect.maxX - textSize.width - padding * 4,
+            y: rect.maxY - textSize.height - padding * 3,
+            width: textSize.width + padding * 2,
+            height: textSize.height + padding
+        )
+        UIColor.black.withAlphaComponent(0.45).setFill()
+        UIBezierPath(roundedRect: pill, cornerRadius: pill.height / 2).fill()
+        text.draw(at: CGPoint(x: pill.minX + padding, y: pill.minY + padding / 2), withAttributes: attributes)
     }
 }

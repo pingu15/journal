@@ -247,23 +247,21 @@ struct EntryEditorView: View {
         Task { await JournalExport.sharePDF(of: entry) }
     }
 
-    private func image(for id: UUID) -> UIImage? {
+    private func image(for id: UUID) -> AttachmentPicture? {
         guard let attachment = (entry.attachments ?? []).first(where: { $0.identifier == id }) else { return nil }
         return Self.picture(of: attachment)
     }
 
-    /// What the text shows for a photo or video: a video's first frame carries a play button. It's
-    /// cropped as the text would crop it first, so its length stays in the corner.
-    private static func picture(of attachment: Attachment) -> UIImage? {
+    /// What the text shows for a photo or video: a video's first frame, with its length.
+    private static func picture(of attachment: Attachment) -> AttachmentPicture? {
         guard let image = attachment.imageData.flatMap(UIImage.init(data:)) else { return nil }
-        guard attachment.isVideo else { return image }
-        return VideoProcessing.badged(ImageAttachment.croppedToMaxAspect(image), duration: attachment.videoDuration)
+        return AttachmentPicture(image: image, isVideo: attachment.isVideo, duration: attachment.videoDuration)
     }
 
     /// Photos and videos from the library, in the order picked.
     private func importPhotos(_ items: [PhotosPickerItem]) async {
         pickerItems = []
-        var inserted: [(id: UUID, image: UIImage)] = []
+        var inserted: [(id: UUID, picture: AttachmentPicture)] = []
         for item in items {
             let attachment: Attachment?
             if item.supportedContentTypes.contains(where: { $0.conforms(to: .movie) }) {
@@ -277,8 +275,8 @@ struct EntryEditorView: View {
             guard let attachment else { continue }
             context.insert(attachment)
             attachment.entry = entry
-            if let image = Self.picture(of: attachment) {
-                inserted.append((attachment.identifier, image))
+            if let picture = Self.picture(of: attachment) {
+                inserted.append((attachment.identifier, picture))
             }
         }
         editor.insertImages(inserted)
@@ -297,7 +295,7 @@ struct EntryEditorView: View {
     }
 
     private func importImageData(_ images: [Data]) async {
-        var inserted: [(id: UUID, image: UIImage)] = []
+        var inserted: [(id: UUID, picture: AttachmentPicture)] = []
         for data in images {
             guard let prepared = await ImageProcessing.prepare(data),
                   let image = UIImage(data: prepared.full)
@@ -305,14 +303,14 @@ struct EntryEditorView: View {
             let attachment = Attachment(imageData: prepared.full, thumbnailData: prepared.thumbnail)
             context.insert(attachment)
             attachment.entry = entry
-            inserted.append((attachment.identifier, image))
+            inserted.append((attachment.identifier, AttachmentPicture(image: image)))
         }
         editor.insertImages(inserted)
     }
 
     /// A pasted photo token. Photos already in this entry are reused (a duplicate paste gets its own
     /// copy, so deleting one doesn't remove the other); photos from other entries are copied in.
-    private func resolvePastedImage(_ id: UUID) -> (id: UUID, image: UIImage)? {
+    private func resolvePastedImage(_ id: UUID) -> (id: UUID, picture: AttachmentPicture)? {
         let alreadyInText = Markdown.imageIDs(in: entry.text).contains(id)
         let source: Attachment?
         if let own = (entry.attachments ?? []).first(where: { $0.identifier == id }), !alreadyInText {
