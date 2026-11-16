@@ -135,7 +135,7 @@ enum Radius {
     static let row: CGFloat = 12
 }
 
-enum Spacing {
+nonisolated enum Spacing {
     static let xs: CGFloat = 4
     static let s: CGFloat = 8
     static let m: CGFloat = 16

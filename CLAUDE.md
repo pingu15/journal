@@ -62,7 +62,7 @@ App Store: **Today: Daily Journal**. Home screen / Siri / permission prompts: **
   - Markdown → editor → Markdown must reproduce stored entries exactly.
   - Keep styling rules line-local, because styling is incremental.
   - Formatting comes only from the toolbar. Typed syntax stays literal and is escaped on save.
-  - Photos and videos are `![](image:<Attachment.identifier>)` tokens.
+  - Photos and videos are `![](image:<Attachment.identifier>)` tokens. Photos on consecutive lines (no text or blank line between) show in the editor as one collage (`CollageAttachment`, `Views/Editor/PhotoCollage.swift`), a single character that writes back the same tokens.
   - An entry's title is its first line only when that line is in the Title style (`# `).
 - iCloud sync (`Services/ICloudSync.swift`, opt-in). `ICloudSync.shared.container` is the app's `ModelContainer`.
   - **Never swap the container while a `@Query` is alive** (SwiftUI aborts). Swap only through `applySetting`, at safe moments: as onboarding finishes and in the Settings sheet's `onDismiss`.

@@ -92,6 +92,7 @@ struct MarkdownEditor<Header: View>: UIViewRepresentable {
         let document = MarkdownDocument.attributed(from: markdown) { id in
             ImageAttachment.cached(imageID: id) ?? ImageAttachment(imageID: id, image: image(id))
         }
+        MarkdownDocument.collapsePhotoRuns(in: document)
         textView.textStorage.setAttributedString(document)
         MarkdownStyler.style(textView.textStorage)
         coordinator.pendingStyleRange = nil
@@ -182,6 +183,9 @@ struct MarkdownEditor<Header: View>: UIViewRepresentable {
                     pendingStyleRange = pendingStyleRange.map { NSUnionRange($0, paragraph) } ?? paragraph
                 }
             }
+            if textView.markedTextRange == nil {
+                collapsePhotoRuns(in: textView)
+            }
             // Restyling during IME composition would break the marked text; the range is kept
             // and styled once the composition is committed.
             if textView.markedTextRange == nil, let range = pendingStyleRange {
@@ -200,6 +204,21 @@ struct MarkdownEditor<Header: View>: UIViewRepresentable {
             if parent.text != markdown {
                 parent.text = markdown
             }
+        }
+
+        /// Photos that have come to sit on consecutive lines (inserted together or next to others,
+        /// or the text between them deleted) become one collage.
+        private func collapsePhotoRuns(in textView: MarkdownTextView) {
+            let selection = textView.selectedRange
+            let edits = MarkdownDocument.collapsePhotoRuns(in: textView.textStorage)
+            guard !edits.isEmpty else { return }
+            // Direct storage edits aren't undoable; drop the stack rather than let it go stale.
+            textView.undoManager?.removeAllActions()
+            let start = MarkdownDocument.location(selection.location, after: edits)
+            let end = MarkdownDocument.location(NSMaxRange(selection), after: edits)
+            isProcessing = true
+            textView.selectedRange = NSRange(location: start, length: max(end - start, 0))
+            isProcessing = false
         }
 
         /// Return continues a list (or ends it on an empty item), leaves a title or heading for body
@@ -322,9 +341,14 @@ struct MarkdownEditor<Header: View>: UIViewRepresentable {
             let index = textView.offset(from: textView.beginningOfDocument, to: position)
             let storage = textView.textStorage
             for candidate in [index, index - 1] where candidate >= 0 && candidate < storage.length {
-                if let attachment = storage.attribute(.attachment, at: candidate, effectiveRange: nil) as? ImageAttachment,
-                   let rect = textView.rect(for: NSRange(location: candidate, length: 1)), rect.contains(point) {
-                    return attachment.imageID
+                let attachment = storage.attribute(.attachment, at: candidate, effectiveRange: nil)
+                guard attachment is ImageAttachment || attachment is CollageAttachment,
+                      let rect = textView.rect(for: NSRange(location: candidate, length: 1)), rect.contains(point)
+                else { continue }
+                if let photo = attachment as? ImageAttachment { return photo.imageID }
+                if let collage = attachment as? CollageAttachment {
+                    let local = CGPoint(x: point.x - rect.minX, y: point.y - rect.minY)
+                    return collage.imageID(at: local, width: rect.width)
                 }
             }
             return nil
@@ -1051,18 +1075,33 @@ final class MarkdownEditorController {
         didEdit?()
     }
 
-    /// Removes an embedded photo (and the line break that followed it) from the text.
+    /// Removes an embedded photo (and the line break that followed it) from the text. Taken from a
+    /// collage, the rest stay together (the last one left alone becomes a plain photo again).
     func removeImage(_ id: UUID) {
         guard let textView else { return }
         let storage = textView.textStorage
         var target: NSRange?
+        var collage: CollageAttachment?
         storage.enumerateAttribute(.attachment, in: NSRange(location: 0, length: storage.length)) { value, range, stop in
             if (value as? ImageAttachment)?.imageID == id {
                 target = range
                 stop.pointee = true
+            } else if let value = value as? CollageAttachment, value.imageIDs.contains(id) {
+                target = range
+                collage = value
+                stop.pointee = true
             }
         }
         guard var range = target else { return }
+        if let collage {
+            let rest = collage.photos.filter { $0.imageID != id }
+            var attributes = storage.attributes(at: range.location, effectiveRange: nil)
+            attributes[.attachment] = rest.count == 1 ? rest[0] : CollageAttachment(photos: rest)
+            storage.replaceCharacters(in: range, with: NSAttributedString(string: "\u{FFFC}", attributes: attributes))
+            textView.undoManager?.removeAllActions()
+            didEdit?()
+            return
+        }
         let ns = storage.string as NSString
         if NSMaxRange(range) < ns.length, ns.character(at: NSMaxRange(range)) == 0x0A {
             range.length += 1

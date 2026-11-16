@@ -402,7 +402,8 @@ nonisolated enum MarkdownDocument {
             var style: InlineStyle
             var link: String?
             var isSpace: Bool
-            var image: UUID?
+            /// A photo's token, or a collage's tokens one per line.
+            var image: String?
         }
         let emphasis: InlineStyle = [.bold, .italic, .strikethrough, .underline]
 
@@ -411,7 +412,14 @@ nonisolated enum MarkdownDocument {
         attributed.enumerateAttributes(in: range) { attributes, run, _ in
             if let image = attributes[.attachment] as? ImageAttachment {
                 for _ in 0..<run.length {
-                    pieces.append(Piece(text: "", style: [], link: nil, isSpace: false, image: image.imageID))
+                    pieces.append(Piece(text: "", style: [], link: nil, isSpace: false, image: Markdown.imageToken(image.imageID)))
+                }
+                return
+            }
+            if let collage = attributes[.attachment] as? CollageAttachment {
+                let tokens = collage.imageIDs.map(Markdown.imageToken).joined(separator: "\n")
+                for _ in 0..<run.length {
+                    pieces.append(Piece(text: "", style: [], link: nil, isSpace: false, image: tokens))
                 }
                 return
             }
@@ -496,7 +504,7 @@ nonisolated enum MarkdownDocument {
             }
             if let image = piece.image {
                 transition(to: [])
-                output += Markdown.imageToken(image)
+                output += image
                 continue
             }
             var marks: [Mark] = []
