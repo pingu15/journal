@@ -94,6 +94,8 @@ struct DaySheet: View {
         }
         .tint(Theme.primaryText)
         .presentationDetents([.medium, .large])
+        // The list scrolls at half height too; the sheet grows only when dragged by its top.
+        .presentationContentInteraction(.scrolls)
         .sheetBackdrop(grabber: true)
         .sensoryFeedback(.selection, trigger: day)
         .onChange(of: page) { _, page in
