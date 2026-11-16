@@ -39,7 +39,10 @@ struct MarkdownEditor<Header: View>: UIViewRepresentable {
         }
         controller.didEdit = { [weak coordinator = context.coordinator, weak textView] in
             guard let coordinator, let textView else { return }
-            coordinator.textDidChange(in: textView)
+            coordinator.textDidChange(in: textView, immediately: true)
+        }
+        controller.flushText = { [weak coordinator = context.coordinator] in
+            coordinator?.flushText()
         }
 
         let tap = UITapGestureRecognizer(target: context.coordinator, action: #selector(Coordinator.handleTap(_:)))
@@ -70,9 +73,14 @@ struct MarkdownEditor<Header: View>: UIViewRepresentable {
             textView.verticalScrollIndicatorInsets.bottom = toolbarClearance
         }
         setHeader(on: textView)
-        if text != context.coordinator.lastMarkdown {
+        // While typing hasn't been written back yet, the text view is ahead of `text`, not behind it.
+        if text != context.coordinator.lastMarkdown, !context.coordinator.hasPendingText {
             load(text, into: textView, coordinator: context.coordinator)
         }
+    }
+
+    static func dismantleUIView(_ textView: MarkdownTextView, coordinator: Coordinator) {
+        coordinator.flushText()
     }
 
     private func setHeader(on textView: MarkdownTextView) {
@@ -128,6 +136,7 @@ struct MarkdownEditor<Header: View>: UIViewRepresentable {
         }
 
         func textViewDidEndEditing(_ textView: UITextView) {
+            flushText()
             parent.isEditing = false
         }
 
@@ -160,7 +169,9 @@ struct MarkdownEditor<Header: View>: UIViewRepresentable {
         /// True while the editor makes its own edits, so they aren't processed twice.
         private var isProcessing = false
 
-        func textDidChange(in textView: UITextView) {
+        /// `immediately`: the editor's own commands (formatting, photos) write the entry at once;
+        /// typing waits for a pause (see `scheduleTextUpdate`).
+        func textDidChange(in textView: UITextView, immediately: Bool = false) {
             guard !isProcessing, let textView = textView as? MarkdownTextView else { return }
             if let replacement = pendingReplacement {
                 pendingReplacement = nil
@@ -199,6 +210,46 @@ struct MarkdownEditor<Header: View>: UIViewRepresentable {
                 isProcessing = false
             }
             parent.controller.refreshState()
+            scheduleTextUpdate(from: textView, immediately: immediately)
+        }
+
+        // MARK: Writing back
+
+        /// How long typing pauses before the entry is written.
+        private static var textUpdateDelay: Duration { .milliseconds(500) }
+        private var pendingTextUpdate: Task<Void, Never>?
+        /// Typing the entry doesn't have yet.
+        var hasPendingText: Bool { pendingTextUpdate != nil }
+
+        /// Writing the entry on every keystroke made every `@Query` in the app (the journal list,
+        /// calendar, Media, map) fetch and rebuild under the editor each time, which made typing lag;
+        /// so typing is written once it pauses.
+        private func scheduleTextUpdate(from textView: MarkdownTextView, immediately: Bool) {
+            pendingTextUpdate?.cancel()
+            pendingTextUpdate = nil
+            guard !immediately else {
+                writeText(from: textView)
+                return
+            }
+            pendingTextUpdate = Task { [weak self, weak textView] in
+                try? await Task.sleep(for: Self.textUpdateDelay)
+                guard !Task.isCancelled, let self, let textView else { return }
+                self.pendingTextUpdate = nil
+                self.writeText(from: textView)
+            }
+        }
+
+        /// Writes typing not yet written, now: before anything reads the entry's text.
+        func flushText() {
+            guard let pending = pendingTextUpdate else { return }
+            pending.cancel()
+            pendingTextUpdate = nil
+            if let textView = parent.controller.textView {
+                writeText(from: textView)
+            }
+        }
+
+        private func writeText(from textView: UITextView) {
             let markdown = MarkdownDocument.markdown(from: textView.textStorage)
             lastMarkdown = markdown
             if parent.text != markdown {
@@ -407,7 +458,9 @@ struct MarkdownEditor<Header: View>: UIViewRepresentable {
         // MARK: MarkdownPasteHandler
 
         func resolvePastedImage(_ id: UUID) -> (id: UUID, image: UIImage)? {
-            parent.resolvePastedImage(id)
+            // It checks the entry's text for the photo.
+            flushText()
+            return parent.resolvePastedImage(id)
         }
 
         func pasteImages(_ images: [UIImage]) {
@@ -786,6 +839,7 @@ final class MarkdownEditorController {
 
     @ObservationIgnored weak var textView: MarkdownTextView?
     @ObservationIgnored var didEdit: (() -> Void)?
+    @ObservationIgnored var flushText: (() -> Void)?
     /// The paragraph style chosen for an empty last line, which has no characters to carry it.
     @ObservationIgnored private var emptyLineBlock: (location: Int, block: BlockStyle?)?
     /// The bold, italic and so on carried onto an empty line from the text it came from: the line
@@ -795,6 +849,12 @@ final class MarkdownEditorController {
 
     func endEditing() {
         textView?.resignFirstResponder()
+    }
+
+    /// Writes typing the entry doesn't have yet (it's written once typing pauses). Call before
+    /// reading the entry's text or saving.
+    func flush() {
+        flushText?()
     }
 
     /// Finishes any in-progress composition so a command never splits a half-typed word.

@@ -8,6 +8,7 @@ struct EntryEditorView: View {
 
     @Environment(\.modelContext) private var context
     @Environment(\.dismiss) private var dismiss
+    @Environment(\.scenePhase) private var scenePhase
     @Environment(AppRouter.self) private var router
 
     @State private var editor = MarkdownEditorController()
@@ -46,7 +47,11 @@ struct EntryEditorView: View {
             autofocus: startsEmpty,
             isEditable: !isDeleted,
             image: image(for:),
-            onImageTap: { viewingPhoto = PhotoSelection(id: $0) },
+            onImageTap: {
+                // The viewer lists the photos from the entry's text.
+                editor.flush()
+                viewingPhoto = PhotoSelection(id: $0)
+            },
             resolvePastedImage: resolvePastedImage,
             onPasteImages: { images in
                 Task { await importImageData(images.compactMap { $0.jpegData(compressionQuality: 0.92) }) }
@@ -176,7 +181,14 @@ struct EntryEditorView: View {
         .onChange(of: entry.text) {
             entry.updatedAt = .now
         }
+        .onChange(of: scenePhase) { _, phase in
+            // The app saves as it leaves `.active`; the latest typing goes with it.
+            guard phase != .active else { return }
+            editor.flush()
+            try? context.save()
+        }
         .onDisappear {
+            editor.flush()
             router.openEntries.remove(entry.persistentModelID)
             autoPlaceTask?.cancel()
             guard !isTrashed, !isDeleted else { return }
@@ -221,6 +233,7 @@ struct EntryEditorView: View {
 
     /// Shares the entry as a PDF.
     private func sharePDF() {
+        editor.flush()
         Task { await JournalExport.sharePDF(of: entry) }
     }
 
