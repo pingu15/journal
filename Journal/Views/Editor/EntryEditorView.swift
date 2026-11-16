@@ -103,11 +103,21 @@ struct EntryEditorView: View {
         }
         .toolbar {
             if isDeleted {
+                // The same ⋯ as a live entry's, with what Recently Deleted offers.
                 ToolbarItem(placement: .topBarTrailing) {
-                    Button("Restore", systemImage: "arrow.uturn.backward", action: restore)
-                }
-                ToolbarItem(placement: .topBarTrailing) {
-                    Button("Delete Permanently", systemImage: "trash") { confirmingPermanentDelete = true }
+                    Menu("More", systemImage: "ellipsis") {
+                        Section {
+                            Button("Restore", systemImage: "arrow.uturn.backward", action: restore)
+                            // Asks first, as from Recently Deleted's list.
+                            Button("Delete Permanently", systemImage: "trash", role: .destructive) {
+                                confirmingPermanentDelete = true
+                            }
+                        }
+                        Section {
+                            Text("\(entry.wordCount) words · \(entry.readingMinutes) min read")
+                            Text("Edited \(entry.updatedAt.formatted(.relative(presentation: .named)))")
+                        }
+                    }
                 }
             } else {
                 ToolbarItem(placement: .topBarTrailing) {
