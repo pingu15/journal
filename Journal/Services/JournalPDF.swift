@@ -144,8 +144,19 @@ struct JournalPDF {
         }
 
         var inCode = false
+        // Photos on consecutive lines, shown together as one collage as the editor shows them.
+        var photoRun: [UUID] = []
+        func flushPhotos() {
+            if !photoRun.isEmpty { text.append(photos(photoRun, in: entry)) }
+            photoRun = []
+        }
         for line in lines {
             let trimmed = line.trimmingCharacters(in: .whitespaces)
+            if let ids = photoIDs(in: trimmed), !inCode {
+                photoRun += ids
+                continue
+            }
+            flushPhotos()
             if trimmed.hasPrefix("```") {
                 inCode.toggle()
                 continue
@@ -158,12 +169,9 @@ struct JournalPDF {
                 continue
             }
             if trimmed.isEmpty { continue }
-            if let id = imageID(in: trimmed) {
-                if let photo = photo(id, in: entry) { text.append(photo) }
-                continue
-            }
             text.append(block(line))
         }
+        flushPhotos()
     }
 
     /// One line of Markdown as a paragraph: heading, list item, checklist, quote, rule or body text.
@@ -275,30 +283,105 @@ struct JournalPDF {
         return id
     }
 
-    /// A photo on its own centered line, fitted to the text column and downsampled for a sensible file size.
-    private func photo(_ id: UUID, in entry: Entry) -> NSAttributedString? {
-        guard let attachment = entry.attachments?.first(where: { $0.identifier == id }),
-              let data = attachment.imageData ?? attachment.thumbnailData,
-              let image = UIImage(data: data), image.size.width > 0, image.size.height > 0
-        else { return nil }
+    /// The photos a line holds, when it holds nothing else.
+    private func photoIDs(in line: String) -> [UUID]? {
+        guard line.hasPrefix("![") else { return nil }
+        let ids = Markdown.imageIDs(in: line)
+        let ns = line as NSString
+        let rest = Markdown.imagePattern
+            .stringByReplacingMatches(in: line, range: NSRange(location: 0, length: ns.length), withTemplate: "")
+            .trimmingCharacters(in: .whitespaces)
+        return ids.isEmpty || !rest.isEmpty ? nil : ids
+    }
 
+    /// One photo on its own centered line, fitted to the text column; several as the editor's
+    /// collage (`CollageAttachment.layout`), split where a page couldn't hold it all.
+    private func photos(_ ids: [UUID], in entry: Entry) -> NSAttributedString {
+        let images = ids.compactMap { id -> UIImage? in
+            guard let attachment = entry.attachments?.first(where: { $0.identifier == id }),
+                  let data = attachment.imageData ?? attachment.thumbnailData,
+                  let image = UIImage(data: data), image.size.width > 0, image.size.height > 0
+            else { return nil }
+            return image
+        }
+        let result = NSMutableAttributedString()
+        if images.count == 1 {
+            result.append(photoLine(single(images[0]), first: true, last: true))
+            return result
+        }
+        // Row by row, so a page can break between rows: pairs, the last row a trio for an odd
+        // count. Rows on one page meet at the collage's hairline, and only the outer corners round.
+        var rows: [[UIImage]] = []
+        var rest = images[...]
+        while !rest.isEmpty {
+            let take = rest.count == 3 ? 3 : 2
+            rows.append(Array(rest.prefix(take)))
+            rest = rest.dropFirst(take)
+        }
+        for (index, row) in rows.enumerated() {
+            let first = index == 0, last = index == rows.count - 1
+            result.append(photoLine(collage(row, roundsTop: first, roundsBottom: last), first: first, last: last))
+        }
+        return result
+    }
+
+    private func single(_ image: UIImage) -> (UIImage, CGSize) {
         let scale = min(content.width / image.size.width, content.height * 0.6 / image.size.height)
         let size = CGSize(width: (image.size.width * scale).rounded(), height: (image.size.height * scale).rounded())
+        return (render(size) { _ in image.draw(in: CGRect(origin: .zero, size: size)) }, size)
+    }
+
+    /// One row of a collage: tiles meeting at a hairline, each filled around its middle, the
+    /// collage's outer corners rounded as the editor rounds them.
+    private func collage(_ images: [UIImage], roundsTop: Bool, roundsBottom: Bool) -> (UIImage, CGSize) {
+        let layout = CollageAttachment.layout(count: images.count, width: content.width)
+        let size = CGSize(width: content.width, height: layout.height)
+        var corners: UIRectCorner = []
+        if roundsTop { corners.formUnion([.topLeft, .topRight]) }
+        if roundsBottom { corners.formUnion([.bottomLeft, .bottomRight]) }
+        let radius = size.width * 0.025
+        let image = render(size) { context in
+            UIBezierPath(roundedRect: CGRect(origin: .zero, size: size), byRoundingCorners: corners,
+                         cornerRadii: CGSize(width: radius, height: radius)).addClip()
+            for (image, frame) in zip(images, layout.frames) {
+                context.cgContext.saveGState()
+                context.cgContext.clip(to: frame)
+                let fill = max(frame.width / image.size.width, frame.height / image.size.height)
+                let drawn = CGSize(width: image.size.width * fill, height: image.size.height * fill)
+                image.draw(in: CGRect(x: frame.midX - drawn.width / 2, y: frame.midY - drawn.height / 2,
+                                      width: drawn.width, height: drawn.height))
+                context.cgContext.restoreGState()
+            }
+        }
+        return (image, size)
+    }
+
+    /// Downsampled to a JPEG at 2x, for a sensible file size. White under the clipped corners.
+    private func render(_ size: CGSize, _ draw: (UIGraphicsImageRendererContext) -> Void) -> UIImage {
         let format = UIGraphicsImageRendererFormat()
         format.scale = 2
-        let jpeg = UIGraphicsImageRenderer(size: size, format: format).jpegData(withCompressionQuality: 0.8) { _ in
-            image.draw(in: CGRect(origin: .zero, size: size))
+        let jpeg = UIGraphicsImageRenderer(size: size, format: format).jpegData(withCompressionQuality: 0.8) { context in
+            UIColor.white.setFill()
+            context.fill(CGRect(origin: .zero, size: size))
+            draw(context)
         }
+        return UIImage(data: jpeg, scale: 2) ?? UIImage()
+    }
 
+    /// A picture on its own centered line, exactly its height, so a collage's rows stack at its gap.
+    private func photoLine(_ picture: (image: UIImage, size: CGSize), first: Bool, last: Bool) -> NSAttributedString {
         let textAttachment = NSTextAttachment()
-        textAttachment.image = UIImage(data: jpeg, scale: 2)
-        textAttachment.bounds = CGRect(origin: .zero, size: size)
+        textAttachment.image = picture.image
+        textAttachment.bounds = CGRect(origin: .zero, size: picture.size)
         let result = NSMutableAttributedString(attachment: textAttachment)
         result.append(NSAttributedString(string: "\n"))
         result.addAttribute(.paragraphStyle, value: paragraph {
             $0.alignment = .center
-            $0.paragraphSpacingBefore = 6
-            $0.paragraphSpacing = 12
+            $0.lineSpacing = 0
+            $0.minimumLineHeight = picture.size.height
+            $0.maximumLineHeight = picture.size.height
+            $0.paragraphSpacingBefore = first ? 6 : 0
+            $0.paragraphSpacing = last ? 12 : CollageAttachment.gap
         }, range: NSRange(location: 0, length: result.length))
         return result
     }
