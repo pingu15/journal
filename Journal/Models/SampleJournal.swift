@@ -57,6 +57,7 @@ enum SampleJournal {
 
     static let photos: [String: Photo] = [
         "bagel": Photo(place: .bagels),
+        "block-dusk": Photo(place: .home, months: [9, 10, 11]),
         "brooklyn-bridge-park": Photo(place: .brooklynBridgePark, months: bare),
         "brownstones": Photo(place: .home, months: leafy),
         "central-park-bow-bridge": Photo(place: .centralPark, months: foliage),
@@ -70,6 +71,7 @@ enum SampleJournal {
         "coney-island-beach": Photo(place: .coneyIsland, months: [6, 7, 8, 9]),
         "coney-island-boardwalk": Photo(place: .coneyIsland, months: [6, 7, 8, 9]),
         "dumbo": Photo(place: .dumbo),
+        "empty-room": Photo(place: .home),
         "ferry": Photo(place: .pier11),
         "ferry-window": Photo(place: .pier11),
         "flatiron": Photo(place: .madisonSquare, months: [4, 5, 6, 7, 8, 9]),
@@ -79,6 +81,7 @@ enum SampleJournal {
         "high-line-tracks": Photo(place: .highLine, months: leafy),
         "hudson-river": Photo(place: .breakneckRidge, months: foliage),
         "hudson-view": Photo(place: .breakneckRidge, months: leafy),
+        "living-room": Photo(place: .home),
         "madison-square-park": Photo(place: .madisonSquare, months: leafy),
         "met-courtyard": Photo(place: .theMet),
         "met-stairs": Photo(place: .theMet),
@@ -95,6 +98,7 @@ enum SampleJournal {
         "snow-street": Photo(place: .home, months: snowy),
         "subway-28th": Photo(place: .station28),
         "subway-42nd": Photo(place: .grandCentral),
+        "window-mugs": Photo(place: .home),
         "window-plants": Photo(place: .home),
         "window-sunrise": Photo(place: .home),
     ]
@@ -577,7 +581,9 @@ enum SampleJournal {
         ~~Errands~~ Nothing else planned and no intention of fixing that.
         """, stops: [s(.bagels, 850, 20), s(.prospectPark, 920, 55)], sky: .partlyCloudy),
         e(1, .sun, 2040, nil, """
-        Called Mom. Told her about Priya and she said "you'll visit, and you'll complain about the driving." Probably right on both.
+        Called Mom on the walk back from the park. Told her about Priya and she said "you'll visit, and you'll complain about the driving." Probably right on both.
+        {block-dusk}
+        Every window on the block was lit by the time I got home.
 
         ## This week
         - [ ] Second round of sketches
@@ -588,6 +594,7 @@ enum SampleJournal {
         e(0, .mon, 740, .home, """
         # Morning pages
         Woke before the alarm. Coffee, the window, ten quiet minutes before the phone.
+        {window-mugs}
 
         Four months of this journal as of this week. I said I wouldn't reread for a month and then never did. Maybe tonight.
         """),
@@ -648,11 +655,21 @@ enum SampleJournal {
 
         inSeason([10, 11], .sun, 1620, .centralPark, """
         # Uptown for the leaves
-        Took the train to 72nd and walked the Mall end to end. Every tree is a different yellow.
+        Took the train to 72nd and walked the Mall end to end. Every tree is a different yellow, and the path underneath is so thick with leaves that you can't hear your own steps.
         {central-park-mall}
         {central-park-bow-bridge}
-        A couple in a rowboat were going in slow circles under Bow Bridge and laughing about it. I watched for longer than was polite.
-        """, stops: [s(.centralPark, 1400, 150)], sky: .mostlyClear),
+        I don't come up here enough. Brooklyn people treat Central Park like a relative we love and never call. But the elms along the Mall do something Prospect Park can't: they close over your head like the ceiling of a church, and for a quarter mile everyone walks a little slower and talks a little lower.
+
+        A saxophone player had set up near the bandshell, working through the same three standards. A man in a very good coat stopped, listened to all of one song with his eyes closed, put a twenty in the case and walked on without a word.
+
+        Kept going down the steps to the terrace and around the lake. A couple in a rowboat were going in slow circles under Bow Bridge and laughing about it. Neither of them could row, and neither of them minded. I watched for longer than was polite.
+
+        Sat on a rock by the water with a coffee from the cart and did nothing for most of an hour. Thought about Priya, who wants to see this before she goes and keeps saying next weekend. Thought about how many falls I've spent meaning to come up here and then looking up to find the branches bare.
+
+        **This year I caught it.** That's all. That's the whole entry.
+
+        Walked out at 59th as the light went gold on the buildings, and took the long train home with leaves in my hood.
+        """, stops: [s(.centralPark, 1335, 175)], sky: .mostlyClear),
         inSeason([10, 11], .sat, 1015, .prospectPark, """
         First properly cold run. Gloves, and I could see my breath on the hill.
         {prospect-park-fall}
@@ -725,12 +742,14 @@ enum SampleJournal {
     static let yearAgo = Draft(time: 2110, place: .home, text: """
     # One year in
     A year in this apartment today. I still haven't hung the pictures, and I know which floorboards to step over at night.
+    {living-room}
 
     It's starting to feel like mine.
     """)
 
     static let twoYearsAgo = Draft(time: 1930, place: .home, text: """
     Moved in. Forty one boxes, three flights, one very patient friend. We ate pizza on the floor because the table is still in pieces.
+    {empty-room}
 
     The front room gets the evening light. That's why I signed.
     """)
