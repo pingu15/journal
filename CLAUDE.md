@@ -85,7 +85,7 @@ App Store: **Today: Daily Journal**. Home screen / Siri / permission prompts: **
 Favorites, writing prompts, mood, tags (a typed `#word` is plain text). No paywall for now.
 
 ## Before App Store submission
-- The CloudKit schema was first deployed to Production on 2026-11-16, without `Attachment.videoData`/`videoDuration` (no video had synced in Development yet). Sync a video from a Debug build, then deploy again. Deploy again after every model change too: Production never creates fields itself.
+- The CloudKit schema is in Production (2026-11-16, entries, photos and videos). Deploy again after every model change: Production never creates fields itself.
 
 ## Git
 One commit per distinct fix or feature; never group unrelated changes. Stage separately (`git add <files>` / `git add -p`). Docs describing a change go in that change's commit.
