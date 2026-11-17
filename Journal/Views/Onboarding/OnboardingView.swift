@@ -202,7 +202,7 @@ struct OnboardingView: View {
 // MARK: - Pages
 
 /// The first page: the logo written out by hand at the page's center, as on the app's icon, then
-/// floating up to its place, and then three short promises coming in together under it. `shown` a
+/// floating up to its place, and then three short promises coming in one after another under it. `shown` a
 /// moment later, for the lines at the top and Get Started to follow them in.
 private struct WelcomePage: View {
     let shown: () -> Void
@@ -217,6 +217,23 @@ private struct WelcomePage: View {
     @State private var promisesHeight: CGFloat = 0
 
     private let gap = Spacing.l + Spacing.l
+    /// Between one promise starting in and the next.
+    private static let promiseStagger = 0.25
+
+    private static let promises = [
+        Promise(
+            symbol: "text.page", title: "Remember each day",
+            message: "Add words, photos, and videos."
+        ),
+        Promise(
+            symbol: "mappin.and.ellipse", title: "Keep track of your activity",
+            message: "See all the places you visit."
+        ),
+        Promise(
+            symbol: "lock", title: "Private by Design",
+            message: "No account, no ads, and free forever."
+        ),
+    ]
 
     var body: some View {
         // Centered, scrolling only if large text can't fit.
@@ -239,9 +256,10 @@ private struct WelcomePage: View {
                 try? await Task.sleep(for: .milliseconds(1800))
                 withAnimation(.smooth(duration: 0.9)) { settled = true }
                 try? await Task.sleep(for: .milliseconds(700))
-                withAnimation(.smooth(duration: 1.2)) { promisesIn = true }
-                // The lines at the top and Get Started a moment after the promises.
-                try? await Task.sleep(for: .milliseconds(450))
+                promisesIn = true
+                // The lines at the top and Get Started a moment after the last promise.
+                let lastPromise = Double(Self.promises.count - 1) * Self.promiseStagger
+                try? await Task.sleep(for: .seconds(lastPromise + 0.45))
             }
             shown()
         }
@@ -266,23 +284,19 @@ private struct WelcomePage: View {
                 .accessibilityAddTraits(.isHeader)
 
             VStack(alignment: .leading, spacing: Spacing.l) {
-                Promise(
-                    symbol: "text.page", title: "Remember each day",
-                    message: "Add words, photos, and videos"
-                )
-                Promise(
-                    symbol: "mappin.and.ellipse", title: "Keep track of your activity",
-                    message: "See all the places you visit."
-                )
-                Promise(
-                    symbol: "lock", title: "Private by Design",
-                    message: "No account, no ads, and free forever."
-                )
+                ForEach(Array(Self.promises.enumerated()), id: \.offset) { index, promise in
+                    promise
+                        .opacity(promisesIn ? 1 : 0)
+                        .offset(y: promisesIn ? 0 : 24)
+                        // One after another, each a beat behind the one above.
+                        .animation(
+                            reduceMotion ? nil : .smooth(duration: 1.2).delay(Double(index) * Self.promiseStagger),
+                            value: promisesIn
+                        )
+                }
             }
             // As wide as its widest promise, so the block sits centered under the logo.
             .onGeometryChange(for: CGFloat.self) { $0.size.height } action: { promisesHeight = $0 }
-            .opacity(promisesIn ? 1 : 0)
-            .offset(y: promisesIn ? 0 : 24)
             .accessibilityHidden(!promisesIn)
         }
         .padding(.horizontal, Spacing.page)
