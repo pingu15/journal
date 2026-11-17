@@ -5,7 +5,9 @@ import UIKit
 enum PhotoLibrary {
     /// Asked once and kept, as `CalendarEvents.status` is: the day sheet asks for every page it
     /// builds. Asked again whenever the app becomes active and after the prompt.
-    private(set) static var status = PHPhotoLibrary.authorizationStatus(for: .readWrite)
+    private(set) static var status = PHPhotoLibrary.authorizationStatus(for: .readWrite) {
+        didSet { if AccessStatus.shared.photos != status { AccessStatus.shared.photos = status } }
+    }
 
     static func refreshStatus() {
         status = PHPhotoLibrary.authorizationStatus(for: .readWrite)

@@ -32,6 +32,7 @@ struct DaySheet: View {
     @State private var startedEntry: PersistentIdentifier?
     @Environment(\.modelContext) private var context
     @Environment(\.dismiss) private var dismiss
+    @AppStorage(PlaceTracker.enabledKey) private var tracking = false
     /// Where the weekday and the arrows (as the bar places them, level with the title) sit, so the
     /// arrows can be centered on the date and weekday together.
     @State private var weekdayMidY: CGFloat = 0
@@ -47,8 +48,10 @@ struct DaySheet: View {
     }
 
     var body: some View {
+        // Read here, where it's observed: access granted on one day rebuilds the days beside it too.
+        let access = DayAccess.current(tracking: tracking)
         NavigationStack {
-            pagedDays
+            pagedDays(access: access)
             .background(Theme.background)
             // Under the bar rather than in it, so the title stays exactly where every popup's is.
             // Rows fade out as they pass under it, as in Settings.
@@ -208,13 +211,13 @@ struct DaySheet: View {
     /// empty: thousands of full pages took seconds to open on a phone, and a window of pages that
     /// moved along (inserting days before the one showing) sometimes left the scroll a page off
     /// from the day it named.
-    private var pagedDays: some View {
+    private func pagedDays(access: DayAccess) -> some View {
         ScrollView(.horizontal) {
             LazyHStack(spacing: 0) {
                 ForEach(-Self.pageRange...Self.pageRange, id: \.self) { page in
                     Group {
                         if abs(page - windowCenter) <= Self.windowRadius {
-                            dayPage(for: date(atPage: page))
+                            dayPage(for: date(atPage: page), access: access)
                                 .onAppear { loadedPages.insert(page) }
                                 .onDisappear { loadedPages.remove(page) }
                         } else {
@@ -238,9 +241,10 @@ struct DaySheet: View {
     /// A day's page, rebuilt only when what it shows changes (`DayPage`): every change to the sheet
     /// (the page, the title, the arrows' places, the calendar behind redrawing) rebuilt every page's
     /// list, which froze the sheet for hundreds of milliseconds on a phone.
-    private func dayPage(for day: Date) -> some View {
+    private func dayPage(for day: Date, access: DayAccess) -> some View {
         DayPage(
             day: day,
+            access: access,
             entries: entries.filter { calendar.isDate($0.createdAt, inSameDayAs: day) && $0 != openedFrom },
             isOpenedFromDay: openedFrom.map { calendar.isDate($0.createdAt, inSameDayAs: day) } ?? false,
             current: openedFrom.flatMap { entry in entry.location.map { ($0, entry.createdAt) } },
@@ -266,6 +270,8 @@ struct DaySheet: View {
 /// not its actions, which only reach state that outlives a copy of the sheet.
 private struct DayPage: View, Equatable {
     let day: Date
+    /// What the sections could read when built: they're built again when it changes.
+    let access: DayAccess
     /// The day's entries, but the one the sheet was opened from.
     let entries: [Entry]
     let isOpenedFromDay: Bool
@@ -277,6 +283,7 @@ private struct DayPage: View, Equatable {
 
     static func == (lhs: DayPage, rhs: DayPage) -> Bool {
         lhs.day == rhs.day
+            && lhs.access == rhs.access
             && lhs.entries.map(\.persistentModelID) == rhs.entries.map(\.persistentModelID)
             && lhs.isOpenedFromDay == rhs.isOpenedFromDay
             && lhs.current?.0.coordinate.latitude == rhs.current?.0.coordinate.latitude
@@ -309,13 +316,16 @@ private struct DayPage: View, Equatable {
                 case .photos:
                     SwiftUI.Section {
                         DayPhotos(day: day)
+                            .id(access)
                     } header: {
                         MetaLabel("Photos", systemImage: "photo.on.rectangle")
                     }
                 case .places:
                     DayPlacesSection(day: day, current: current, action: placeAction)
+                        .id(access)
                 case .events:
                     DayEventsSection(day: day, action: eventAction)
+                        .id(access)
                 }
             }
             // White at every height: left to the system, rows went grey while the sheet was at

@@ -8,7 +8,9 @@ enum CalendarEvents {
     /// Asked once and kept: iOS answers over IPC (6–8 ms on an iPhone 12), and the day sheet asks for
     /// every page it builds. Asked again whenever the app becomes active (it may have been changed in
     /// Settings) and after the prompt.
-    private(set) static var status = EKEventStore.authorizationStatus(for: .event)
+    private(set) static var status = EKEventStore.authorizationStatus(for: .event) {
+        didSet { if AccessStatus.shared.calendar != status { AccessStatus.shared.calendar = status } }
+    }
 
     static func refreshStatus() {
         status = EKEventStore.authorizationStatus(for: .event)
