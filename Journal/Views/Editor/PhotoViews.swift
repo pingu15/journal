@@ -72,17 +72,15 @@ struct PhotoViewer<ID: Hashable>: View {
             TabView(selection: $selection) {
                 ForEach(photos) { photo in
                     if let video = photo.video {
-                        VideoPage(url: video, isCurrent: selection == photo.id, controlsShown: $videoControlsShown)
+                        VideoPage(
+                            url: video,
+                            isCurrent: selection == photo.id,
+                            controlsShown: $videoControlsShown,
+                            onDragDown: dragDown
+                        ) { dismiss() }
                             .tag(photo.id)
                     } else {
-                    FullImage(images: images, id: photo.id, onDragDown: { progress in
-                        // A cancelled swipe springs back; bring the backdrop back with it.
-                        if progress == 0 {
-                            withAnimation(.snappy) { dismissProgress = 0 }
-                        } else {
-                            dismissProgress = progress
-                        }
-                    }) { dismiss() }
+                    FullImage(images: images, id: photo.id, onDragDown: dragDown) { dismiss() }
                         .tag(photo.id)
                     }
                 }
@@ -139,6 +137,16 @@ struct PhotoViewer<ID: Hashable>: View {
         .presentationBackground(.clear)
     }
 
+    /// A swipe-down on a photo or video fading the backdrop; a cancelled one springs back, and
+    /// brings the backdrop back with it.
+    private func dragDown(_ progress: CGFloat) {
+        if progress == 0 {
+            withAnimation(.snappy) { dismissProgress = 0 }
+        } else {
+            dismissProgress = progress
+        }
+    }
+
     /// The photo shown first, then the ones either side of it.
     private func loadAround(_ id: ID) async {
         guard let index = photos.firstIndex(where: { $0.id == id }) else { return }
@@ -178,22 +186,38 @@ struct PhotoViewer<ID: Hashable>: View {
 /// paused when swiped away. The player's controls sit where the viewer's close and ⋯ buttons do, so
 /// a tap that brings them up also reports it (`controlsShown`), and the buttons step aside until
 /// they go: by themselves a few seconds later while it plays, as the player's do, or on the next tap.
+/// A swipe down closes it, as it does a photo.
 private struct VideoPage: View {
     let url: () -> URL?
     let isCurrent: Bool
     @Binding var controlsShown: Bool
+    let onDragDown: (CGFloat) -> Void
+    let onClose: () -> Void
 
     @State private var player: AVPlayer?
     @State private var hideTask: Task<Void, Never>?
+    /// How far the video has been pulled by a swipe down.
+    @State private var drag: CGSize = .zero
+    /// Whether the drag under way is a swipe down, decided once as it starts, so a sideways swipe
+    /// stays the pager's and the scrubber's.
+    @State private var isSwipingDown: Bool?
 
     /// How long the player's controls stay up while it plays.
     private static let controlsLinger: Duration = .seconds(3)
+    /// The drag a swipe-down needs to close the video, and the drag that fully fades the backdrop:
+    /// the same as a photo's.
+    private static let closeDistance: CGFloat = 120
+    private static let fadeDistance: CGFloat = 300
 
     var body: some View {
         VideoPlayer(player: player)
             .ignoresSafeArea()
+            // Shrinks a little as it's pulled down, like a photo.
+            .scaleEffect(1 - min(drag.height / Self.fadeDistance, 1) * 0.25)
+            .offset(drag)
             // Alongside the player's own tap, which shows or hides its controls.
             .simultaneousGesture(TapGesture().onEnded { toggleControls() })
+            .simultaneousGesture(swipeDown)
             .task {
                 guard player == nil, let url = url() else { return }
                 let player = AVPlayer(url: url)
@@ -217,6 +241,31 @@ private struct VideoPage: View {
                 hideTask?.cancel()
                 controlsShown = false
                 VideoAudio.end()
+            }
+    }
+
+    private var swipeDown: some Gesture {
+        DragGesture(minimumDistance: 20)
+            .onChanged { value in
+                if isSwipingDown == nil {
+                    isSwipingDown = value.translation.height > abs(value.translation.width)
+                }
+                guard isSwipingDown == true else { return }
+                let y = max(0, value.translation.height)
+                drag = CGSize(width: value.translation.width, height: y)
+                onDragDown(min(y / Self.fadeDistance, 1))
+            }
+            .onEnded { value in
+                defer { isSwipingDown = nil }
+                guard isSwipingDown == true else { return }
+                // A quick flick closes it too.
+                let flicked = value.predictedEndTranslation.height - value.translation.height > 200
+                if value.translation.height > Self.closeDistance || flicked {
+                    onClose()
+                } else {
+                    withAnimation(.spring(duration: 0.35, bounce: 0.15)) { drag = .zero }
+                    onDragDown(0)
+                }
             }
     }
 
