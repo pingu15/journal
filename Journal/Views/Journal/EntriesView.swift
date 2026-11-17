@@ -720,9 +720,11 @@ private struct TrashList<Header: View>: View {
     }
 }
 
+#if DEBUG
 #Preview {
     EntriesView()
         .modelContainer(.preview)
         .environment(AppLock())
         .environment(AppRouter())
 }
+#endif

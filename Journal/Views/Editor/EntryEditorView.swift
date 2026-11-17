@@ -412,6 +412,7 @@ struct EntryHeader: View {
     }
 }
 
+#if DEBUG
 #Preview {
     let container = ModelContainer.preview
     let entry = try! container.mainContext.fetch(FetchDescriptor<Entry>()).first!
@@ -421,3 +422,4 @@ struct EntryHeader: View {
     .modelContainer(container)
     .environment(AppRouter())
 }
+#endif

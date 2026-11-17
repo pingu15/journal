@@ -217,8 +217,10 @@ private struct ActivityHeatmap: View {
     }
 }
 
+#if DEBUG
 #Preview {
     InsightsView()
         .modelContainer(.preview)
         .environment(AppRouter())
 }
+#endif

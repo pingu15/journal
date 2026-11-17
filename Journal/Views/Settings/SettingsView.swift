@@ -523,9 +523,11 @@ private extension Bundle {
     }
 }
 
+#if DEBUG
 #Preview {
     SettingsView()
         .modelContainer(.preview)
         .environment(AppLock())
         .environment(ICloudSync.shared)
 }
+#endif

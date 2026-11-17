@@ -384,11 +384,13 @@ extension Calendar {
     }
 }
 
+#if DEBUG
 #Preview {
     CalendarView()
         .modelContainer(.preview)
         .environment(AppRouter())
 }
+#endif
 
 /// Inside a `ScrollView`, turns off scrolling to the top from the status bar and from tapping the
 /// open tab again (which does nothing here, even mid-scroll): the top of the calendar is five
