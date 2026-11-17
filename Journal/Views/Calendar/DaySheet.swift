@@ -50,18 +50,15 @@ struct DaySheet: View {
         NavigationStack {
             pagedDays
             .background(Theme.background)
-            // Rows pass under the header with a clean edge, `Spacing.m` below the weekday.
-            .hidesTopScrollEdgeEffect()
             // Under the bar rather than in it, so the title stays exactly where every popup's is.
-            .safeAreaInset(edge: .top, spacing: 0) {
+            // Rows fade out as they pass under it, as in Settings.
+            .topBar {
                 MetaLabel(titleDay.formatted(.dateTime.weekday(.wide)))
                     .frame(maxWidth: .infinity)
                     .onGeometryChange(for: CGFloat.self) { $0.frame(in: .global).midY } action: { weekdayMidY = $0 }
                     // Right under the title, into the bar's own space below it, then clear of the list.
                     .padding(.top, -Spacing.m)
                     .padding(.bottom, Spacing.m)
-                    // The bar and this line are one solid header: rows scroll under it.
-                    .background(Theme.background.ignoresSafeArea(edges: .top))
                     .accessibilityHidden(true)
             }
             .sheetTitle(titleDay.formatted(.dateTime.month(.wide).day().year()))

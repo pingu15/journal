@@ -228,6 +228,20 @@ extension View {
             .background { SheetBackdrop() }
     }
 
+    /// A bar under the navigation bar that content scrolls under, fading out below it as under the
+    /// navigation bar itself (iOS 26's scroll edge effect). Before iOS 26, a plain inset.
+    @ViewBuilder
+    func topBar<Content: View>(@ViewBuilder _ content: () -> Content) -> some View {
+        let content = content()
+        if #available(iOS 26.0, *) {
+            safeAreaBar(edge: .top, spacing: 0) { content }
+                // A taller bar would otherwise get the hard edge, which ends in a line.
+                .scrollEdgeEffectStyle(.soft, for: .top)
+        } else {
+            safeAreaInset(edge: .top, spacing: 0) { content }
+        }
+    }
+
     /// Content scrolls out at the top edge as is, without iOS 26's soft fade there.
     @ViewBuilder
     func hidesTopScrollEdgeEffect() -> some View {
