@@ -1303,11 +1303,14 @@ private struct ToolIcon: View {
     var body: some View {
         Image(systemName: symbol)
             .font(Typography.icon.weight(isOn ? .semibold : .regular))
-            .foregroundStyle(Theme.primaryText)
+            .foregroundStyle(isOn ? Theme.onAccent : Theme.primaryText)
             .frame(width: 46, height: 40)
             .background {
+                // A solid sand circle, as Notes marks a tool that's on. Not glass: the bar is glass
+                // already, and glass on glass has nothing to show through it (iOS 26 drew it as a
+                // dark blot).
                 if isOn {
-                    Color.clear.glassBackground(in: .capsule)
+                    Circle().fill(Theme.accent).frame(width: 36, height: 36)
                 }
             }
             .frame(width: 50, height: MarkdownToolbar.height)
