@@ -337,6 +337,7 @@
 				INFOPLIST_FILE = Info.plist;
 				INFOPLIST_KEY_CFBundleDisplayName = Today;
 				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.healthcare-fitness";
+				INFOPLIST_KEY_NSHumanReadableCopyright = "© 2026 Max Sun";
 				INFOPLIST_KEY_NSCalendarsFullAccessUsageDescription = "Shows the events in your calendar on a day beside what you wrote. Your events stay on this iPhone.";
 				INFOPLIST_KEY_NSFaceIDUsageDescription = "Locks your journal so only you can open it.";
 				INFOPLIST_KEY_NSLocationAlwaysAndWhenInUseUsageDescription = "Shows the places you spend time at through the day, even while the app is closed. Your place history stays on this iPhone.";
@@ -378,6 +379,7 @@
 				INFOPLIST_FILE = Info.plist;
 				INFOPLIST_KEY_CFBundleDisplayName = Today;
 				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.healthcare-fitness";
+				INFOPLIST_KEY_NSHumanReadableCopyright = "© 2026 Max Sun";
 				INFOPLIST_KEY_NSCalendarsFullAccessUsageDescription = "Shows the events in your calendar on a day beside what you wrote. Your events stay on this iPhone.";
 				INFOPLIST_KEY_NSFaceIDUsageDescription = "Locks your journal so only you can open it.";
 				INFOPLIST_KEY_NSLocationAlwaysAndWhenInUseUsageDescription = "Shows the places you spend time at through the day, even while the app is closed. Your place history stays on this iPhone.";
@@ -415,7 +417,7 @@
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = "JournalWidgets-Info.plist";
 				INFOPLIST_KEY_CFBundleDisplayName = Today;
-				INFOPLIST_KEY_NSHumanReadableCopyright = "";
+				INFOPLIST_KEY_NSHumanReadableCopyright = "© 2026 Max Sun";
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/Frameworks",
@@ -445,7 +447,7 @@
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = "JournalWidgets-Info.plist";
 				INFOPLIST_KEY_CFBundleDisplayName = Today;
-				INFOPLIST_KEY_NSHumanReadableCopyright = "";
+				INFOPLIST_KEY_NSHumanReadableCopyright = "© 2026 Max Sun";
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/Frameworks",
