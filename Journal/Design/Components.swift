@@ -721,9 +721,11 @@ struct ExpandingSearchBar: View {
         .frame(height: size)
         .padding(.top, expanded ? Spacing.m : 0)
         .onAppear {
-            withAnimation(.snappy) { expanded = true }
-            // Once it's up: the keyboard takes long enough to load that it holds up the card's rise.
-            DispatchQueue.main.asyncAfter(deadline: .now() + 0.35) {
+            // Focused once it's up: the keyboard's first load stalls the main thread long enough to
+            // hitch the field's growth and the card's rise.
+            withAnimation(.snappy) {
+                expanded = true
+            } completion: {
                 if expanded { isFocused.wrappedValue = true }
             }
         }
