@@ -1,5 +1,6 @@
 import SwiftData
 import SwiftUI
+import WeatherKit
 
 struct SettingsView: View {
     @Environment(AppLock.self) private var lock
@@ -163,6 +164,8 @@ struct SettingsView: View {
                     } label: {
                         Label("Version", systemImage: "info.circle")
                     }
+                } footer: {
+                    WeatherAttributionNote()
                 }
             }
             .tint(Theme.primaryText)
@@ -475,6 +478,42 @@ private struct ThemeList: View {
         .background(Theme.background)
         .navigationTitle("Theme")
         .navigationBarTitleDisplayMode(.inline)
+    }
+}
+
+/// Apple's required credit for the weather on entries: the Apple Weather mark and a link to
+/// its other data sources. Falls back to plain text while the mark can't be fetched (offline).
+private struct WeatherAttributionNote: View {
+    @Environment(\.colorScheme) private var colorScheme
+    @State private var attribution: WeatherAttribution?
+    @ScaledMetric(relativeTo: .footnote) private var markHeight = 12.0
+
+    /// Apple's legal attribution page, for when the attribution can't be fetched.
+    private static let fallbackLegalURL = URL(string: "https://weatherkit.apple.com/legal-attribution.html")!
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: Spacing.xs) {
+            if let attribution {
+                AsyncImage(url: colorScheme == .dark ? attribution.combinedMarkDarkURL : attribution.combinedMarkLightURL) { image in
+                    image.resizable().scaledToFit()
+                } placeholder: {
+                    Text(attribution.serviceName)
+                }
+                .frame(height: markHeight, alignment: .leading)
+                .accessibilityLabel(attribution.serviceName)
+            } else {
+                Text("Apple Weather")
+            }
+            Link(destination: attribution?.legalPageURL ?? Self.fallbackLegalURL) {
+                Text("Other data sources").underline()
+            }
+            // A link takes the body size; set like the other footers.
+            .font(.footnote)
+            .foregroundStyle(Theme.secondaryText)
+        }
+        .task {
+            attribution = try? await WeatherService.shared.attribution
+        }
     }
 }
 

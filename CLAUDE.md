@@ -86,7 +86,6 @@ Favorites, writing prompts, mood, tags (a typed `#word` is plain text). No paywa
 
 ## Before App Store submission
 - Deploy the CloudKit schema to Production in the CloudKit Console.
-- Show Apple's WeatherKit attribution somewhere, for example in the editor header. It was removed from Settings.
 
 ## Git
 One commit per distinct fix or feature; never group unrelated changes. Stage separately (`git add <files>` / `git add -p`). Docs describing a change go in that change's commit.
