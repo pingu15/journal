@@ -111,10 +111,10 @@ struct RootView: View {
         .task {
             #if DEBUG
             if ProcessInfo.processInfo.arguments.contains("-seedSampleData") {
-                SampleData.populate(context)
+                SampleData.seed(context)
             }
             if ProcessInfo.processInfo.arguments.contains("-seedSamplePlaces") {
-                PlaceTracker.seedSampleDays()
+                SampleData.seedPlaces()
             }
             #endif
             Entry.purgeExpiredTrash(in: context)

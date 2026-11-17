@@ -248,39 +248,9 @@ final class PlaceTracker: NSObject, CLLocationManagerDelegate {
     }
 
     #if DEBUG
-    /// `-seedSamplePlaces`: a made-up week of days around San Francisco — home, a café, the office,
-    /// a stop too short to count, the park, and home again — replacing whatever was noted.
-    static func seedSampleDays() {
-        let calendar = Calendar.current
-        let home = (37.7849, -122.4294), cafe = (37.7764, -122.4241), office = (37.7897, -122.3972)
-        let corner = (37.7810, -122.4100), park = (37.7694, -122.4862)
-        // (from, to) as minutes after midnight; a nil place is on the move.
-        let plan: [((Double, Double)?, Int, Int)] = [
-            (home, 0, 510), (nil, 515, 535), (cafe, 540, 585), (nil, 590, 595), (office, 600, 1050),
-            (corner, 1055, 1060), (nil, 1065, 1075), (park, 1080, 1140), (nil, 1145, 1165), (home, 1170, 1435),
-        ]
-        var generator = SystemRandomNumberGenerator()
-        for daysAgo in 0..<7 {
-            guard let day = calendar.date(byAdding: .day, value: -daysAgo, to: calendar.startOfDay(for: .now)) else { continue }
-            var samples: [LocationSample] = []
-            for (place, from, to) in plan {
-                for minute in stride(from: from, through: to, by: 5) {
-                    let time = day.addingTimeInterval(TimeInterval(minute * 60))
-                    guard time <= .now else { break }
-                    // On the move: somewhere new each time, well apart.
-                    let spot = place ?? (37.76 + Double(minute % 97) / 2000, -122.44 + Double(minute % 89) / 1500)
-                    // Readings wander a few tens of meters; one strays far in the middle of the office day.
-                    let stray = place.map { $0 == office } == true && minute == 800 ? 0.004 : 0
-                    samples.append(LocationSample(
-                        time: time,
-                        latitude: spot.0 + Double.random(in: -0.0003...0.0003, using: &generator) + stray,
-                        longitude: spot.1 + Double.random(in: -0.0003...0.0003, using: &generator),
-                        accuracy: 65
-                    ))
-                }
-            }
-            save(samples, on: day)
-        }
+    /// For `SampleData`: a day's samples, in place of whatever was noted on it.
+    static func replaceSamples(_ samples: [LocationSample], on day: Date) {
+        save(samples, on: day)
     }
     #endif
 

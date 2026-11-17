@@ -15,8 +15,8 @@ sqlite3 "$(xcrun simctl get_app_container booted com.maxsun.journal group.com.ma
 ```
 
 DEBUG launch arguments:
-- `-seedSampleData` — fill an empty store with ~4 months of entries
-- `-seedSamplePlaces` — replace the last 7 days' place samples with a made-up SF day; add `-trackPlaces YES` to track for that run (grant `location-always` with `simctl privacy` first)
+- `-seedSampleData` — fill an empty store with `SampleJournal` (`Models/`): ~4 months of someone's life in New York, with places, weather, photos and the matching location history (place samples). With Photos access already granted (`xcrun simctl privacy booted grant photos com.maxsun.journal`) it also saves the photos to the Photos library, dated and geotagged, once (album "Today Sample Photos")
+- `-seedSamplePlaces` — write that location history again, up to now, over whatever was noted; add `-trackPlaces YES` to track for that run (grant `location-always` with `simctl privacy` first)
 - `-showOnboarding` — show onboarding again; with `-fakeICloudEntries N` to fake the "Syncing from iCloud" step
 - `-lockEnabled NO` — skip the Face ID lock for one run
 
@@ -32,6 +32,7 @@ App Store: **Today: Daily Journal**. Home screen / Siri / permission prompts: **
 ## Layout
 - `Journal.xcodeproj` uses a file-system-synchronized group: files added under `Journal/` join the target automatically. Don't edit `project.pbxproj` for that.
 - `App/` entry, tabs, lock, router, intents · `Models/` SwiftData (`Entry`, `Attachment`) · `Design/` theme tokens + shared components · `Views/<Feature>/` · `Services/` non-UI logic.
+- `Journal/SampleMedia/` holds the sample journal's photos (from Unsplash, 1600px). They're in Debug builds only: Release leaves them out with `EXCLUDED_SOURCE_FILE_NAMES`.
 - The root `Info.plist` holds what the generated plist can't (`UIBackgroundModes`, URL types, alternative app names). A plist under `Journal/` would be copied in as a resource.
 - `JournalWidgets/` is the widget extension. Widgets read a JSON `WidgetSnapshot` (`Shared/`, compiled into both targets) from App Group `group.com.maxsun.journal`, written by `WidgetSync.update(in:)` (on launch, on every return to the foreground, and when an entry closes); they never read the store. The Today widget reads its photos from the library itself (`DayPhotos`, sharing the app's Photos access) and reloads every 15 minutes. Tapping a widget or the daily reminder opens the day sheet in the Calendar tab (`todayjournal://day[/yyyy-MM-dd]`, `AppRouter.openDay`). Style them with `WidgetStyle`, since the extension can't use `Theme`.
 
