@@ -81,7 +81,9 @@ enum VideoProcessing {
     /// `rect` (its picture, or a collage's tile) and sized to it.
     nonisolated static func drawBadge(in rect: CGRect, duration: Double?) {
         let unit = min(rect.width, rect.height)
-        let diameter = max(unit * 0.18, 28)
+        // Sized by the tile's shorter side, but capped: a portrait video's shorter side is the
+        // page's width, which made its button and length oversized.
+        let diameter = min(max(unit * 0.18, 28), 40)
         let circle = CGRect(x: rect.midX - diameter / 2, y: rect.midY - diameter / 2, width: diameter, height: diameter)
         UIColor.black.withAlphaComponent(0.45).setFill()
         UIBezierPath(ovalIn: circle).fill()
@@ -92,8 +94,10 @@ enum VideoProcessing {
             play.draw(at: CGPoint(x: circle.midX - play.size.width / 2 + diameter * 0.04, y: circle.midY - play.size.height / 2))
         }
         guard let duration else { return }
-        // Readable on a small tile too.
-        let font = UIFont.systemFont(ofSize: max(unit * 0.06, 11), weight: .semibold)
+        // Media's caption size (`Typography.mediaMonth`, with Dynamic Type), smaller only on a
+        // small collage tile, and never below readable.
+        let caption = UIFontDescriptor.preferredFontDescriptor(withTextStyle: .caption1).pointSize
+        let font = UIFont.systemFont(ofSize: min(caption, max(unit * 0.06, 10)), weight: .semibold)
         let text = formatted(duration) as NSString
         let attributes: [NSAttributedString.Key: Any] = [.font: font, .foregroundColor: UIColor.white]
         let textSize = text.size(withAttributes: attributes)
