@@ -358,11 +358,16 @@ struct MarkdownEditor<Header: View>: UIViewRepresentable {
         /// Set when a tap lands on a photo (or, while not editing, a link), so that tap opens it
         /// without starting editing.
         private var tapOpensSomething = false
+        /// The photo under the finger as the touch began. While editing, the text view's own tap
+        /// moves the caret into the photo and scrolls to it before `handleTap` runs, so the tap's
+        /// location by then lands on another tile of a tall collage.
+        private var touchedImageID: UUID?
 
         func gestureRecognizer(_ gestureRecognizer: UIGestureRecognizer, shouldReceive touch: UITouch) -> Bool {
             if let textView = gestureRecognizer.view as? MarkdownTextView {
                 let point = touch.location(in: textView)
-                tapOpensSomething = imageID(at: point, in: textView) != nil
+                touchedImageID = imageID(at: point, in: textView)
+                tapOpensSomething = touchedImageID != nil
                     || (!textView.isFirstResponder && link(at: point, in: textView) != nil)
             }
             return true
@@ -408,7 +413,12 @@ struct MarkdownEditor<Header: View>: UIViewRepresentable {
         /// Tap a photo to view it, a link to open it, a checkbox to tick it.
         @objc func handleTap(_ recognizer: UITapGestureRecognizer) {
             // Cleared after this event, once the text view has also consulted it.
-            defer { DispatchQueue.main.async { self.tapOpensSomething = false } }
+            defer {
+                DispatchQueue.main.async {
+                    self.tapOpensSomething = false
+                    self.touchedImageID = nil
+                }
+            }
             guard let textView = recognizer.view as? MarkdownTextView,
                   let position = textView.closestPosition(to: recognizer.location(in: textView))
             else { return }
@@ -416,7 +426,7 @@ struct MarkdownEditor<Header: View>: UIViewRepresentable {
             let index = textView.offset(from: textView.beginningOfDocument, to: position)
             let storage = textView.textStorage
 
-            if let id = imageID(at: point, in: textView) {
+            if let id = touchedImageID {
                 parent.onImageTap(id)
                 return
             }
