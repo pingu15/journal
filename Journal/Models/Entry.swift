@@ -270,4 +270,9 @@ enum JournalName {
         let trimmed = stored.trimmingCharacters(in: .whitespacesAndNewlines)
         return trimmed.isEmpty ? Self.default : trimmed
     }
+
+    /// The name as it's shown, read from the stored setting (notifications are titled with it).
+    static var current: String {
+        display(UserDefaults.standard.string(forKey: storageKey) ?? "")
+    }
 }

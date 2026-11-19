@@ -6,7 +6,8 @@ import UserNotifications
 /// earlier year. A notification's words are fixed when it's scheduled, so the next 30 days are
 /// scheduled ahead, one request a day that has past entries, and redone whenever the app comes back
 /// (`refresh`) or the setting changes. The entries' text is never shown, only that they were written:
-/// a notification is seen on the lock screen, even with the journal locked.
+/// a notification is seen on the lock screen, even with the journal locked. Titled with the journal's
+/// name, so renaming it schedules them again (Settings).
 enum OnThisDayScheduler {
     static let enabledKey = "onThisDayEnabled"
     /// Minutes after midnight, like the daily reminder's.
@@ -56,7 +57,8 @@ enum OnThisDayScheduler {
             guard !past.isEmpty else { continue }
 
             let content = UNMutableNotificationContent()
-            content.title = "On This Day"
+            content.title = JournalName.current
+            content.subtitle = "On This Day"
             content.body = body(years: past, now: year)
             content.sound = .default
             let trigger = UNCalendarNotificationTrigger(

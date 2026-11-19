@@ -180,6 +180,13 @@ struct SettingsView: View {
                 refreshLocationAccess()
                 await sync.refreshAccountStatus()
             }
+            // Notifications are titled with the name and their words are fixed when scheduled, so a
+            // rename schedules them again once typing pauses.
+            .task(id: JournalName.display(journalName)) {
+                guard (try? await Task.sleep(for: .seconds(1))) != nil else { return }
+                await ReminderScheduler.refresh()
+                await OnThisDayScheduler.refresh(in: context)
+            }
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .confirmationAction) {

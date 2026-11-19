@@ -40,9 +40,9 @@ enum ReminderScheduler {
         await schedule(minutesAfterMidnight: minutes)
     }
 
-    /// What it says: how many places the day took in, once Track Visited Places has noted some; else
-    /// the streak it would keep going; else a nudge to start one.
-    static let title = "Take a moment to write"
+    /// What it says: titled with the journal's name, then how many places the day took in, once Track
+    /// Visited Places has noted some; else the streak it would keep going; else a nudge to start one.
+    static let subtitle = "Take a Moment to Write"
     static let newStreakBody = "Start a new journaling streak today."
 
     static func streakBody(days: Int) -> String {
@@ -143,7 +143,8 @@ enum ReminderScheduler {
 
     private static func content(body: String) -> UNMutableNotificationContent {
         let content = UNMutableNotificationContent()
-        content.title = title
+        content.title = JournalName.current
+        content.subtitle = subtitle
         content.body = body
         content.sound = .default
         return content
