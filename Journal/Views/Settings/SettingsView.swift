@@ -481,38 +481,25 @@ private struct ThemeList: View {
     }
 }
 
-/// Apple's required credit for the weather on entries: the Apple Weather mark and a link to
-/// its other data sources. Falls back to plain text while the mark can't be fetched (offline).
+/// Apple's required credit for the weather on entries, set like the other footers. WeatherKit also
+/// requires a link to its legal attribution page (the other data sources): the line itself is it.
 private struct WeatherAttributionNote: View {
-    @Environment(\.colorScheme) private var colorScheme
-    @State private var attribution: WeatherAttribution?
-    @ScaledMetric(relativeTo: .footnote) private var markHeight = 12.0
+    @State private var legalPage: URL?
 
-    /// Apple's legal attribution page, for when the attribution can't be fetched.
+    /// Apple's legal attribution page, until (or if) the attribution can't be fetched.
     private static let fallbackLegalURL = URL(string: "https://weatherkit.apple.com/legal-attribution.html")!
 
     var body: some View {
-        VStack(alignment: .leading, spacing: Spacing.xs) {
-            if let attribution {
-                AsyncImage(url: colorScheme == .dark ? attribution.combinedMarkDarkURL : attribution.combinedMarkLightURL) { image in
-                    image.resizable().scaledToFit()
-                } placeholder: {
-                    Text(attribution.serviceName)
-                }
-                .frame(height: markHeight, alignment: .leading)
-                .accessibilityLabel(attribution.serviceName)
-            } else {
-                Text("Apple Weather")
-            }
-            Link(destination: attribution?.legalPageURL ?? Self.fallbackLegalURL) {
-                Text("Other data sources").underline()
-            }
-            // A link takes the body size; set like the other footers.
-            .font(.footnote)
-            .foregroundStyle(Theme.secondaryText)
+        Link(destination: legalPage ?? Self.fallbackLegalURL) {
+            // U+F8FF is the Apple logo in Apple's system fonts.
+            Text("Weather data from \u{F8FF} Weather")
         }
+        // A link takes the body size and the tint; set like the other footers.
+        .font(.footnote)
+        .foregroundStyle(Theme.secondaryText)
+        .accessibilityLabel("Weather data from Apple Weather")
         .task {
-            attribution = try? await WeatherService.shared.attribution
+            legalPage = try? await WeatherService.shared.attribution.legalPageURL
         }
     }
 }
