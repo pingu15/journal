@@ -27,7 +27,7 @@ Simulator notes:
 - The simulator has no iCloud account unless signed in.
 
 ## Naming
-App Store: **Today: Daily Journal**. Home screen / Siri / permission prompts: **Today** (`CFBundleDisplayName`); Siri alternatives in `INAlternativeAppNames`. Project, target, module and bundle ID (`com.maxsun.journal`) stay **Journal**. App Shortcut phrases must contain `.applicationName` or the build fails.
+App Store: **Today: Daily Journal**. Home screen / Siri / permission prompts: **Today** (`CFBundleDisplayName`); Siri alternatives in `INAlternativeAppNames`. Project, target, module and bundle ID (`com.maxsun.journal`) stay **Journal**. The app's product name is **Today** (`Today.app`, `CFBundleName`, with `PRODUCT_MODULE_NAME = Journal`): a bundle name of "Journal" is Apple's Journal app's, and App Store Connect rejects it (ITMS-90129). App Shortcut phrases must contain `.applicationName` or the build fails.
 
 ## Layout
 - `Journal.xcodeproj` uses a file-system-synchronized group: files added under `Journal/` join the target automatically. Don't edit `project.pbxproj` for that.
