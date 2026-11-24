@@ -11,23 +11,24 @@ final class NotificationPresenter: NSObject, UNUserNotificationCenterDelegate {
         UNUserNotificationCenter.current().delegate = self
     }
 
-    nonisolated func userNotificationCenter(
+    // Both on the main actor, not `nonisolated`: the completion handler Swift makes for an async
+    // delegate method is called where the method returns, and UIKit aborts (an assertion in
+    // `_updateSnapshotAndStateRestorationWithAction:`) when a tapped notification's handler is
+    // called off the main thread.
+    func userNotificationCenter(
         _ center: UNUserNotificationCenter,
         willPresent notification: UNNotification
     ) async -> UNNotificationPresentationOptions {
         [.banner, .list, .sound]
     }
 
-    nonisolated func userNotificationCenter(
+    func userNotificationCenter(
         _ center: UNUserNotificationCenter,
         didReceive response: UNNotificationResponse
     ) async {
-        guard response.actionIdentifier == UNNotificationDefaultActionIdentifier else { return }
-        let identifier = response.notification.request.identifier
-        let date = response.notification.date
-        await MainActor.run {
-            guard ReminderScheduler.isReminder(identifier) else { return }
-            AppRouter.shared.openDay(date)
-        }
+        guard response.actionIdentifier == UNNotificationDefaultActionIdentifier,
+              ReminderScheduler.isReminder(response.notification.request.identifier)
+        else { return }
+        AppRouter.shared.openDay(response.notification.date)
     }
 }
