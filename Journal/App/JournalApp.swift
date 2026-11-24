@@ -62,7 +62,7 @@ struct RootView: View {
 
     private var tabs: some View {
         TabView(selection: Binding(get: { router.selectedTab }, set: { router.selectedTab = $0 })) {
-            // Each with its name under its icon, as iOS lays them out (smaller icons, room around each).
+            // Icons only (their names are for VoiceOver), smaller than iOS draws them, with room around each.
             Tab(value: .journal) {
                 EntriesView()
             } label: {
@@ -182,18 +182,15 @@ struct RootView: View {
     }
 }
 
-/// A tab's name under its icon. The tab bar draws every icon at one size, so the icon is drawn a
-/// size smaller inside a clear square of that size, leaving room around it.
+/// A tab's icon, its name only for VoiceOver. The tab bar draws every icon at one size, so the icon
+/// is drawn a size smaller inside a clear square of that size, leaving room around it.
 private struct TabLabel: View {
     let name: String
     let symbol: String
 
     var body: some View {
-        Label {
-            Text(name)
-        } icon: {
-            Image(uiImage: Self.icon(symbol))
-        }
+        Image(uiImage: Self.icon(symbol))
+            .accessibilityLabel(name)
     }
 
     private static func icon(_ symbol: String) -> UIImage {
