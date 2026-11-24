@@ -19,6 +19,8 @@ struct CalendarView: View {
     @State private var topMonth: Int?
     @State private var scrollPhase = ScrollPhase.idle
     @State private var openDay: DaySelection?
+    /// The day last opened, outlined (today until one is). Stays after its sheet closes.
+    @State private var outlinedDay: Date?
     @Environment(AppRouter.self) private var router
     /// Each month's title row, fixed so a month's height is known before it's built.
     @ScaledMetric(relativeTo: .caption2) private var titleHeight: CGFloat = 34
@@ -57,13 +59,13 @@ struct CalendarView: View {
                             MonthSection(
                                 month: Self.weeks.month(at: index),
                                 days: days,
-                                openDay: openDay?.day,
+                                outlinedDay: outlinedDay ?? calendar.startOfDay(for: .now),
                                 titleHeight: titleHeight,
                                 cellSize: monthLayout.cellSize,
                                 gap: gap,
                                 inset: inset
                             ) { day in
-                                openDay = DaySelection(day: day)
+                                open(day)
                             }
                             .equatable()
                             .offset(y: monthLayout.top(index))
@@ -119,8 +121,13 @@ struct CalendarView: View {
             let month = Self.weeks.index(of: day)
             topMonth = month
             if width > 0 { position.scrollTo(y: layout(width: width).top(month)) }
-            openDay = DaySelection(day: day)
+            open(day)
         }
+    }
+
+    private func open(_ day: Date) {
+        outlinedDay = calendar.startOfDay(for: day)
+        openDay = DaySelection(day: day)
     }
 
     private var weekdayRow: some View {
@@ -254,7 +261,8 @@ private struct MonthLayout {
 private struct MonthSection: View, Equatable {
     let month: Date
     let days: [Date: DayInfo]
-    let openDay: Date?
+    /// The day outlined: the one last opened.
+    let outlinedDay: Date
     let titleHeight: CGFloat
     let cellSize: CGFloat
     let gap: CGFloat
@@ -275,9 +283,9 @@ private struct MonthSection: View, Equatable {
         }
     }
 
-    /// The open day, if it's in this month.
+    /// The outlined day, if it's in this month.
     private var selectedDay: Date? {
-        openDay.flatMap { calendar.isDate($0, equalTo: month, toGranularity: .month) ? calendar.startOfDay(for: $0) : nil }
+        calendar.isDate(outlinedDay, equalTo: month, toGranularity: .month) ? outlinedDay : nil
     }
 
     var body: some View {
@@ -297,7 +305,7 @@ private struct MonthSection: View, Equatable {
                     DayCell(
                         day: day,
                         info: days[day],
-                        isSelected: openDay.map { calendar.isDate(day, inSameDayAs: $0) } ?? false,
+                        isSelected: calendar.isDate(day, inSameDayAs: outlinedDay),
                         size: cellSize
                     ) {
                         onSelect(day)
@@ -326,7 +334,6 @@ private struct DayCell: View {
     let action: () -> Void
 
     var body: some View {
-        let isToday = Calendar.current.isDateInToday(day)
         let isFuture = day > .now
         let image = info?.cover.flatMap(ThumbnailCache.image(for:))
         let shape = RoundedRectangle(cornerRadius: size * 0.12, style: .continuous)
@@ -360,8 +367,8 @@ private struct DayCell: View {
             .frame(width: size, height: size)
             .clipShape(shape)
             .overlay {
-                if isToday {
-                    shape.strokeBorder(Theme.calendarToday, lineWidth: 2.5)
+                if isSelected {
+                    shape.strokeBorder(Theme.calendarSelected, lineWidth: 2.5)
                 }
             }
             .contentShape(shape)
