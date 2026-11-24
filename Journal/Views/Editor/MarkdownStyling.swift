@@ -821,8 +821,15 @@ enum MarkdownStyler {
         if line.trimmingCharacters(in: .whitespaces) == "\u{FFFC}" {
             let style = NSMutableParagraphStyle()
             style.alignment = .center
-            style.paragraphSpacing = 14
-            style.paragraphSpacingBefore = 6
+            if storage.attribute(.attachment, at: content.location, effectiveRange: nil) is DividerAttachment {
+                // The rule midway between the text above and below: its line's descent (below the
+                // attachment, which sits on the baseline) already adds room underneath.
+                style.paragraphSpacingBefore = 12
+                style.paragraphSpacing = 8
+            } else {
+                style.paragraphSpacing = 14
+                style.paragraphSpacingBefore = 6
+            }
             storage.addAttribute(.paragraphStyle, value: style, range: enclosing)
             return
         }
