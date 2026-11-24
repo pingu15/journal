@@ -13,6 +13,8 @@ struct DaySheet: View {
     let openedFrom: Entry?
     /// After a place is set on `openedFrom`.
     let onSetPlace: () -> Void
+    /// Each day the pages move to, by arrow or swipe (the Calendar outlines it).
+    let onDayChange: (Date) -> Void
 
     /// The day the sheet opened on; pages are counted in days from it.
     private let firstDay: Date
@@ -39,11 +41,18 @@ struct DaySheet: View {
     @State private var arrowSlots: [Int: CGRect] = [:]
     private let calendar = Calendar.current
 
-    init(day: Date, entries: [Entry], openedFrom: Entry? = nil, onSetPlace: @escaping () -> Void = {}) {
+    init(
+        day: Date,
+        entries: [Entry],
+        openedFrom: Entry? = nil,
+        onSetPlace: @escaping () -> Void = {},
+        onDayChange: @escaping (Date) -> Void = { _ in }
+    ) {
         firstDay = Calendar.current.startOfDay(for: day)
         self.entries = entries
         self.openedFrom = openedFrom
         self.onSetPlace = onSetPlace
+        self.onDayChange = onDayChange
     }
 
     var body: some View {
@@ -99,6 +108,7 @@ struct DaySheet: View {
         .sensoryFeedback(.selection, trigger: day)
         .onChange(of: page) { _, page in
             withAnimation(.snappy) { titlePage = page ?? 0 }
+            onDayChange(day)
         }
         // The days either side, so their photos and places are already there as they slide in.
         .task(id: day) {

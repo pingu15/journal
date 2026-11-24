@@ -48,7 +48,7 @@ enum Theme {
     /// The one exception to white on sand: a written day's number in the Calendar, ink in light mode
     /// (white was faint on sand there), white in dark.
     static let calendarWrittenDay = Color(light: Palette.ink, dark: 0xFFFFFF)
-    /// The outline round the day last opened in the Calendar (today until one is): ink in light
+    /// The outline round the day last shown in the Calendar's day sheet (today until one is): ink in light
     /// mode, white in dark.
     static let calendarSelected = Color(light: Palette.ink, dark: 0xFFFFFF)
     /// Fill for delete swipe actions: the app-wide tint (primary text) would make them near-white in

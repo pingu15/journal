@@ -19,7 +19,8 @@ struct CalendarView: View {
     @State private var topMonth: Int?
     @State private var scrollPhase = ScrollPhase.idle
     @State private var openDay: DaySelection?
-    /// The day last opened, outlined (today until one is). Stays after its sheet closes.
+    /// The day last shown in the day sheet, outlined (today until one is): it follows the sheet's
+    /// arrows and swipes, and stays after the sheet closes.
     @State private var outlinedDay: Date?
     @Environment(AppRouter.self) private var router
     /// Each month's title row, fixed so a month's height is known before it's built.
@@ -112,7 +113,9 @@ struct CalendarView: View {
             }
         }
         .sheet(item: $openDay) { selection in
-            DaySheet(day: selection.day, entries: entries)
+            DaySheet(day: selection.day, entries: entries, onDayChange: { day in
+                outlinedDay = calendar.startOfDay(for: day)
+            })
         }
         // A widget or the reminder tapped: that day's month, with its sheet open.
         .onChange(of: router.pendingDay, initial: true) { _, day in
