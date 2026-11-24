@@ -62,11 +62,11 @@ struct RootView: View {
 
     private var tabs: some View {
         TabView(selection: Binding(get: { router.selectedTab }, set: { router.selectedTab = $0 })) {
-            // Icons only (their names are for VoiceOver), smaller than iOS draws them, with room around each.
+            // Icons only (their names are for VoiceOver), each scaled to look the same size (`TabLabel`).
             Tab(value: .journal) {
                 EntriesView()
             } label: {
-                TabLabel(name: "Journal", symbol: "book.closed")
+                TabLabel(name: "Journal", symbol: "book.closed", optical: 0.94)
             }
             Tab(value: .calendar) {
                 CalendarView()
@@ -76,7 +76,7 @@ struct RootView: View {
             Tab(value: .media) {
                 MediaView()
             } label: {
-                TabLabel(name: "Media", symbol: "photo.on.rectangle")
+                TabLabel(name: "Media", symbol: "photo.on.rectangle", optical: 1.04)
             }
             Tab(value: .map) {
                 MapView()
@@ -182,27 +182,75 @@ struct RootView: View {
     }
 }
 
-/// A tab's icon, its name only for VoiceOver. The tab bar draws every icon at one size, so the icon
-/// is drawn a size smaller inside a clear square of that size, leaving room around it.
+/// A tab's icon, its name only for VoiceOver. The tab bar draws every icon at one size, so each is
+/// drawn inside a clear square of that size, scaled to look the same size as the others (`visualSize`):
+/// at one point size the wide ones (photos, map) looked bigger than the tall book.
 private struct TabLabel: View {
     let name: String
     let symbol: String
+    /// A correction by eye on top of `visualSize(of:)`, which still left the solid, tall book looking
+    /// biggest and the flat photos smallest.
+    var optical: CGFloat = 1
 
     var body: some View {
-        Image(uiImage: Self.icon(symbol))
+        Image(uiImage: Self.icon(symbol, optical: optical))
             .accessibilityLabel(name)
     }
 
-    private static func icon(_ symbol: String) -> UIImage {
-        let configuration = UIImage.SymbolConfiguration(pointSize: 18, weight: .medium)
+    /// The square the tab bar draws an icon in.
+    private static let side: CGFloat = 30
+    /// How big every icon looks, in points (`visualSize(of:)`).
+    private static let size: CGFloat = 23.5
+
+    /// How big ink of this shape looks: between the side of a square of the same area (which made the
+    /// narrow book look tallest) and its longest side (which made it look smallest).
+    private static func visualSize(of ink: CGRect) -> CGFloat {
+        ((ink.width * ink.height).squareRoot() * max(ink.width, ink.height)).squareRoot()
+    }
+
+    private static func icon(_ symbol: String, optical: CGFloat) -> UIImage {
+        // Large, so its ink is measured finely; scaled down to size below.
+        let configuration = UIImage.SymbolConfiguration(pointSize: 60, weight: .medium)
         guard let glyph = UIImage(systemName: "\(symbol).fill", withConfiguration: configuration)
-            ?? UIImage(systemName: symbol, withConfiguration: configuration)
+            ?? UIImage(systemName: symbol, withConfiguration: configuration),
+            let ink = inkBounds(of: glyph)
         else { return UIImage() }
-        let side: CGFloat = 30
-        let canvas = CGSize(width: side, height: side)
-        let image = UIGraphicsImageRenderer(size: canvas).image { _ in
-            glyph.draw(at: CGPoint(x: (side - glyph.size.width) / 2, y: (side - glyph.size.height) / 2))
+        let scale = size * optical / visualSize(of: ink)
+        let image = UIGraphicsImageRenderer(size: CGSize(width: side, height: side)).image { _ in
+            // The ink centered, not the symbol's own box, which pads some sides more than others.
+            let origin = CGPoint(
+                x: (side - ink.width * scale) / 2 - ink.minX * scale,
+                y: (side - ink.height * scale) / 2 - ink.minY * scale
+            )
+            glyph.draw(in: CGRect(origin: origin, size: CGSize(width: glyph.size.width * scale, height: glyph.size.height * scale)))
         }
         return image.withRenderingMode(.alwaysTemplate)
+    }
+
+    /// Where an image actually draws, in its points: the box round its opaque pixels.
+    private static func inkBounds(of image: UIImage) -> CGRect? {
+        let width = Int(image.size.width.rounded(.up)), height = Int(image.size.height.rounded(.up))
+        guard width > 0, height > 0,
+              let context = CGContext(
+                data: nil, width: width, height: height, bitsPerComponent: 8, bytesPerRow: width,
+                space: CGColorSpaceCreateDeviceGray(), bitmapInfo: CGImageAlphaInfo.alphaOnly.rawValue
+              )
+        else { return nil }
+        // Flipped to UIKit's coordinates, so row 0 in memory is the top.
+        context.translateBy(x: 0, y: CGFloat(height))
+        context.scaleBy(x: 1, y: -1)
+        UIGraphicsPushContext(context)
+        image.draw(at: .zero)
+        UIGraphicsPopContext()
+        guard let data = context.data?.assumingMemoryBound(to: UInt8.self) else { return nil }
+        var minX = width, minY = height, maxX = -1, maxY = -1
+        for y in 0..<height {
+            for x in 0..<width where data[y * width + x] > 32 {
+                minX = min(minX, x); maxX = max(maxX, x)
+                minY = min(minY, y); maxY = max(maxY, y)
+            }
+        }
+        guard maxX >= minX, maxY >= minY else { return nil }
+        return CGRect(x: minX, y: minY, width: maxX - minX + 1, height: maxY - minY + 1)
     }
 }
