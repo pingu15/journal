@@ -3,151 +3,174 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<meta name="theme-color" content="#DEAA73">
+<meta name="theme-color" content="#000000">
 <link rel="icon" href="favicon.svg" type="image/svg+xml">
 <link rel="icon" href="favicon.png" type="image/png" sizes="96x96">
 <link rel="apple-touch-icon" href="apple-touch-icon.png">
 <title>Today: Daily Journal</title>
-<meta name="description" content="A quiet, private journal for iPhone. Write your day; Today keeps the place, the weather and the photos with it.">
+<meta name="description" content="A private journal for iPhone. Write your day; Today keeps the place, the weather and the photos with it.">
 <link rel="stylesheet" href="site.css">
 </head>
 <body>
 
-<header class="masthead">
-  <div class="wrap bar">
-    <a class="logo" href="./" aria-label="Today"></a>
-    <nav aria-label="Site">
-      <a href="#privacy">Privacy</a>
-      <a href="#support">Support</a>
-    </nav>
+<nav class="global-nav" aria-label="Site">
+  <div class="inner">
+    <a class="mark" href="./" aria-label="Today"></a>
+    <ul>
+      <li><a href="#write">Features</a></li>
+      <li><a href="privacy/">Privacy Policy</a></li>
+      <li><a href="#support">Support</a></li>
+    </ul>
   </div>
+</nav>
 
-  <div class="wrap hero">
-    <p class="weekday" id="weekday">Today</p>
-    <h1 class="date" id="date">A journal for your day</h1>
-
-    <form class="write" onsubmit="return false">
-      <label for="line">Try writing a line</label>
-      <input id="line" type="text" placeholder="What happened today?" autocomplete="off" spellcheck="true">
-      <p class="hint">Nothing you type here leaves this page.</p>
-    </form>
-
-    <p class="lead">Today is a private journal for iPhone. Write about your day, and it keeps the place, the weather and the photos with it.</p>
-    <p class="status">Coming soon to the App Store</p>
+<nav class="sub-nav" aria-label="On this page">
+  <div class="inner">
+    <a class="title tagline" href="#top">Today</a>
+    <ul>
+      <li><a href="#write">Write</a></li>
+      <li><a href="#day">A day</a></li>
+      <li><a href="#map">Map</a></li>
+      <li><a href="#insights">Insights</a></li>
+      <li><a href="#privacy">Privacy</a></li>
+    </ul>
   </div>
-</header>
+</nav>
 
-<main class="sheet">
-  <div class="wrap">
+<main>
 
-    <section aria-labelledby="tour-title">
-      <h2 id="tour-title">Write it down, then find it again</h2>
-      <p class="intro">Every entry is saved with its date, place and weather. Look back by list, by month, by photo or on a map.</p>
+  <section class="tile light hero" id="top">
+    <div class="copy">
+      <h1 class="hero-display">Today</h1>
+      <p class="lead">A private journal for iPhone.</p>
+      <p class="caption muted">Coming soon to the App Store.</p>
+      <div class="buttons">
+        <a class="button button-primary" href="#write">See what it does</a>
+        <a class="button button-secondary" href="#privacy">How privacy works</a>
+      </div>
+    </div>
+    <div class="stage">
+      <div class="phone side"><img src="images/editor.jpg" alt="Writing an entry with photos" width="607" height="1320"></div>
+      <div class="phone"><img src="images/journal.jpg" alt="The journal: entries with their date, place, weather and a photo" width="607" height="1320"></div>
+      <div class="phone side"><img src="images/today.jpg" alt="A day: its photos and the places visited" width="607" height="1320"></div>
+    </div>
+  </section>
 
-      <div class="tour">
-        <div class="tour-screen" aria-hidden="true">
-          <div class="stack">
-            <img class="phone is-current" data-view="write" src="images/editor.jpg" alt="" width="607" height="1320">
-            <img class="phone" data-view="journal" src="images/journal.jpg" alt="" width="607" height="1320" loading="lazy">
-            <img class="phone" data-view="day" src="images/today.jpg" alt="" width="607" height="1320" loading="lazy">
-            <img class="phone" data-view="calendar" src="images/calendar.jpg" alt="" width="607" height="1320" loading="lazy">
-            <img class="phone" data-view="media" src="images/media.jpg" alt="" width="607" height="1320" loading="lazy">
-            <img class="phone" data-view="map" src="images/map.jpg" alt="" width="607" height="1320" loading="lazy">
-            <img class="phone" data-view="insights" src="images/insights.jpg" alt="" width="607" height="1320" loading="lazy">
-          </div>
-        </div>
+  <section class="tile dark on-dark" id="write">
+    <div class="copy">
+      <h2 class="display-lg">Just write.</h2>
+      <p class="lead">A clean editor with simple formatting and photos. Each entry keeps its date, place and weather.</p>
+    </div>
+    <div class="stage">
+      <div class="phone"><img src="images/editor.jpg" alt="An entry about a walk in Central Park, with two photos" width="607" height="1320" loading="lazy"></div>
+    </div>
+  </section>
 
-        <ul class="tour-list">
-          <li><button type="button" data-view="write" aria-pressed="true">
-            <img class="phone" src="images/editor.jpg" alt="Writing an entry with photos" width="607" height="1320" loading="lazy">
-            <strong>Write</strong>
-            <span>A clean editor with simple formatting and photos, and nothing in the way.</span>
-          </button></li>
-          <li><button type="button" data-view="journal" aria-pressed="false">
-            <img class="phone" src="images/journal.jpg" alt="The journal: entries with their date, place, weather and a photo" width="607" height="1320" loading="lazy">
-            <strong>Journal</strong>
-            <span>Your entries, newest first, with what you wrote on this day in years past.</span>
-          </button></li>
-          <li><button type="button" data-view="day" aria-pressed="false">
-            <img class="phone" src="images/today.jpg" alt="A day: its photos and the places visited" width="607" height="1320" loading="lazy">
-            <strong>A whole day</strong>
-            <span>Each day gathers its photos, calendar events and the places you spent time.</span>
-          </button></li>
-          <li><button type="button" data-view="calendar" aria-pressed="false">
-            <img class="phone" src="images/calendar.jpg" alt="The calendar: months with the days you wrote" width="607" height="1320" loading="lazy">
-            <strong>Calendar</strong>
-            <span>See which days you wrote, month by month, and open any one of them.</span>
-          </button></li>
-          <li><button type="button" data-view="media" aria-pressed="false">
-            <img class="phone" src="images/media.jpg" alt="Every photo and video in the journal" width="607" height="1320" loading="lazy">
-            <strong>Media</strong>
-            <span>Every photo and video in your journal, each one a way back to its entry.</span>
-          </button></li>
-          <li><button type="button" data-view="map" aria-pressed="false">
-            <img class="phone" src="images/map.jpg" alt="The map: entries gathered by where they were written" width="607" height="1320" loading="lazy">
-            <strong>Map</strong>
-            <span>Your entries where you wrote them. Never forget a place you've visited.</span>
-          </button></li>
-          <li><button type="button" data-view="insights" aria-pressed="false">
-            <img class="phone" src="images/insights.jpg" alt="Insights: streak, words written, entries and places" width="607" height="1320" loading="lazy">
-            <strong>Insights</strong>
-            <span>Your streak, words written and places visited, with a daily reminder and widgets.</span>
-          </button></li>
-        </ul>
+  <section class="tile parchment" id="day">
+    <div class="copy">
+      <h2 class="display-lg">The whole day, in one place.</h2>
+      <p class="lead">The photos you took, your calendar events and the places you spent time, beside what you wrote.</p>
+    </div>
+    <div class="stage">
+      <div class="phone"><img src="images/today.jpg" alt="A day: its photos, a map and the places visited" width="607" height="1320" loading="lazy"></div>
+    </div>
+  </section>
+
+  <div class="pair">
+    <section class="tile light" id="calendar">
+      <div class="copy">
+        <h2 class="display-lg">Calendar.</h2>
+        <p class="lead">Every day you wrote, month by month.</p>
+      </div>
+      <div class="stage">
+        <div class="phone"><img src="images/calendar.jpg" alt="The calendar: months with the days you wrote" width="607" height="1320" loading="lazy"></div>
       </div>
     </section>
-
-    <section class="privacy" id="privacy" aria-labelledby="privacy-title">
-      <div>
-        <h2 id="privacy-title">Yours alone</h2>
-        <p class="intro">Today is locked with Face ID, and what you write stays on your iPhone, or in your own iCloud if you turn on sync. We never see it.</p>
-        <ul class="promises">
-          <li><strong>No account.</strong> <span>Open the app and write.</span></li>
-          <li><strong>No analytics, ads or tracking.</strong> <span>There's no third-party code in the app.</span></li>
-          <li><strong>No servers.</strong> <span>Your journal is never sent to us or anyone else.</span></li>
-        </ul>
-        <p><a href="privacy/">Read the privacy policy</a></p>
+    <section class="tile dark-2 on-dark" id="media">
+      <div class="copy">
+        <h2 class="display-lg">Media.</h2>
+        <p class="lead">Every photo and video, each a way back to its entry.</p>
       </div>
-      <div class="phone-wrap">
-        <img class="phone" src="images/lock.jpg" alt="Today locked behind Face ID" width="607" height="1320" loading="lazy">
+      <div class="stage">
+        <div class="phone"><img src="images/media.jpg" alt="Every photo and video in the journal" width="607" height="1320" loading="lazy"></div>
       </div>
     </section>
-
-    <section class="support" id="support" aria-labelledby="support-title">
-      <h2 id="support-title">Support</h2>
-      <p>Questions, problems or ideas? Email <a href="mailto:max@maxsun.ca">max@maxsun.ca</a> and I'll get back to you.</p>
-    </section>
-
-    <footer>
-      <span class="copy">© 2026 Max Sun</span>
-      <a href="privacy/">Privacy policy</a>
-      <a href="mailto:max@maxsun.ca">Email support</a>
-    </footer>
   </div>
+
+  <section class="tile parchment" id="map">
+    <div class="copy">
+      <h2 class="display-lg">Never forget a place you've visited.</h2>
+      <p class="lead">Your entries on a map, gathered where you wrote them.</p>
+    </div>
+    <div class="stage">
+      <div class="phone"><img src="images/map.jpg" alt="The map: entries gathered across New York" width="607" height="1320" loading="lazy"></div>
+    </div>
+  </section>
+
+  <section class="tile light" id="insights">
+    <div class="copy">
+      <h2 class="display-lg">Keep the habit.</h2>
+      <p class="lead">Your streak, words written and places visited. A daily reminder, On This Day and widgets bring you back.</p>
+    </div>
+    <div class="stage">
+      <div class="phone"><img src="images/insights.jpg" alt="Insights: streak, words written, entries and places" width="607" height="1320" loading="lazy"></div>
+    </div>
+  </section>
+
+  <section class="tile dark-3 on-dark no-stage" id="privacy">
+    <div class="copy">
+      <h2 class="display-lg">Yours alone.</h2>
+      <p class="lead">Locked with Face ID. Kept on your iPhone, or in your own iCloud if you turn on sync. We never see it.</p>
+    </div>
+    <ul class="facts">
+      <li><strong>No account.</strong> <span>Open the app and write.</span></li>
+      <li><strong>No analytics, ads or tracking.</strong> <span>There's no third-party code in the app.</span></li>
+      <li><strong>No servers.</strong> <span>Your journal is never sent to us or anyone else.</span></li>
+    </ul>
+    <p><a href="privacy/">Read the privacy policy</a></p>
+  </section>
+
+  <section class="tile light no-stage" id="support">
+    <div class="copy">
+      <h2 class="display-lg">Questions or ideas?</h2>
+      <p class="lead">Email me and I'll get back to you.</p>
+      <div class="buttons">
+        <a class="button button-primary" href="mailto:max@maxsun.ca">Email support</a>
+      </div>
+    </div>
+  </section>
+
 </main>
 
-<script>
-  // The hero shows the visitor's own today, like a fresh page in the journal.
-  (function () {
-    var now = new Date();
-    try {
-      document.getElementById('weekday').textContent = now.toLocaleDateString('en-US', { weekday: 'long' });
-      document.getElementById('date').textContent = now.toLocaleDateString('en-US', { month: 'long', day: 'numeric' });
-    } catch (e) {}
-  })();
+<footer class="footer">
+  <div class="inner">
+    <div class="columns">
+      <div>
+        <h3>Today</h3>
+        <ul>
+          <li><a href="#write">Write</a></li>
+          <li><a href="#day">A day</a></li>
+          <li><a href="#map">Map</a></li>
+          <li><a href="#insights">Insights</a></li>
+        </ul>
+      </div>
+      <div>
+        <h3>Privacy</h3>
+        <ul>
+          <li><a href="#privacy">How privacy works</a></li>
+          <li><a href="privacy/">Privacy Policy</a></li>
+        </ul>
+      </div>
+      <div>
+        <h3>Support</h3>
+        <ul>
+          <li><a href="mailto:max@maxsun.ca">max@maxsun.ca</a></li>
+        </ul>
+      </div>
+    </div>
+    <p class="legal fine-print">Copyright © 2026 Max Sun. Today: Daily Journal is coming soon to the App Store.</p>
+  </div>
+</footer>
 
-  // Tour: each row shows its screen in the phone beside the list.
-  (function () {
-    var buttons = document.querySelectorAll('.tour-list button');
-    var screens = document.querySelectorAll('.tour-screen .phone');
-    buttons.forEach(function (button) {
-      button.addEventListener('click', function () {
-        var view = button.dataset.view;
-        buttons.forEach(function (b) { b.setAttribute('aria-pressed', String(b === button)); });
-        screens.forEach(function (s) { s.classList.toggle('is-current', s.dataset.view === view); });
-      });
-    });
-  })();
-</script>
 </body>
 </html>
