@@ -1,4 +1,4 @@
 # Clean addresses for sections of the home page: Cloudflare serves the home page at
 # these paths (200 = rewrite, the address stays), and its script scrolls to the section.
-/features            /  200
-/how-privacy-works   /  200
+/features      /  200
+/how-it-works  /  200

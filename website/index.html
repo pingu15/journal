@@ -112,7 +112,7 @@
       <div>
         <h3>Privacy</h3>
         <ul>
-          <li><a href="/how-privacy-works">How privacy works</a></li>
+          <li><a href="/how-it-works">How it works</a></li>
           <li><a href="privacy/">Privacy Policy</a></li>
         </ul>
       </div>
@@ -158,10 +158,10 @@
   })();
 </script>
 <script>
-  // Sections have clean addresses (/features, /how-privacy-works; see _redirects) instead of #ids.
+  // Sections have clean addresses (/features, /how-it-works; see _redirects) instead of #ids.
   // On this page, links to them scroll there and update the address without reloading.
   (function () {
-    var sections = { '/features': 'write', '/how-privacy-works': 'privacy' };
+    var sections = { '/features': 'write', '/how-it-works': 'privacy' };
     var navbar = 56;
 
     function scrollToPath(path, smooth) {
@@ -186,7 +186,7 @@
 
     window.addEventListener('popstate', function () { scrollToPath(location.pathname, false); });
 
-    // Opened at /features or /how-privacy-works: go to that section.
+    // Opened at /features or /how-it-works: go to that section.
     if (location.pathname in sections) {
       history.scrollRestoration = 'manual';
       scrollToPath(location.pathname, false);
