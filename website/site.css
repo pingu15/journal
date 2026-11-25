@@ -96,21 +96,13 @@ h1, h2, h3, p { margin: 0; }
 .sub-nav ul a { color: var(--ink); font: 400 12px/1.29 var(--text); letter-spacing: -0.12px; }
 .sub-nav ul a:hover { color: var(--primary); text-decoration: none; }
 
-/* ---------- Buttons ---------- */
+/* ---------- App Store badge ---------- */
 
-.button {
-  display: inline-block;
-  font: 400 17px/1.47 var(--text); letter-spacing: -0.374px;
-  padding: 11px 22px; border-radius: 9999px;
-  border: 1px solid var(--primary);
-  transition: transform .1s ease;
-}
-.button:hover { text-decoration: none; }
-.button:active { transform: scale(0.95); }
-.button-primary { background: var(--primary); color: #fff; }
-.button-secondary { background: transparent; color: var(--primary); }
-.on-dark .button-secondary { color: var(--primary-on-dark); border-color: var(--primary-on-dark); }
-.buttons { display: flex; flex-wrap: wrap; justify-content: center; gap: var(--md); }
+/* Apple's official badge, unmodified. Apple asks for at least 40px of height on screen
+   and clear space around it of a quarter of its height. */
+.app-store { display: inline-block; margin-top: var(--xl); padding: 4px; border-radius: 12px; transition: transform .1s ease; }
+.app-store img { display: block; width: 160px; height: auto; }
+.app-store:active { transform: scale(0.95); }
 
 /* ---------- Tiles ---------- */
 
@@ -126,12 +118,10 @@ h1, h2, h3, p { margin: 0; }
 .tile.dark-2 { background: var(--tile-2); }
 .tile.dark-3 { background: var(--tile-3); }
 .on-dark { color: var(--on-dark); }
-.on-dark a:not(.button) { color: var(--primary-on-dark); }
+.on-dark a { color: var(--primary-on-dark); }
 
 .tile .copy { max-width: 680px; margin: 0 auto; }
 .tile h1 + .lead, .tile h2 + .lead { margin-top: var(--sm); }
-.tile .lead + .caption { margin-top: var(--md); }
-.tile .buttons { margin-top: var(--lg); }
 .muted { color: var(--ink-muted-48); }
 .on-dark .muted { color: var(--body-muted); }
 .tile.no-stage { padding-bottom: var(--section); }
