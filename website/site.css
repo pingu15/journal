@@ -187,15 +187,26 @@ h1, h2, h3, p { margin: 0; }
 .story .phone img { grid-area: 1 / 1; opacity: 0; transition: opacity .45s ease; }
 .story .phone img.is-current { opacity: 1; }
 
-/* Privacy facts. */
-.facts {
-  list-style: none; margin: var(--xxl) auto 0; padding: 0; max-width: 980px;
-  display: grid; grid-template-columns: repeat(3, 1fr); gap: var(--lg);
-  text-align: left;
+/* Yours alone: fills the screen below the navbar, content centered. */
+.tile.privacy {
+  min-height: calc(100vh - 56px); min-height: calc(100svh - 56px);
+  display: flex; flex-direction: column; justify-content: center; align-items: center;
 }
-.facts li { border-top: 1px solid rgba(255, 255, 255, 0.16); padding-top: var(--md); }
+
+/* Privacy facts: an icon over each. The icons are drawn in the style of SF Symbols;
+   the slash cuts a gap through the outline, the way Apple's ".slash" symbols do. */
+.facts {
+  list-style: none; margin: 72px auto 0; padding: 0; max-width: 980px; width: 100%;
+  display: grid; grid-template-columns: repeat(3, 1fr); gap: var(--xl);
+}
+.facts li { display: flex; flex-direction: column; align-items: center; }
+.facts .icon {
+  width: 48px; height: 48px; margin-bottom: var(--md);
+  fill: none; stroke: currentColor; stroke-width: 2.25; stroke-linecap: round; stroke-linejoin: round;
+}
+.facts .icon .gap { stroke: var(--tile-3); stroke-width: 7; }
 .facts strong { display: block; font-weight: 600; }
-.facts span { color: var(--body-muted); }
+.facts span { color: var(--body-muted); max-width: 16em; }
 .facts + p { margin-top: var(--xxl); }
 
 /* ---------- Footer ---------- */
@@ -231,7 +242,7 @@ h1, h2, h3, p { margin: 0; }
 }
 
 @media (max-width: 833px) {
-  .facts { grid-template-columns: 1fr; max-width: 420px; }
+  .facts { grid-template-columns: 1fr; max-width: 420px; gap: 40px; margin-top: 56px; }
   .hero .phone.side { display: none; }
   .footer .columns { grid-template-columns: 1fr 1fr; }
 }
