@@ -146,7 +146,7 @@ h1, h2, h3, p { margin: 0; }
 
 /* The pinned panel fills the screen below the navbar; each step after the first adds --step of scrolling. */
 .story {
-  --step: 55vh;
+  --step: 35vh;
   position: relative;
   height: calc(100vh - 56px + (var(--steps) - 1) * var(--step));
   height: calc(100svh - 56px + (var(--steps) - 1) * var(--step));
