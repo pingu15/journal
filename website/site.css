@@ -106,6 +106,7 @@ h1, h2, h3, p { margin: 0; }
   overflow: hidden;
 }
 .tile.light { background: var(--canvas); color: var(--ink); }
+.tile.parchment { background: var(--parchment); color: var(--ink); }
 .tile.dark-3 { background: var(--tile-3); }
 .on-dark { color: var(--on-dark); }
 .on-dark a { color: var(--primary-on-dark); }
@@ -193,21 +194,27 @@ h1, h2, h3, p { margin: 0; }
   display: flex; flex-direction: column; justify-content: center; align-items: center;
 }
 
-/* Privacy facts: an icon over each. The icons are drawn in the style of SF Symbols;
-   the slash cuts a gap through the outline, the way Apple's ".slash" symbols do. */
+/* Privacy facts: white cards on parchment, as on apple.com. The icons are drawn in the style of
+   SF Symbols; the slash cuts a gap through the outline, the way Apple's ".slash" symbols do. */
 .facts {
-  list-style: none; margin: 72px auto 0; padding: 0; max-width: 980px; width: 100%;
-  display: grid; grid-template-columns: repeat(3, 1fr); gap: var(--xl);
+  list-style: none; margin: 56px auto 0; padding: 0; max-width: 1100px; width: 100%;
+  display: grid; grid-template-columns: repeat(3, 1fr); gap: 20px;
+  text-align: left;
 }
-.facts li { display: flex; flex-direction: column; align-items: center; }
+.facts .card {
+  background: var(--canvas); color: var(--ink);
+  border-radius: 28px;
+  padding: 44px 40px 52px;
+}
 .facts .icon {
-  width: 48px; height: 48px; margin-bottom: var(--md);
+  display: block; width: 48px; height: 48px; margin-bottom: 36px;
   fill: none; stroke: currentColor; stroke-width: 2.25; stroke-linecap: round; stroke-linejoin: round;
 }
-.facts .icon .gap { stroke: var(--tile-3); stroke-width: 7; }
-.facts strong { display: block; font-weight: 600; }
-.facts span { color: var(--body-muted); max-width: 16em; }
-.facts + p { margin-top: var(--xxl); }
+.facts .icon .gap { stroke: var(--canvas); stroke-width: 7; }
+.facts h3 { font: 600 28px/1.14 var(--display); letter-spacing: 0.196px; margin: 0 0 var(--md); }
+.facts p { font: 400 19px/1.42 var(--text); letter-spacing: 0.012em; color: var(--ink); max-width: 22em; }
+.more { font-size: 19px; }
+.facts + .more { margin-top: var(--xxl); }
 
 /* ---------- Footer ---------- */
 
@@ -242,7 +249,11 @@ h1, h2, h3, p { margin: 0; }
 }
 
 @media (max-width: 833px) {
-  .facts { grid-template-columns: 1fr; max-width: 420px; gap: 40px; margin-top: 56px; }
+  .facts { grid-template-columns: 1fr; max-width: 480px; gap: 16px; margin-top: 40px; }
+  .facts .card { padding: 32px 28px 36px; }
+  .facts .icon { margin-bottom: 24px; }
+  .facts h3 { font-size: 24px; }
+  .facts p { font-size: 17px; }
   .hero .phone.side { display: none; }
   .footer .columns { grid-template-columns: 1fr 1fr; }
 }
