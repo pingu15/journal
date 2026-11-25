@@ -3,92 +3,151 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="theme-color" content="#DEAA73">
 <link rel="icon" href="favicon.svg" type="image/svg+xml">
 <link rel="icon" href="favicon.png" type="image/png" sizes="96x96">
 <link rel="apple-touch-icon" href="apple-touch-icon.png">
 <title>Today: Daily Journal</title>
 <meta name="description" content="A quiet, private journal for iPhone. Write your day; Today keeps the place, the weather and the photos with it.">
-<style>
-  :root { --ink: #343434; --stone: #8E8B82; --sand: #DEAA73; --bg: #FFFFFF; --wash: #F3F3F3; --rule: #E6E5E1; }
-  @media (prefers-color-scheme: dark) { :root { --ink: #ECEBE8; --stone: #9C9990; --bg: #121212; --wash: #1C1C1C; --rule: #2A2A2A; } }
-  * { box-sizing: border-box; }
-  body { margin: 0; background: var(--bg); color: var(--ink);
-         font: 17px/1.6 -apple-system, BlinkMacSystemFont, "SF Pro Text", "Helvetica Neue", Arial, sans-serif;
-         -webkit-text-size-adjust: 100%; }
-  .wrap { max-width: 960px; margin: 0 auto; padding: 0 20px; }
-  header { text-align: center; padding: 96px 0 56px; }
-  .icon { width: 96px; height: 96px; border-radius: 22px; background: var(--bg); margin: 0 auto 28px;
-          box-shadow: 0 1px 2px rgba(0,0,0,.08), 0 8px 24px rgba(0,0,0,.08); border: 1px solid var(--rule);
-          display: grid; place-items: center; }
-  .icon span { width: 64px; height: 40px; background: var(--ink);
-               -webkit-mask: url(images/mark.svg) center / contain no-repeat; mask: url(images/mark.svg) center / contain no-repeat; }
-  h1 { font-size: 44px; line-height: 1.1; letter-spacing: -0.02em; margin: 0 0 12px; }
-  .tagline { font-size: 21px; color: var(--stone); margin: 0 auto 28px; max-width: 30em; }
-  .badge { display: inline-block; background: var(--sand); color: #fff; font-weight: 600; font-size: 15px;
-           padding: 10px 20px; border-radius: 999px; }
-  .shots { display: flex; gap: 20px; overflow-x: auto; padding: 8px 20px 32px; scroll-snap-type: x mandatory;
-           justify-content: safe center; }
-  .shots img { width: 240px; height: auto; border-radius: 30px; flex: none; scroll-snap-align: center;
-               box-shadow: 0 10px 30px rgba(0,0,0,.14); }
-  h2 { font-size: 13px; font-weight: 600; letter-spacing: 0.08em; text-transform: uppercase; color: var(--stone);
-       margin: 0 0 20px; }
-  section { padding: 56px 0; border-top: 1px solid var(--rule); }
-  .features { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 28px 40px; }
-  .features h3 { font-size: 17px; margin: 0 0 4px; }
-  .features p { margin: 0; color: var(--stone); }
-  .narrow { max-width: 640px; }
-  p { margin: 0 0 14px; }
-  a { color: inherit; text-underline-offset: 3px; }
-  footer { color: var(--stone); font-size: 15px; padding: 32px 0 64px; border-top: 1px solid var(--rule);
-           display: flex; gap: 24px; flex-wrap: wrap; }
-  footer a { text-decoration: none; }
-</style>
+<link rel="stylesheet" href="site.css">
 </head>
 <body>
-  <header class="wrap">
-    <div class="icon" aria-hidden="true"><span></span></div>
-    <h1>Today</h1>
-    <p class="tagline">A quiet, private journal for iPhone. Write your day, and it keeps the place, the weather and the photos with it.</p>
-    <span class="badge">Coming soon to the App Store</span>
-  </header>
 
-  <div class="shots" aria-label="Screenshots">
-    <img src="images/journal.png" alt="The journal: entries with their date, place, weather and a photo">
-    <img src="images/today.png" alt="A day: its photos and the places visited">
-    <img src="images/editor.png" alt="Writing an entry with photos">
-    <img src="images/media.png" alt="Every photo and video in the journal">
-    <img src="images/insights.png" alt="Insights: streak, words written, entries and places">
+<header class="masthead">
+  <div class="wrap bar">
+    <a class="logo" href="./" aria-label="Today"></a>
+    <nav aria-label="Site">
+      <a href="#privacy">Privacy</a>
+      <a href="#support">Support</a>
+    </nav>
   </div>
 
-  <main class="wrap">
-    <section>
-      <h2>Features</h2>
-      <div class="features">
-        <div><h3>Just write</h3><p>A clean editor with simple formatting and photos, and nothing in the way.</p></div>
-        <div><h3>The whole day</h3><p>Each day gathers its photos, calendar events and the places you went.</p></div>
-        <div><h3>Place and weather</h3><p>Entries remember where you wrote them and what the sky was doing.</p></div>
-        <div><h3>Calendar, media and map</h3><p>See your journal by month, by photo or on a map.</p></div>
-        <div><h3>On This Day</h3><p>Look back at what you wrote on this date in years past.</p></div>
-        <div><h3>Habits and insights</h3><p>Streaks, words written and places visited, plus a daily reminder and widgets.</p></div>
+  <div class="wrap hero">
+    <p class="weekday" id="weekday">Today</p>
+    <h1 class="date" id="date">A journal for your day</h1>
+
+    <form class="write" onsubmit="return false">
+      <label for="line">Try writing a line</label>
+      <input id="line" type="text" placeholder="What happened today?" autocomplete="off" spellcheck="true">
+      <p class="hint">Nothing you type here leaves this page.</p>
+    </form>
+
+    <p class="lead">Today is a private journal for iPhone. Write about your day, and it keeps the place, the weather and the photos with it.</p>
+    <p class="status">Coming soon to the App Store</p>
+  </div>
+</header>
+
+<main class="sheet">
+  <div class="wrap">
+
+    <section aria-labelledby="tour-title">
+      <h2 id="tour-title">Write it down, then find it again</h2>
+      <p class="intro">Every entry is saved with its date, place and weather. Look back by list, by month, by photo or on a map.</p>
+
+      <div class="tour">
+        <div class="tour-screen" aria-hidden="true">
+          <div class="stack">
+            <img class="phone is-current" data-view="write" src="images/editor.jpg" alt="" width="607" height="1320">
+            <img class="phone" data-view="journal" src="images/journal.jpg" alt="" width="607" height="1320" loading="lazy">
+            <img class="phone" data-view="day" src="images/today.jpg" alt="" width="607" height="1320" loading="lazy">
+            <img class="phone" data-view="calendar" src="images/calendar.jpg" alt="" width="607" height="1320" loading="lazy">
+            <img class="phone" data-view="media" src="images/media.jpg" alt="" width="607" height="1320" loading="lazy">
+            <img class="phone" data-view="map" src="images/map.jpg" alt="" width="607" height="1320" loading="lazy">
+            <img class="phone" data-view="insights" src="images/insights.jpg" alt="" width="607" height="1320" loading="lazy">
+          </div>
+        </div>
+
+        <ul class="tour-list">
+          <li><button type="button" data-view="write" aria-pressed="true">
+            <img class="phone" src="images/editor.jpg" alt="Writing an entry with photos" width="607" height="1320" loading="lazy">
+            <strong>Write</strong>
+            <span>A clean editor with simple formatting and photos, and nothing in the way.</span>
+          </button></li>
+          <li><button type="button" data-view="journal" aria-pressed="false">
+            <img class="phone" src="images/journal.jpg" alt="The journal: entries with their date, place, weather and a photo" width="607" height="1320" loading="lazy">
+            <strong>Journal</strong>
+            <span>Your entries, newest first, with what you wrote on this day in years past.</span>
+          </button></li>
+          <li><button type="button" data-view="day" aria-pressed="false">
+            <img class="phone" src="images/today.jpg" alt="A day: its photos and the places visited" width="607" height="1320" loading="lazy">
+            <strong>A whole day</strong>
+            <span>Each day gathers its photos, calendar events and the places you spent time.</span>
+          </button></li>
+          <li><button type="button" data-view="calendar" aria-pressed="false">
+            <img class="phone" src="images/calendar.jpg" alt="The calendar: months with the days you wrote" width="607" height="1320" loading="lazy">
+            <strong>Calendar</strong>
+            <span>See which days you wrote, month by month, and open any one of them.</span>
+          </button></li>
+          <li><button type="button" data-view="media" aria-pressed="false">
+            <img class="phone" src="images/media.jpg" alt="Every photo and video in the journal" width="607" height="1320" loading="lazy">
+            <strong>Media</strong>
+            <span>Every photo and video in your journal, each one a way back to its entry.</span>
+          </button></li>
+          <li><button type="button" data-view="map" aria-pressed="false">
+            <img class="phone" src="images/map.jpg" alt="The map: entries gathered by where they were written" width="607" height="1320" loading="lazy">
+            <strong>Map</strong>
+            <span>Your entries where you wrote them. Never forget a place you've visited.</span>
+          </button></li>
+          <li><button type="button" data-view="insights" aria-pressed="false">
+            <img class="phone" src="images/insights.jpg" alt="Insights: streak, words written, entries and places" width="607" height="1320" loading="lazy">
+            <strong>Insights</strong>
+            <span>Your streak, words written and places visited, with a daily reminder and widgets.</span>
+          </button></li>
+        </ul>
       </div>
     </section>
 
-    <section class="narrow" id="privacy">
-      <h2>Privacy</h2>
-      <p>No account, no analytics, no ads, no tracking. Your journal stays on your iPhone, locked with Face ID, or in your own iCloud if you turn on sync. We never see it.</p>
-      <p><a href="privacy/">Read the privacy policy</a></p>
+    <section class="privacy" id="privacy" aria-labelledby="privacy-title">
+      <div>
+        <h2 id="privacy-title">Yours alone</h2>
+        <p class="intro">Today is locked with Face ID, and what you write stays on your iPhone, or in your own iCloud if you turn on sync. We never see it.</p>
+        <ul class="promises">
+          <li><strong>No account.</strong> <span>Open the app and write.</span></li>
+          <li><strong>No analytics, ads or tracking.</strong> <span>There's no third-party code in the app.</span></li>
+          <li><strong>No servers.</strong> <span>Your journal is never sent to us or anyone else.</span></li>
+        </ul>
+        <p><a href="privacy/">Read the privacy policy</a></p>
+      </div>
+      <div class="phone-wrap">
+        <img class="phone" src="images/lock.jpg" alt="Today locked behind Face ID" width="607" height="1320" loading="lazy">
+      </div>
     </section>
 
-    <section class="narrow" id="support">
-      <h2>Support</h2>
+    <section class="support" id="support" aria-labelledby="support-title">
+      <h2 id="support-title">Support</h2>
       <p>Questions, problems or ideas? Email <a href="mailto:max@maxsun.ca">max@maxsun.ca</a> and I'll get back to you.</p>
     </section>
 
     <footer>
-      <span>© 2026 Max Sun</span>
-      <a href="privacy/">Privacy Policy</a>
-      <a href="mailto:max@maxsun.ca">Support</a>
+      <span class="copy">© 2026 Max Sun</span>
+      <a href="privacy/">Privacy policy</a>
+      <a href="mailto:max@maxsun.ca">Email support</a>
     </footer>
-  </main>
+  </div>
+</main>
+
+<script>
+  // The hero shows the visitor's own today, like a fresh page in the journal.
+  (function () {
+    var now = new Date();
+    try {
+      document.getElementById('weekday').textContent = now.toLocaleDateString('en-US', { weekday: 'long' });
+      document.getElementById('date').textContent = now.toLocaleDateString('en-US', { month: 'long', day: 'numeric' });
+    } catch (e) {}
+  })();
+
+  // Tour: each row shows its screen in the phone beside the list.
+  (function () {
+    var buttons = document.querySelectorAll('.tour-list button');
+    var screens = document.querySelectorAll('.tour-screen .phone');
+    buttons.forEach(function (button) {
+      button.addEventListener('click', function () {
+        var view = button.dataset.view;
+        buttons.forEach(function (b) { b.setAttribute('aria-pressed', String(b === button)); });
+        screens.forEach(function (s) { s.classList.toggle('is-current', s.dataset.view === view); });
+      });
+    });
+  })();
+</script>
 </body>
 </html>
