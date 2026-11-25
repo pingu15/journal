@@ -188,9 +188,9 @@ h1, h2, h3, p { margin: 0; }
 .story .phone img { grid-area: 1 / 1; opacity: 0; transition: opacity .45s ease; }
 .story .phone img.is-current { opacity: 1; }
 
-/* Yours alone: fills the screen below the navbar, content centered. */
+/* Yours alone: at least a full window tall, content centered. */
 .tile.privacy {
-  min-height: calc(100vh - 56px); min-height: calc(100svh - 56px);
+  min-height: 100vh; min-height: 100svh;
   display: flex; flex-direction: column; justify-content: center; align-items: center;
 }
 
