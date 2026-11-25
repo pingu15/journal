@@ -133,16 +133,28 @@ h1, h2, h3, p { margin: 0; }
 .phone img { display: block; width: 100%; height: auto; border-radius: 38px 38px 0 0; }
 
 /* Hero: three phones, the middle one forward. */
-.hero { padding-top: 72px; }
-.hero .stage { gap: 40px; margin-top: 56px; }
-.hero .phone { height: 520px; }
-.hero .phone.side { width: 250px; height: 440px; margin-top: 80px; }
+/* Never taller than the screen below the navbar: the phones take what's left and run off the bottom. */
+.hero {
+  padding-top: 56px;
+  height: calc(100vh - 56px); height: calc(100svh - 56px);
+  min-height: 480px;
+  display: flex; flex-direction: column;
+}
+.hero .stage { flex: 1; min-height: 0; gap: 40px; margin-top: 40px; }
+/* Sized from the screen's height so the screenshots always run past the bottom edge. */
+.hero .phone { --w: min(420px, max(280px, calc(52vh - 150px))); width: var(--w); height: 100%; }
+.hero .phone.side { width: calc(var(--w) * 0.83); height: calc(100% - 64px); margin-top: 64px; }
 
 /* ---------- Story: one full-screen section that becomes each feature in turn ---------- */
 
-/* The section is one screen tall per step; its panel stays pinned while the page scrolls past. */
-.story { position: relative; height: calc(var(--steps) * 100vh); }
-.story-anchor { position: absolute; left: 0; top: calc(var(--i) * 100vh); height: 1px; width: 1px; scroll-margin-top: 56px; }
+/* The pinned panel fills the screen below the navbar; each step after the first adds --step of scrolling. */
+.story {
+  --step: 55vh;
+  position: relative;
+  height: calc(100vh - 56px + (var(--steps) - 1) * var(--step));
+  height: calc(100svh - 56px + (var(--steps) - 1) * var(--step));
+}
+.story-anchor { position: absolute; left: 0; top: calc(var(--i) * var(--step)); height: 1px; width: 1px; scroll-margin-top: 56px; }
 .story-pin {
   position: sticky; top: 56px;            /* just below the navbar */
   height: calc(100vh - 56px); height: calc(100svh - 56px);
@@ -241,7 +253,10 @@ h1, h2, h3, p { margin: 0; }
   .tile { padding-top: var(--xxl); }
   .tile.no-stage { padding-bottom: var(--xxl); }
   .stage { margin-top: 40px; }
-  .phone, .hero .phone { width: 240px; height: 360px; border-radius: 40px 40px 0 0; padding: 8px 8px 0; }
+  .hero .phone { width: min(80vw, max(260px, calc(46vh - 60px))); height: 100%; }
+  .hero .stage { margin-top: 32px; }
+  .hero { padding-top: 40px; }
+  .phone { width: 240px; height: 360px; border-radius: 40px 40px 0 0; padding: 8px 8px 0; }
   .phone img { border-radius: 32px 32px 0 0; }
   .doc { padding-top: var(--xxl); padding-bottom: var(--xxl); }
 }

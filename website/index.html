@@ -146,13 +146,15 @@
     var pin = story.querySelector('.story-pin');
     var steps = story.querySelectorAll('.step');
     var images = story.querySelectorAll('.phone img');
+    var anchors = story.querySelectorAll('.story-anchor');
     var current = -1;
     var queued = false;
 
     function update() {
       queued = false;
-      var screen = window.innerHeight;
-      var progress = (window.scrollY + 56 - story.offsetTop) / screen;   // 56: the navbar
+      // One step per anchor; the anchors are spaced by the CSS's --step.
+      var stepLength = anchors[1].offsetTop - anchors[0].offsetTop;
+      var progress = (window.scrollY + 56 - story.offsetTop) / stepLength;   // 56: the navbar
       var index = Math.min(steps.length - 1, Math.max(0, Math.floor(progress + 0.5)));
       if (index === current) return;
       current = index;
