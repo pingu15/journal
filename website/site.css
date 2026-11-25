@@ -35,9 +35,7 @@
 }
 
 * { box-sizing: border-box; }
-html { scroll-behavior: smooth; }
 @media (prefers-reduced-motion: reduce) {
-  html { scroll-behavior: auto; }
   .story-copy .step, .story-copy .step.is-current, .story .phone img { transition: none; }
   .story-copy .step { transform: none; }
 }

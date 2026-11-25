@@ -16,7 +16,7 @@
 <header class="top">
   <a class="mark" href="./" aria-label="Today: Daily Journal, home"></a>
   <nav aria-label="Site">
-    <a href="#write">Features</a>
+    <a href="/features">Features</a>
     <a href="privacy/">Privacy</a>
   </nav>
 </header>
@@ -106,13 +106,13 @@
         <h3>Today</h3>
         <ul>
           <li><a href="https://apps.apple.com/us/app/today-daily-journal/id6835741340">Download on the App Store</a></li>
-          <li><a href="#write">Features</a></li>
+          <li><a href="/features">Features</a></li>
         </ul>
       </div>
       <div>
         <h3>Privacy</h3>
         <ul>
-          <li><a href="#privacy">How privacy works</a></li>
+          <li><a href="/how-privacy-works">How privacy works</a></li>
           <li><a href="privacy/">Privacy Policy</a></li>
         </ul>
       </div>
@@ -155,6 +155,43 @@
     window.addEventListener('scroll', queue, { passive: true });
     window.addEventListener('resize', queue);
     update();
+  })();
+</script>
+<script>
+  // Sections have clean addresses (/features, /how-privacy-works; see _redirects) instead of #ids.
+  // On this page, links to them scroll there and update the address without reloading.
+  (function () {
+    var sections = { '/features': 'write', '/how-privacy-works': 'privacy' };
+    var navbar = 56;
+
+    function scrollToPath(path, smooth) {
+      var id = sections[path];
+      var target = id ? document.getElementById(id) : null;
+      var top = target ? target.getBoundingClientRect().top + window.scrollY - navbar : 0;
+      window.scrollTo({ top: top, behavior: smooth ? 'smooth' : 'auto' });
+    }
+
+    document.addEventListener('click', function (event) {
+      var link = event.target.closest('a[href]');
+      if (!link || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return;
+      var url = new URL(link.href, location.href);
+      if (url.origin !== location.origin) return;
+      var path = url.pathname.replace(/\/index\.html$/, '/');
+      if (!(path in sections) && path !== '/') return;
+      event.preventDefault();
+      if (location.pathname !== path) history.pushState(null, '', path);
+      var reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+      scrollToPath(path, !reduce);
+    });
+
+    window.addEventListener('popstate', function () { scrollToPath(location.pathname, false); });
+
+    // Opened at /features or /how-privacy-works: go to that section.
+    if (location.pathname in sections) {
+      history.scrollRestoration = 'manual';
+      scrollToPath(location.pathname, false);
+      window.addEventListener('load', function () { scrollToPath(location.pathname, false); });
+    }
   })();
 </script>
 </body>
