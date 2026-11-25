@@ -63,38 +63,16 @@ h1, h2, h3, p { margin: 0; }
 .caption      { font: 400 14px/1.43 var(--text); letter-spacing: -0.224px; }
 .fine-print   { font: 400 12px/1.3 var(--text); letter-spacing: -0.12px; }
 
-/* ---------- Navigation ---------- */
+/* ---------- Top links ---------- */
 
-.global-nav { background: var(--black); color: var(--on-dark); height: 44px; }
-.global-nav .inner {
-  max-width: 980px; height: 100%; margin: 0 auto; padding: 0 22px;
-  display: flex; align-items: center; justify-content: space-between;
+.top { position: absolute; top: 0; right: 0; left: 0; z-index: 10; }
+.top nav {
+  max-width: 980px; margin: 0 auto; padding: 18px 22px;
+  display: flex; justify-content: flex-end; gap: var(--lg);
 }
-.global-nav .mark {
-  display: block; width: 46px; height: 28px; background: var(--on-dark);
-  -webkit-mask: url(images/mark.svg) left center / contain no-repeat;
-          mask: url(images/mark.svg) left center / contain no-repeat;
-}
-.global-nav ul { list-style: none; margin: 0; padding: 0; display: flex; gap: 28px; }
-.global-nav a { color: var(--on-dark); opacity: .8; font: 400 12px/1 var(--text); letter-spacing: -0.12px; }
-.global-nav a:hover { opacity: 1; text-decoration: none; }
-
-.sub-nav {
-  position: sticky; top: 0; z-index: 10; height: 52px;
-  background: rgba(245, 245, 247, 0.8);
-  -webkit-backdrop-filter: saturate(180%) blur(20px);
-          backdrop-filter: saturate(180%) blur(20px);
-  border-bottom: 1px solid rgba(0, 0, 0, 0.08);
-}
-.sub-nav .inner {
-  max-width: 980px; height: 100%; margin: 0 auto; padding: 0 22px;
-  display: flex; align-items: center; justify-content: space-between; gap: var(--lg);
-}
-.sub-nav .title { color: var(--ink); }
-.sub-nav .title:hover { text-decoration: none; }
-.sub-nav ul { list-style: none; margin: 0; padding: 0; display: flex; gap: var(--lg); }
-.sub-nav ul a { color: var(--ink); font: 400 12px/1.29 var(--text); letter-spacing: -0.12px; }
-.sub-nav ul a:hover { color: var(--primary); text-decoration: none; }
+.top a { color: var(--ink); font: 400 14px/1.29 var(--text); letter-spacing: -0.224px; }
+.top a:hover, .top a[aria-current] { color: var(--primary); text-decoration: none; }
+body { position: relative; }
 
 /* ---------- App Store badge ---------- */
 
@@ -110,7 +88,6 @@ h1, h2, h3, p { margin: 0; }
   padding: var(--section) 22px 0;
   text-align: center;
   overflow: hidden;
-  scroll-margin-top: 52px;
 }
 .tile.light { background: var(--canvas); color: var(--ink); }
 .tile.parchment { background: var(--parchment); color: var(--ink); }
@@ -140,7 +117,7 @@ h1, h2, h3, p { margin: 0; }
 .phone img { display: block; width: 100%; height: auto; border-radius: 38px 38px 0 0; }
 
 /* Hero: three phones, the middle one forward. */
-.hero { padding-top: 72px; }
+.hero { padding-top: 120px; }
 .hero .stage { gap: 40px; margin-top: 56px; }
 .hero .phone { height: 520px; }
 .hero .phone.side { width: 250px; height: 440px; margin-top: 80px; }
@@ -177,7 +154,7 @@ h1, h2, h3, p { margin: 0; }
 
 /* ---------- Document pages (privacy policy) ---------- */
 
-.doc { max-width: 692px; margin: 0 auto; padding: var(--section) 22px; }
+.doc { max-width: 692px; margin: 0 auto; padding: 120px 22px var(--section); }
 .doc header { margin-bottom: var(--xxl); }
 .doc header .caption { margin-top: var(--sm); }
 .doc .summary { margin-bottom: var(--xxl); }
@@ -209,8 +186,8 @@ h1, h2, h3, p { margin: 0; }
   .stage { margin-top: 40px; }
   .phone, .pair .phone, .hero .phone { width: 240px; height: 360px; border-radius: 40px 40px 0 0; padding: 8px 8px 0; }
   .phone img { border-radius: 32px 32px 0 0; }
-  .sub-nav ul { display: none; }
-  .doc { padding-top: var(--xxl); padding-bottom: var(--xxl); }
+  .doc { padding-top: 88px; padding-bottom: var(--xxl); }
+  .hero { padding-top: 88px; }
 }
 
 @media (max-width: 419px) {
