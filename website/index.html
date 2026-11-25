@@ -152,7 +152,7 @@
     function update() {
       queued = false;
       var screen = window.innerHeight;
-      var progress = (window.scrollY - story.offsetTop) / screen;
+      var progress = (window.scrollY + 56 - story.offsetTop) / screen;   // 56: the navbar
       var index = Math.min(steps.length - 1, Math.max(0, Math.floor(progress + 0.5)));
       if (index === current) return;
       current = index;
