@@ -36,7 +36,11 @@
 
 * { box-sizing: border-box; }
 html { scroll-behavior: smooth; }
-@media (prefers-reduced-motion: reduce) { html { scroll-behavior: auto; } }
+@media (prefers-reduced-motion: reduce) {
+  html { scroll-behavior: auto; }
+  .story-pin, .story-copy .step, .story-copy .step.is-current, .story .phone img { transition: none; }
+  .story-copy .step { transform: none; }
+}
 
 body {
   margin: 0;
@@ -128,10 +132,50 @@ body { position: relative; }
 .hero .phone { height: 520px; }
 .hero .phone.side { width: 250px; height: 440px; margin-top: 80px; }
 
-/* Two tiles side by side. */
-.pair { display: grid; grid-template-columns: 1fr 1fr; }
-.pair .phone { width: 260px; height: 380px; }
-.pair .lead { font-size: 24px; line-height: 1.17; }
+/* ---------- Story: one full-screen section that becomes each feature in turn ---------- */
+
+/* The section is one screen tall per step; its panel stays pinned while the page scrolls past. */
+.story { position: relative; height: calc(var(--steps) * 100vh); }
+.story-anchor { position: absolute; left: 0; top: calc(var(--i) * 100vh); height: 1px; width: 1px; }
+.story-pin {
+  position: sticky; top: 0;
+  height: 100vh; height: 100svh;
+  overflow: hidden;
+  display: flex; flex-direction: column; align-items: center;
+  padding: var(--section) 22px 0;
+  text-align: center;
+  background: var(--tile-1); color: var(--on-dark);
+  transition: background-color .6s ease, color .6s ease;
+}
+.story-pin[data-theme="dark"]      { background: var(--tile-1); color: var(--on-dark); }
+.story-pin[data-theme="dark-2"]    { background: var(--tile-2); color: var(--on-dark); }
+.story-pin[data-theme="parchment"] { background: var(--parchment); color: var(--ink); }
+.story-pin[data-theme="light"]     { background: var(--canvas); color: var(--ink); }
+
+/* The copy for every step sits in one grid cell; only the current one shows. */
+.story-copy { display: grid; max-width: 680px; width: 100%; }
+.story-copy .step {
+  grid-area: 1 / 1;
+  opacity: 0; transform: translateY(16px);
+  transition: opacity .2s ease, transform .2s ease;   /* the outgoing step leaves quickly… */
+  pointer-events: none;
+}
+.story-copy .step.is-current {
+  opacity: 1; transform: none; pointer-events: auto;
+  transition: opacity .4s ease .2s, transform .4s ease .2s;   /* …then the next one comes in */
+}
+.story-copy .lead { margin-top: var(--sm); }
+
+/* The phone fills the rest of the screen and runs off its bottom edge. */
+.story-stage { flex: 1; min-height: 0; margin-top: var(--xxl); display: flex; justify-content: center; }
+/* Sized from the screen's height so the screenshot always runs past the bottom edge. */
+.story .phone {
+  width: min(85vw, 380px, max(260px, calc(46vh - 60px)));
+  width: min(85vw, 380px, max(260px, calc(46svh - 60px)));
+  height: auto; display: grid; align-content: start;
+}
+.story .phone img { grid-area: 1 / 1; opacity: 0; transition: opacity .45s ease; }
+.story .phone img.is-current { opacity: 1; }
 
 /* Privacy facts. */
 .facts {
@@ -177,20 +221,21 @@ body { position: relative; }
 }
 
 @media (max-width: 833px) {
-  .pair { grid-template-columns: 1fr; }
   .facts { grid-template-columns: 1fr; max-width: 420px; }
   .hero .phone.side { display: none; }
   .footer .columns { grid-template-columns: 1fr 1fr; }
 }
 
 @media (max-width: 640px) {
+  .story-pin { padding-top: 64px; }
+  .story-stage { margin-top: 32px; }
   .hero-display { font-size: 40px; }
   .display-lg { font-size: 32px; }
-  .lead, .pair .lead { font-size: 21px; line-height: 1.19; }
+  .lead { font-size: 21px; line-height: 1.19; }
   .tile { padding-top: var(--xxl); }
   .tile.no-stage { padding-bottom: var(--xxl); }
   .stage { margin-top: 40px; }
-  .phone, .pair .phone, .hero .phone { width: 240px; height: 360px; border-radius: 40px 40px 0 0; padding: 8px 8px 0; }
+  .phone, .hero .phone { width: 240px; height: 360px; border-radius: 40px 40px 0 0; padding: 8px 8px 0; }
   .phone img { border-radius: 32px 32px 0 0; }
   .doc { padding-top: 88px; padding-bottom: var(--xxl); }
   .hero { padding-top: 88px; }

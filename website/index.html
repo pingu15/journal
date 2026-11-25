@@ -38,64 +38,50 @@
     </div>
   </section>
 
-  <section class="tile dark on-dark" id="write">
-    <div class="copy">
-      <h2 class="display-lg">Just write.</h2>
-      <p class="lead">A clean editor with simple formatting and photos. Each entry keeps its date, place and weather.</p>
-    </div>
-    <div class="stage">
-      <div class="phone"><img src="images/editor.jpg" alt="An entry about a walk in Central Park, with two photos" width="607" height="1320" loading="lazy"></div>
-    </div>
-  </section>
-
-  <section class="tile parchment" id="day">
-    <div class="copy">
-      <h2 class="display-lg">The whole day, in one place.</h2>
-      <p class="lead">The photos you took, your calendar events and the places you spent time, beside what you wrote.</p>
-    </div>
-    <div class="stage">
-      <div class="phone"><img src="images/today.jpg" alt="A day: its photos, a map and the places visited" width="607" height="1320" loading="lazy"></div>
-    </div>
-  </section>
-
-  <div class="pair">
-    <section class="tile light" id="calendar">
-      <div class="copy">
-        <h2 class="display-lg">Calendar.</h2>
-        <p class="lead">Every day you wrote, month by month.</p>
+  <section class="story" style="--steps: 6" aria-label="What Today does">
+    <span class="story-anchor" id="write" style="--i:0"></span>
+    <span class="story-anchor" id="day" style="--i:1"></span>
+    <span class="story-anchor" id="calendar" style="--i:2"></span>
+    <span class="story-anchor" id="media" style="--i:3"></span>
+    <span class="story-anchor" id="map" style="--i:4"></span>
+    <span class="story-anchor" id="insights" style="--i:5"></span>
+    <div class="story-pin" data-theme="dark">
+      <div class="story-copy" aria-live="polite">
+        <div class="step is-current" data-theme="dark">
+          <h2 class="display-lg">Just write.</h2>
+          <p class="lead">A clean editor with simple formatting and photos. Each entry keeps its date, place and weather.</p>
+        </div>
+        <div class="step" data-theme="parchment">
+          <h2 class="display-lg">The whole day, in one place.</h2>
+          <p class="lead">The photos you took, your calendar events and the places you spent time, beside what you wrote.</p>
+        </div>
+        <div class="step" data-theme="light">
+          <h2 class="display-lg">Calendar.</h2>
+          <p class="lead">Every day you wrote, month by month. Open any one of them.</p>
+        </div>
+        <div class="step" data-theme="dark-2">
+          <h2 class="display-lg">Media.</h2>
+          <p class="lead">Every photo and video, each a way back to its entry.</p>
+        </div>
+        <div class="step" data-theme="parchment">
+          <h2 class="display-lg">Never forget a place you've visited.</h2>
+          <p class="lead">Your entries on a map, gathered where you wrote them.</p>
+        </div>
+        <div class="step" data-theme="light">
+          <h2 class="display-lg">Keep the habit.</h2>
+          <p class="lead">Your streak, words written and places visited. A daily reminder, On This Day and widgets bring you back.</p>
+        </div>
       </div>
-      <div class="stage">
-        <div class="phone"><img src="images/calendar.jpg" alt="The calendar: months with the days you wrote" width="607" height="1320" loading="lazy"></div>
+      <div class="story-stage">
+        <div class="phone">
+          <img class="is-current" src="images/editor.jpg" alt="An entry about a walk in Central Park, with two photos" width="607" height="1320">
+          <img class="" src="images/today.jpg" alt="A day: its photos, a map and the places visited" width="607" height="1320" loading="lazy">
+          <img class="" src="images/calendar.jpg" alt="The calendar: months with the days you wrote" width="607" height="1320" loading="lazy">
+          <img class="" src="images/media.jpg" alt="Every photo and video in the journal" width="607" height="1320" loading="lazy">
+          <img class="" src="images/map.jpg" alt="The map: entries gathered across New York" width="607" height="1320" loading="lazy">
+          <img class="" src="images/insights.jpg" alt="Insights: streak, words written, entries and places" width="607" height="1320" loading="lazy">
+        </div>
       </div>
-    </section>
-    <section class="tile dark-2 on-dark" id="media">
-      <div class="copy">
-        <h2 class="display-lg">Media.</h2>
-        <p class="lead">Every photo and video, each a way back to its entry.</p>
-      </div>
-      <div class="stage">
-        <div class="phone"><img src="images/media.jpg" alt="Every photo and video in the journal" width="607" height="1320" loading="lazy"></div>
-      </div>
-    </section>
-  </div>
-
-  <section class="tile parchment" id="map">
-    <div class="copy">
-      <h2 class="display-lg">Never forget a place you've visited.</h2>
-      <p class="lead">Your entries on a map, gathered where you wrote them.</p>
-    </div>
-    <div class="stage">
-      <div class="phone"><img src="images/map.jpg" alt="The map: entries gathered across New York" width="607" height="1320" loading="lazy"></div>
-    </div>
-  </section>
-
-  <section class="tile light" id="insights">
-    <div class="copy">
-      <h2 class="display-lg">Keep the habit.</h2>
-      <p class="lead">Your streak, words written and places visited. A daily reminder, On This Day and widgets bring you back.</p>
-    </div>
-    <div class="stage">
-      <div class="phone"><img src="images/insights.jpg" alt="Insights: streak, words written, entries and places" width="607" height="1320" loading="lazy"></div>
     </div>
   </section>
 
@@ -152,5 +138,34 @@
   </div>
 </footer>
 
+<script>
+  // Story: as the page scrolls through the pinned section, it becomes each feature in turn.
+  (function () {
+    var story = document.querySelector('.story');
+    if (!story) return;
+    var pin = story.querySelector('.story-pin');
+    var steps = story.querySelectorAll('.step');
+    var images = story.querySelectorAll('.phone img');
+    var current = -1;
+    var queued = false;
+
+    function update() {
+      queued = false;
+      var screen = window.innerHeight;
+      var progress = (window.scrollY - story.offsetTop) / screen;
+      var index = Math.min(steps.length - 1, Math.max(0, Math.floor(progress + 0.5)));
+      if (index === current) return;
+      current = index;
+      pin.dataset.theme = steps[index].dataset.theme;
+      steps.forEach(function (step, i) { step.classList.toggle('is-current', i === index); });
+      images.forEach(function (image, i) { image.classList.toggle('is-current', i === index); });
+    }
+
+    function queue() { if (!queued) { queued = true; requestAnimationFrame(update); } }
+    window.addEventListener('scroll', queue, { passive: true });
+    window.addEventListener('resize', queue);
+    update();
+  })();
+</script>
 </body>
 </html>
