@@ -67,9 +67,10 @@ struct DaySheet: View {
                 MetaLabel(titleDay.formatted(.dateTime.weekday(.wide)))
                     .frame(maxWidth: .infinity)
                     .onGeometryChange(for: CGFloat.self) { $0.frame(in: .global).midY } action: { weekdayMidY = $0 }
-                    // Right under the title, into the bar's own space below it, then clear of the list.
+                    // Right under the title, into the bar's own space below it. The gap to the list
+                    // is the list's (`DayPage`), not the bar's: the bar's soft edge blurred the top
+                    // of the first section's label, which rests right below it.
                     .padding(.top, -Spacing.m)
-                    .padding(.bottom, Spacing.m)
                     .accessibilityHidden(true)
             }
             .sheetTitle(titleDay.formatted(.dateTime.month(.wide).day().year()))
@@ -348,6 +349,8 @@ private struct DayPage: View, Equatable {
         }
         .scrollContentBackground(.hidden)
         .listSectionSpacing(Spacing.m)
+        // Clear of the sheet's bar, below its soft edge, so the first label isn't blurred at rest.
+        .contentMargins(.top, Spacing.m, for: .scrollContent)
         // Everything in it dims while touched, like the app's other buttons.
         .buttonStyle(.borderless)
     }
