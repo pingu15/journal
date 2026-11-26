@@ -27,7 +27,8 @@ struct EntryMap: UIViewRepresentable {
     func makeUIView(context: Context) -> MKMapView {
         let map = MKMapView()
         map.delegate = context.coordinator
-        map.pointOfInterestFilter = .excludingAll
+        // Shops, parks, stations and the like, as Apple Maps shows them.
+        map.pointOfInterestFilter = .includingAll
         map.showsCompass = false
         // The location dot takes the map's tint, which would otherwise be the app's.
         map.tintColor = UITheme.userLocation
