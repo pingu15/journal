@@ -1,15 +1,31 @@
 import SwiftUI
 import UIKit
+import WidgetKit
 
 /// Raw palette — https://colorhunt.co/palette/3434348e8b82e9dcbef3f3f3
 /// plus `night`, a deeper canvas for dark mode. Views use the semantic tokens below.
 nonisolated enum Palette {
     static let ink: UInt32 = 0x343434
     static let stone: UInt32 = 0x8E8B82
+    /// The default accent; the user can pick another (`AccentChoice`).
     static let sand: UInt32 = 0xDEAA73
     static let paper: UInt32 = 0xF3F3F3
     /// Dark-mode background: near-black, a shade deeper than ink.
     static let night: UInt32 = 0x121212
+}
+
+/// The accent picked in Settings, observed so everything drawn in it redraws at once.
+@Observable
+final class AccentSetting {
+    static let shared = AccentSetting()
+
+    var choice = AccentChoice.current {
+        didSet {
+            guard choice != oldValue else { return }
+            choice.save()
+            WidgetCenter.shared.reloadAllTimelines()
+        }
+    }
 }
 
 /// Semantic colors for UIKit (the Markdown text view, navigation bar, lock window).
@@ -19,7 +35,9 @@ enum UITheme {
     static let background = UIColor(light: Palette.paper, dark: Palette.night)
     static let primaryText = UIColor(light: Palette.ink, dark: Palette.paper)
     static let secondaryText = UIColor(hex: Palette.stone)
-    static let accent = UIColor(hex: Palette.sand)
+    /// The accent the user picked (`AccentSetting`), sand by default. Read where it's drawn: views
+    /// reading it redraw when it changes.
+    static var accent: UIColor { UIColor(hex: AccentSetting.shared.choice.hex) }
     /// Quiet fill (photos still loading, inline code): a wash of stone on paper, a lift of stone on
     /// night — never sand.
     static let surface = UIColor { traits in
@@ -38,12 +56,13 @@ enum UITheme {
 }
 
 /// Semantic colors. Light mode is ink on paper; dark mode is paper on night.
-/// Sand is the single accent, used for fills (buttons, highlights) with white on top.
+/// The accent (sand unless the user picks another) is the single one, used for fills (buttons,
+/// highlights) with white on top.
 enum Theme {
     static let background = Color(uiColor: UITheme.background)
     static let primaryText = Color(uiColor: UITheme.primaryText)
     static let secondaryText = Color(uiColor: UITheme.secondaryText)
-    static let accent = Color(uiColor: UITheme.accent)
+    static var accent: Color { Color(uiColor: UITheme.accent) }
     static let onAccent = Color.white
     /// The one exception to white on sand: a written day's number in the Calendar, ink in light mode
     /// (white was faint on sand there), white in dark.

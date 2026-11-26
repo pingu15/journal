@@ -21,6 +21,8 @@ struct EntryMap: UIViewRepresentable {
     let recenterCount: Int
     let onOpen: ([PersistentIdentifier]) -> Void
     let onLongPress: (CLLocationCoordinate2D) -> Void
+    /// The dots' color, passed in so a new accent redraws them.
+    var accent = AccentSetting.shared.choice
 
     func makeCoordinator() -> Coordinator { Coordinator(parent: self) }
 
@@ -51,6 +53,12 @@ struct EntryMap: UIViewRepresentable {
     func updateUIView(_ map: MKMapView, context: Context) {
         context.coordinator.parent = self
         context.coordinator.update(map, with: pins)
+        if accent != context.coordinator.accent {
+            context.coordinator.accent = accent
+            for case let dot as EntryDotView in map.annotations.compactMap(map.view(for:)) {
+                dot.backgroundColor = UITheme.accent
+            }
+        }
         if recenterCount != context.coordinator.recenterCount {
             context.coordinator.recenterCount = recenterCount
             context.coordinator.showCurrentLocation(in: map, animated: true)
@@ -73,6 +81,7 @@ struct EntryMap: UIViewRepresentable {
     }
 
     final class Coordinator: NSObject, MKMapViewDelegate, UIGestureRecognizerDelegate {
+        var accent = AccentSetting.shared.choice
         var parent: EntryMap
         var recenterCount: Int
         private var shown: [PersistentIdentifier: EntryAnnotation] = [:]
@@ -279,6 +288,8 @@ private final class EntryDotView: MKAnnotationView {
 
     override func prepareForDisplay() {
         super.prepareForDisplay()
+        // A reused dot may be from before the accent changed.
+        backgroundColor = UITheme.accent
         let count = (annotation as? MKClusterAnnotation)?.memberAnnotations.count ?? 1
         label.text = count.formatted()
         accessibilityLabel = count == 1 ? "1 entry" : "\(count) entries"

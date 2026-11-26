@@ -57,7 +57,16 @@ struct SettingsView: View {
                         LabeledContent {
                             Text(appearance.label)
                         } label: {
-                            Label("Theme", systemImage: "paintpalette")
+                            Label("Theme", systemImage: "circle.lefthalf.filled")
+                        }
+                    }
+                    NavigationLink {
+                        AccentList()
+                    } label: {
+                        LabeledContent {
+                            Text(AccentSetting.shared.choice.label)
+                        } label: {
+                            Label("Accent Color", systemImage: "paintpalette")
                         }
                     }
                 } header: {
@@ -484,6 +493,43 @@ private struct ThemeList: View {
         .scrollContentBackground(.hidden)
         .background(Theme.background)
         .navigationTitle("Theme")
+        .navigationBarTitleDisplayMode(.inline)
+    }
+}
+
+/// Settings' accent colors, each with a swatch and a checkmark on the current one. Laid out like
+/// `ThemeList`, and it too stays open, so the new color can be seen behind it and another tried.
+private struct AccentList: View {
+    @ScaledMetric(relativeTo: .body) private var swatch: CGFloat = 22
+
+    var body: some View {
+        @Bindable var setting = AccentSetting.shared
+        Form {
+            ForEach(AccentChoice.allCases) { option in
+                Button {
+                    withAnimation(.easeInOut(duration: 0.25)) { setting.choice = option }
+                } label: {
+                    HStack(spacing: 12) {
+                        Circle()
+                            .fill(Color(uiColor: UIColor(hex: option.hex)))
+                            .frame(width: swatch, height: swatch)
+                            .accessibilityHidden(true)
+                        Text(option.label)
+                            .foregroundStyle(.primary)
+                        Spacer()
+                        if setting.choice == option {
+                            Image(systemName: "checkmark")
+                                .fontWeight(.semibold)
+                                .foregroundStyle(Theme.accent)
+                        }
+                    }
+                }
+                .accessibilityAddTraits(setting.choice == option ? .isSelected : [])
+            }
+        }
+        .scrollContentBackground(.hidden)
+        .background(Theme.background)
+        .navigationTitle("Accent Color")
         .navigationBarTitleDisplayMode(.inline)
     }
 }

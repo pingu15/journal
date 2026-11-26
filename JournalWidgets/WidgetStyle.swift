@@ -13,7 +13,8 @@ enum WidgetStyle {
     static let background = color(light: 0xF3F3F3, dark: 0x121212)
     static let primaryText = color(light: 0x343434, dark: 0xF3F3F3)
     static let secondaryText = Color(uiColor: UIColor(hex: 0x8E8B82))
-    static let accent = Color(uiColor: UIColor(hex: 0xDEAA73))
+    /// The accent picked in the app's Settings, sand by default.
+    static var accent: Color { Color(uiColor: UIColor(hex: AccentChoice.current.hex)) }
     static let hairline = secondaryText.opacity(0.25)
     static let activityFilled = primaryText.opacity(0.8)
     static let activityEmpty = primaryText.opacity(0.08)
