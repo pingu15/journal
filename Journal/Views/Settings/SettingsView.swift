@@ -545,7 +545,7 @@ private struct WeatherAttributionNote: View {
     var body: some View {
         Link(destination: legalPage ?? Self.fallbackLegalURL) {
             // U+F8FF is the Apple logo in Apple's system fonts.
-            Text("Weather data from \u{F8FF} Weather")
+            Text("Weather data from  \u{F8FF} Weather")
         }
         // A link takes the body size and the tint; set like the other footers.
         .font(.footnote)
