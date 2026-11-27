@@ -7,7 +7,7 @@ import Foundation
 nonisolated enum AccentChoice: String, CaseIterable, Identifiable, Sendable {
     static let storageKey = "accentColor"
 
-    case sand, clay, rose, sage, sky, lilac
+    case sand, clay, rose, sage, sky, lilac, ash
 
     var id: String { rawValue }
 
@@ -19,6 +19,7 @@ nonisolated enum AccentChoice: String, CaseIterable, Identifiable, Sendable {
         case .sage: "Sage"
         case .sky: "Sky"
         case .lilac: "Lilac"
+        case .ash: "Ash"
         }
     }
 
@@ -30,6 +31,8 @@ nonisolated enum AccentChoice: String, CaseIterable, Identifiable, Sendable {
         case .sage: 0x98AE8E
         case .sky: 0x88A8C8
         case .lilac: 0xA99BCB
+        // Warm like stone, a step lighter so it isn't the meta text's grey.
+        case .ash: 0xA3A09A
         }
     }
 

@@ -42,7 +42,7 @@ App Store: **Today: Daily Journal**. Home screen / Siri / permission prompts: **
 - **Serif (`design: .serif`) in exactly three places:** page titles (`LargePageTitle`), entry-list day numbers (`Typography.dayNumber`), Insights tile numbers. Everything else is SF sans. Never add serif elsewhere. (The exported PDF is the one holdout.)
 - Never hardcode colors, fonts or spacing. Use `Theme` / `UITheme` / `Typography` / `Spacing` / `Radius` from `Design/Theme.swift`. `Typography` is the whole type scale: a new role gets a new token. Settings is the exception and keeps iOS's own fonts.
 - Palette: ink `#343434`, stone `#8E8B82`, sand `#DEAA73`, paper `#F3F3F3`, night `#121212`.
-  - **Sand** is the single accent (by default: the user can pick one of six in Settings → Appearance, `AccentChoice` in `Shared/`), for solid fills only, with white content on top (`Theme.onAccent`). Use `Theme.accent` / `UITheme.accent` (or `WidgetStyle.accent`), never sand's hex. UIKit views must refresh their accent when it changes (see `EntryMap`).
+  - **Sand** is the single accent (by default: the user can pick one of seven in Settings → Appearance, `AccentChoice` in `Shared/`), for solid fills only, with white content on top (`Theme.onAccent`). Use `Theme.accent` / `UITheme.accent` (or `WidgetStyle.accent`), never sand's hex. UIKit views must refresh their accent when it changes (see `EntryMap`).
   - Quiet fills and highlights are stone washes (`Theme.surface`, `rowHighlight`, `card`), never sand.
   - Stone is only for secondary or meta text, never body copy.
 - Section labels: `MetaLabel`. Explanatory and empty-state notes: `Typography.note` in secondary text. Empty pages: `EmptyState`.
