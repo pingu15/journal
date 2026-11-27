@@ -7,7 +7,6 @@ struct JournalWidgets: WidgetBundle {
         DateWidget()
         StreakWidget()
         TodayWidget()
-        ActivityWidget()
         WordsWidget()
     }
 }
@@ -259,7 +258,7 @@ struct TodayWidget: Widget {
                 .widgetURL(WidgetSnapshot.dayURL(entry.unwrittenYesterday))
         }
         .configurationDisplayName("Today")
-        .description("The day so far, with its photos.")
+        .description("The day so far, with your photos.")
         .supportedFamilies([.systemMedium])
         // Its own margins: the text at the usual inset, the collage to the edge.
         .contentMarginsDisabled()
@@ -419,25 +418,7 @@ struct Collage: View {
     }
 }
 
-// MARK: - Activity and Words
-
-/// The streak over the weeks' grid, as in Insights.
-struct ActivityWidget: Widget {
-    var body: some WidgetConfiguration {
-        StaticConfiguration(kind: "Activity", provider: JournalProvider()) { entry in
-            GridWidgetView(
-                entry: entry,
-                value: entry.snapshot.currentStreak(on: entry.date).formatted(),
-                label: "Day streak"
-            )
-            .containerBackground(WidgetStyle.background, for: .widget)
-            .widgetURL(WidgetSnapshot.dayURL())
-        }
-        .configurationDisplayName("Activity")
-        .description("Your recent journaling history.")
-        .supportedFamilies([.systemMedium])
-    }
-}
+// MARK: - History
 
 /// Every word written, over the weeks' grid.
 struct WordsWidget: Widget {
@@ -451,7 +432,7 @@ struct WordsWidget: Widget {
             .containerBackground(WidgetStyle.background, for: .widget)
             .widgetURL(WidgetSnapshot.dayURL())
         }
-        .configurationDisplayName("Words")
+        .configurationDisplayName("History")
         .description("Every word you've ever written.")
         .supportedFamilies([.systemMedium])
     }
