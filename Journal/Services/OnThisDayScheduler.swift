@@ -57,8 +57,7 @@ enum OnThisDayScheduler {
             guard !past.isEmpty else { continue }
 
             let content = UNMutableNotificationContent()
-            content.title = JournalName.current
-            content.subtitle = "On This Day"
+            content.title = "On This Day"
             content.body = body(years: past, now: year)
             content.sound = .default
             let trigger = UNCalendarNotificationTrigger(
