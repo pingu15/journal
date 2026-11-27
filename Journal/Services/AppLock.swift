@@ -131,20 +131,24 @@ final class PrivacyShield {
     }
 }
 
-/// The app blurred past reading, with the handwritten logo in the middle, behind Face ID and in the app
-/// switcher. A tap asks again after Face ID was cancelled or failed.
+/// The app blurred past reading, with a lock over the handwritten logo in the middle, behind Face ID
+/// and in the app switcher. A tap asks again after Face ID was cancelled or failed.
 private struct LockCover: View {
     @Environment(AppLock.self) private var lock
 
     var body: some View {
         ZStack {
             CoverBlur()
-            Image("Signature")
-                .resizable()
-                .scaledToFit()
-                .foregroundStyle(Theme.primaryText)
-                .frame(width: 200)
-                .accessibilityHidden(true)
+            VStack(spacing: Spacing.l) {
+                Image(systemName: "lock.fill")
+                    .font(Typography.icon)
+                Image("Signature")
+                    .resizable()
+                    .scaledToFit()
+                    .frame(width: 200)
+            }
+            .foregroundStyle(Theme.primaryText)
+            .accessibilityHidden(true)
         }
         .ignoresSafeArea()
         .contentShape(.rect)
