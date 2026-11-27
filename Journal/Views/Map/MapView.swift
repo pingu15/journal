@@ -21,7 +21,7 @@ struct MapView: View {
 
     var body: some View {
         NavigationStack(path: $path) {
-            EntryMap(pins: pins, recenterCount: recenterCount, onOpen: open(_:), onLongPress: newEntry(at:))
+            EntryMap(pins: pins, recenterCount: recenterCount, onOpen: open(_:), onLongPress: newEntry(at:within:))
                 .pageTitle()
                 .toolbar {
                     ToolbarItem(placement: .topBarLeading) {
@@ -87,13 +87,20 @@ struct MapView: View {
         }
     }
 
-    private func newEntry(at coordinate: CLLocationCoordinate2D) {
+    /// At the place held (a shop, a park), as Apple Maps names it; anywhere else, at the spot, named
+    /// by its neighbourhood or city.
+    private func newEntry(at coordinate: CLLocationCoordinate2D, within reach: CLLocationDistance) {
         newEntryCount += 1
         Task {
             let location = CLLocation(latitude: coordinate.latitude, longitude: coordinate.longitude)
-            let name = await LocationService.shared.placeName(for: location) ?? "Dropped Pin"
+            let place: (name: String, coordinate: CLLocationCoordinate2D)
+            if let poi = await LocationService.shared.pointOfInterest(near: location, within: reach) {
+                place = poi
+            } else {
+                place = (await LocationService.shared.placeName(for: location) ?? "Dropped Pin", coordinate)
+            }
             let entry = Entry.create(in: context)
-            entry.setPlace(name: name, coordinate: coordinate)
+            entry.setPlace(name: place.name, coordinate: place.coordinate)
             startedHere.insert(entry.persistentModelID)
             path.append(entry)
         }

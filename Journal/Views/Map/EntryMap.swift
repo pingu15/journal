@@ -20,7 +20,8 @@ struct EntryMap: UIViewRepresentable {
     /// Goes back to the current location whenever this changes.
     let recenterCount: Int
     let onOpen: ([PersistentIdentifier]) -> Void
-    let onLongPress: (CLLocationCoordinate2D) -> Void
+    /// Where the map was held, and how far around it (in meters) counts as under the finger.
+    let onLongPress: (CLLocationCoordinate2D, CLLocationDistance) -> Void
     /// The dots' color, passed in so a new accent redraws them.
     var accent = AccentSetting.shared.choice
 
@@ -127,10 +128,17 @@ struct EntryMap: UIViewRepresentable {
             MKCoordinateRegion(center: location.coordinate, latitudinalMeters: 4000, longitudinalMeters: 4000)
         }
 
+        private static let fingerReach: CGFloat = 14
+
         @objc func longPress(_ gesture: UILongPressGestureRecognizer) {
             guard gesture.state == .began, let map = gesture.view as? MKMapView else { return }
-            let coordinate = map.convert(gesture.location(in: map), toCoordinateFrom: map)
-            parent.onLongPress(coordinate)
+            let point = gesture.location(in: map)
+            let coordinate = map.convert(point, toCoordinateFrom: map)
+            // About a place's icon: only a place held right on its icon counts.
+            let edge = map.convert(CGPoint(x: point.x + Self.fingerReach, y: point.y), toCoordinateFrom: map)
+            let reach = CLLocation(latitude: coordinate.latitude, longitude: coordinate.longitude)
+                .distance(from: CLLocation(latitude: edge.latitude, longitude: edge.longitude))
+            parent.onLongPress(coordinate, reach)
         }
 
         /// Taps on dots are caught here, not through MapKit's selection, which holds a tap for half a

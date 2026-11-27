@@ -85,6 +85,29 @@ final class LocationService: NSObject, CLLocationManagerDelegate {
         return placemark?.locality ?? placemark?.name ?? placemark?.administrativeArea
     }
 
+    /// The map's place (a shop, a park, a station) nearest `location` and within `reach` meters: the
+    /// one held on the map. A guess, as MapKit can't say which place is under a long press: the search
+    /// also finds places the map doesn't draw. Places without a category (offices, mostly) are left
+    /// out, since the map draws every place with its category's icon. None when the map is zoomed out
+    /// past where places show (`maxReach`).
+    func pointOfInterest(near location: CLLocation, within reach: CLLocationDistance) async -> (name: String, coordinate: CLLocationCoordinate2D)? {
+        guard reach <= Self.maxReach else { return nil }
+        let request = MKLocalPointsOfInterestRequest(center: location.coordinate, radius: max(reach, 10))
+        guard let items = try? await MKLocalSearch(request: request).start().mapItems else { return nil }
+        return items
+            .compactMap { item -> (name: String, coordinate: CLLocationCoordinate2D, distance: CLLocationDistance)? in
+                guard let name = item.name, item.pointOfInterestCategory != nil else { return nil }
+                let coordinate = item.placemark.coordinate
+                let distance = location.distance(from: CLLocation(latitude: coordinate.latitude, longitude: coordinate.longitude))
+                return distance <= reach ? (name, coordinate, distance) : nil
+            }
+            .min { $0.distance < $1.distance }
+            .map { ($0.name, $0.coordinate) }
+    }
+
+    /// A fingertip's reach in meters beyond which the map is too far out to be showing places.
+    private static let maxReach: CLLocationDistance = 75
+
     // MARK: CLLocationManagerDelegate
 
     nonisolated func locationManagerDidChangeAuthorization(_ manager: CLLocationManager) {
