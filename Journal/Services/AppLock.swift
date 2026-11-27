@@ -163,7 +163,7 @@ private struct LockCover: View {
         ZStack {
             CoverBlur()
             VStack(spacing: Spacing.l) {
-                Image(systemName: "lock.fill")
+                Image(systemName: "lock")
                     .font(Typography.lockIcon)
                 Image("Signature")
                     .resizable()
@@ -171,6 +171,8 @@ private struct LockCover: View {
                     .frame(width: 200)
             }
             .foregroundStyle(Theme.primaryText)
+            // A little see-through, like the blur under it.
+            .opacity(0.7)
             .accessibilityHidden(true)
         }
         .ignoresSafeArea()
@@ -188,7 +190,7 @@ private struct LockCover: View {
 /// UIKit's blur, which blurs the app's windows beneath the shield's.
 private struct CoverBlur: UIViewRepresentable {
     func makeUIView(context: Context) -> UIVisualEffectView {
-        UIVisualEffectView(effect: UIBlurEffect(style: .systemThickMaterial))
+        UIVisualEffectView(effect: UIBlurEffect(style: .systemMaterial))
     }
 
     func updateUIView(_ view: UIVisualEffectView, context: Context) {}
