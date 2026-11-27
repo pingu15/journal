@@ -3,10 +3,17 @@
     {
       "layers": [
         {
-          "image-name": "Today.svg",
-          "name": "Today",
+          "image-name": "Night.svg",
+          "name": "Night",
           "fill": {
             "solid": "srgb:1.00000,1.00000,1.00000,1.00000"
+          }
+        },
+        {
+          "image-name": "Day.svg",
+          "name": "Day",
+          "fill": {
+            "solid": "srgb:0.87059,0.66667,0.45098,1.00000"
           }
         }
       ],
