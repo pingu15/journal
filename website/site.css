@@ -81,7 +81,7 @@ h1, h2, h3, p { margin: 0; }
 .top nav { display: flex; gap: 32px; }
 .top .mark {
   display: block; width: 28px; height: 28px;
-  background: url(images/mark.svg) center / contain no-repeat;
+  background: url(images/logo-light.png) center / contain no-repeat;
 }
 .top nav a { color: var(--ink); opacity: .8; font: 400 14px/1.29 var(--text); letter-spacing: -0.224px; }
 .top nav a:hover { opacity: 1; text-decoration: none; }
