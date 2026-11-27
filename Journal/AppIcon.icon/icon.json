@@ -39,8 +39,8 @@
         "opacity" : 0.5
       },
       "translucency" : {
-        "enabled" : false,
-        "value" : 0.4
+        "enabled" : true,
+        "value" : 0.1
       }
     },
     {
@@ -69,8 +69,8 @@
         "opacity" : 0.5
       },
       "translucency" : {
-        "enabled" : false,
-        "value" : 0.4
+        "enabled" : true,
+        "value" : 0.1
       }
     }
   ],
