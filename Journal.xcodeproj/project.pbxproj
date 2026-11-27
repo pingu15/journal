@@ -340,7 +340,7 @@
 				INFOPLIST_KEY_NSHumanReadableCopyright = "© 2026 Max Sun";
 				INFOPLIST_KEY_NSCalendarsFullAccessUsageDescription = "Shows the events in your calendar on a day beside what you wrote. Your events stay on this iPhone.";
 				INFOPLIST_KEY_NSFaceIDUsageDescription = "Locks your journal so only you can open it.";
-				INFOPLIST_KEY_NSLocationAlwaysAndWhenInUseUsageDescription = "Shows the places you spend time at through the day, even while the app is closed. Your place history stays on this iPhone.";
+				INFOPLIST_KEY_NSLocationAlwaysAndWhenInUseUsageDescription = "Shows the places you spend time at through the day, even while the app is closed. Your location history stays on this iPhone.";
 				INFOPLIST_KEY_NSLocationWhenInUseUsageDescription = "Tags each entry with where you wrote it, and shows the places you spend time at through the day.";
 				INFOPLIST_KEY_NSPhotoLibraryUsageDescription = "Shows the photos you took on a day beside what you wrote. Your photo library stays on this iPhone.";
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
@@ -384,7 +384,7 @@
 				INFOPLIST_KEY_NSHumanReadableCopyright = "© 2026 Max Sun";
 				INFOPLIST_KEY_NSCalendarsFullAccessUsageDescription = "Shows the events in your calendar on a day beside what you wrote. Your events stay on this iPhone.";
 				INFOPLIST_KEY_NSFaceIDUsageDescription = "Locks your journal so only you can open it.";
-				INFOPLIST_KEY_NSLocationAlwaysAndWhenInUseUsageDescription = "Shows the places you spend time at through the day, even while the app is closed. Your place history stays on this iPhone.";
+				INFOPLIST_KEY_NSLocationAlwaysAndWhenInUseUsageDescription = "Shows the places you spend time at through the day, even while the app is closed. Your location history stays on this iPhone.";
 				INFOPLIST_KEY_NSLocationWhenInUseUsageDescription = "Tags each entry with where you wrote it, and shows the places you spend time at through the day.";
 				INFOPLIST_KEY_NSPhotoLibraryUsageDescription = "Shows the photos you took on a day beside what you wrote. Your photo library stays on this iPhone.";
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
