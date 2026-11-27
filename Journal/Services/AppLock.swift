@@ -99,6 +99,27 @@ final class SystemPrompts {
 /// window above everything else in the scene.
 final class PrivacyShield {
     private var window: UIWindow?
+    private var observers: [NSObjectProtocol] = []
+
+    /// Covers the app the moment it starts to leave, straight from UIKit. SwiftUI's scene phase (and
+    /// so `setVisible`) comes a moment later, and a quick swipe up to the app switcher took its
+    /// snapshot before then, uncovered. The window is made now, so it's ready to show at once.
+    func watch(lock: AppLock) {
+        guard observers.isEmpty else { return }
+        if window == nil { window = makeWindow(lock: lock) }
+        let cover: (Notification) -> Void = { [weak self] note in
+            MainActor.assumeIsolated {
+                guard UserDefaults.standard.bool(forKey: AppLock.enabledKey) else { return }
+                // Our own permission prompts make the app inactive too; they leave it uncovered.
+                if note.name == UIApplication.willResignActiveNotification,
+                   lock.isUnlocked, SystemPrompts.shared.isPresenting { return }
+                self?.setVisible(true, lock: lock)
+            }
+        }
+        for name in [UIApplication.willResignActiveNotification, UIApplication.didEnterBackgroundNotification] {
+            observers.append(NotificationCenter.default.addObserver(forName: name, object: nil, queue: nil, using: cover))
+        }
+    }
 
     func setVisible(_ visible: Bool, lock: AppLock) {
         if visible {
@@ -107,6 +128,8 @@ final class PrivacyShield {
             window?.layer.removeAllAnimations()
             window?.alpha = 1
             window?.isHidden = false
+            // Drawn now, not on the next pass, which may come after the app switcher's snapshot.
+            window?.layoutIfNeeded()
         } else if let window, !window.isHidden {
             UIView.animate(withDuration: 0.25, animations: { window.alpha = 0 }) { finished in
                 if finished { window.isHidden = true }

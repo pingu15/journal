@@ -129,6 +129,7 @@ struct RootView: View {
         .onChange(of: isShielded, initial: true) { _, shielded in
             shield.setVisible(shielded, lock: lock)
         }
+        .onAppear { shield.watch(lock: lock) }
         // The widgets' links: the day sheet on a day (today unless one is named), or a blank entry.
         .onOpenURL { url in
             guard url.scheme == WidgetSnapshot.newEntryURL.scheme else { return }
