@@ -164,7 +164,7 @@ private struct LockCover: View {
             CoverBlur()
             VStack(spacing: Spacing.l) {
                 Image(systemName: "lock.fill")
-                    .font(Typography.icon)
+                    .font(Typography.lockIcon)
                 Image("Signature")
                     .resizable()
                     .scaledToFit()

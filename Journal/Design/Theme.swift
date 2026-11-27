@@ -129,6 +129,8 @@ enum Typography {
     /// In a row's swipe buttons.
     static let smallIcon = Font.system(.subheadline).weight(.medium)
     static let icon = Font.system(.title2)
+    /// The lock over the logo on the locked cover: fixed, like the logo it sits on.
+    static let lockIcon = Font.system(size: 56)
 
     // Numbers.
     static let dayNumber = Font.system(.title2, design: .serif)
